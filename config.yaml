@@ -15,7 +15,7 @@ setting:
     aiType: "DEEPSEEK"
     aiUrl: "https://api.deepseek.com"
     model: "deepseek-v4-flash"
-    API_KEY: "sk-bb925b880610426eb977825e163eb345"
+    API_KEY: " "
   apiQueSetting:
     url: "http://192.168.31.184:8083"
 users:

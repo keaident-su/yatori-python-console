@@ -15,6 +15,8 @@ import time
 from typing import List, Any, Optional, Dict, Tuple
 from urllib.parse import unquote, quote
 
+from bs4 import BeautifulSoup
+
 from config.config import User, Setting, JSONDataForConfig, cmp_course, display_account
 from logic.xuexitong.models import (
     XueXiTUserCache, XueXiTCourse, XueXiTChapter, KnowledgeItem,
@@ -113,6 +115,10 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         return
 
     cc = user.courses_custom
+    # 调试：打印多任务点配置
+    log_print(DEBUG, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+              "[", Green, display_account(cache.account), Default, "] ",
+              f"多任务点配置: video_model={cc.video_model}, cx_node={cc.cx_node}")
     if cc.video_model == 3:
         num = cc.cx_node or 3
         if num == -1:
@@ -130,10 +136,18 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         for i in range(max(num, 1)):
             if i == 0:
                 _model3_caches[cache.account].append(copy.deepcopy(cache))
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          Green, f"多任务点模式: 登录实例 {i+1}/{num} 就绪")
             else:
                 c = copy.deepcopy(cache)
                 xxt_api.relogin(c)
                 _model3_caches[cache.account].append(c)
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          Green, f"多任务点模式: 登录实例 {i+1}/{num} 就绪")
                 time.sleep(1)
 
     # Concurrent course execution for model 2/3 (Go uses goroutines)
@@ -141,10 +155,13 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         for course in course_list:
             _course_study(setting, user, cache, course)
     else:
+        # 对齐Go: 每个goroutine有独立的HTTP客户端状态
+        # Python版: 每个课程线程必须有独立的cache副本，防止cookie_dict并发读写
         threads_course = []
         for course in course_list:
+            course_cache = copy.deepcopy(cache)
             t = threading.Thread(target=_course_study,
-                                 args=(setting, user, cache, course), daemon=True)
+                                 args=(setting, user, course_cache, course), daemon=True)
             threads_course.append(t)
             t.start()
         for t in threads_course:
@@ -224,6 +241,21 @@ def _pull_course_action(cache: XueXiTUserCache) -> Optional[List[XueXiTCourse]]:
 
     if course_list:
         _fetch_course_status(cache, course_list)
+        # 诊断日志：显示所有检测到的课程及其状态
+        for c in course_list:
+            status_str = ""
+            if not c.is_start:
+                status_str = "未开课"
+            elif c.job_rate >= 100:
+                status_str = f"已完成({c.job_rate}%)"
+            elif c.state == 1:
+                status_str = "已结束"
+            else:
+                status_str = f"进行中({c.job_rate}%, {c.job_finish_count}/{c.job_count})"
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      f"[课程] {c.course_name} | {status_str}")
 
     return course_list
 
@@ -310,6 +342,9 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
     try:
         key_int = int(course.key)
     except (ValueError, TypeError):
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  "[", course.course_name, "] ", BoldRed, f"课程key解析失败: '{course.key}'")
         return
 
     body, _ = xxt_api.pull_chapter_api(cache, key_int, course.cpi, retry=8)
@@ -348,19 +383,33 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
         return
 
     nodes = []
+    knowledge_map = {}
     for item in knowledge_list:
         if isinstance(item, dict):
-            nodes.append(item.get("id", 0))
+            nid = item.get("id", 0)
+            nodes.append(nid)
+            knowledge_map[nid] = {
+                "name": item.get("name", ""),
+                "label": item.get("label", "")
+            }
 
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               "[", Green, display_account(cache.account), Default, "] ",
               "[", course.course_name, "] ",
               f"获取课程章节成功 (共 ", Yellow, str(len(nodes)), Default, " 个)")
 
+    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+              "[", Green, display_account(cache.account), Default, "] ",
+              "[", course.course_name, "] ", Purple, "正在学习该课程")
+
     try:
         course_id_int = int(course.course_id)
         user_id_int = int(cache.user_id) if cache.user_id else 0
     except (ValueError, TypeError):
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  "[", course.course_name, "] ", BoldRed,
+                  f"ID解析失败: courseId='{course.course_id}', userId='{cache.user_id}'")
         return
 
     point_body, _ = xxt_api.fetch_chapter_point_status(
@@ -371,9 +420,14 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
     if point_data:
         for k, v in point_data.items():
             if isinstance(v, dict):
-                # chaoxing API uses totalcount/finishcount (not pointTotal/pointFinished)
+                # chaoxing API uses totalcount/finishcount/unfinishcount
                 total = v.get("totalcount", v.get("pointTotal", 0))
                 finished = v.get("finishcount", v.get("pointFinished", 0))
+                unfinish = v.get("unfinishcount", 0)
+                # 对齐 Go updatePointStatus: 当unfinishcount!=0且totalcount==0时
+                # 使用unfinishcount作为total（顶级标签场景）
+                if unfinish != 0 and total == 0:
+                    total = unfinish
                 finished_map[k] = (total, finished)
 
     # === Node iteration: model3 concurrent, others sequential (matching Go) ===
@@ -409,9 +463,16 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                 # Unlimited mode: relogin for each node
                 def _run_unlimited(idx=index, nid=node_id):
                     res_cache = copy.deepcopy(cache)
-                    xxt_api.relogin(res_cache)
-                    _node_run(setting, user, res_cache,
-                              course, nodes, idx, nid)
+                    try:
+                        xxt_api.relogin(res_cache)
+                        _node_run(setting, user, res_cache,
+                                  course, nodes, idx, nid, knowledge_map)
+                    except Exception as e:
+                        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                                  "[", Green, display_account(
+                                      cache.account), Default, "] ",
+                                  "[", course.course_name, "] ", BoldRed,
+                                  f"节点{nid}运行异常: {e}")
                 t = threading.Thread(target=_run_unlimited, daemon=True)
                 node_threads.append(t)
                 t.start()
@@ -423,7 +484,13 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                 def _run_slot(si=slot_idx, idx=index, nid=node_id):
                     try:
                         _node_run(setting, user,
-                                  m3_list[si], course, nodes, idx, nid)
+                                  m3_list[si], course, nodes, idx, nid, knowledge_map)
+                    except Exception as e:
+                        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                                  "[", Green, display_account(
+                                      cache.account), Default, "] ",
+                                  "[", course.course_name, "] ", BoldRed,
+                                  f"节点{nid}运行异常: {e}")
                     finally:
                         resource_q.put(si)
                 t = threading.Thread(target=_run_slot, daemon=True)
@@ -452,14 +519,16 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                                   f"零任务点遍历失败: {err}")
                     continue
             # If node is NOT in finished_map, still run it (Go does this)
-            _node_run(setting, user, cache, course, nodes, index, node_id)
+            _node_run(setting, user, cache, course, nodes,
+                      index, node_id, knowledge_map)
 
 
 # ============ 节点运行 (核心重写 - 完全对齐Go) ============
 
 def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
               course: XueXiTCourse, nodes: List[int],
-              index: int, node_id: int):
+              index: int, node_id: int,
+              knowledge_map: Dict = None):
     """节点运行 - 完全对齐 Go 的 nodeRun
     Go流程:
     1. ChapterFetchCardsAction → API1获取卡片 → parseIframeData → 创建PointDto
@@ -480,9 +549,21 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
         return
 
     # === Step 1: ChapterFetchCardsAction (API 1 获取卡片列表) ===
-    cords_body, _ = xxt_api.fetch_chapter_cords(
+    cords_body, cords_resp = xxt_api.fetch_chapter_cords(
         cache, node_id, course_id_int, retry=5)
     cords_data = safe_json_parse(cords_body)
+    # 对齐Go: 500错误或空响应时自动relogin重试
+    if not cords_data:
+        status = cords_resp.status_code if cords_resp else 0
+        if status >= 500 or not cords_body:
+            log_print(DEBUG, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "[", course.course_name, "] ", DarkGray,
+                      f"章节{node_id}卡片拉取失败(status={status})，尝试重新登录...")
+            xxt_api.relogin(cache)
+            cords_body, _ = xxt_api.fetch_chapter_cords(
+                cache, node_id, course_id_int, retry=5)
+            cords_data = safe_json_parse(cords_body)
     if not cords_data:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
@@ -491,6 +572,10 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
 
     cards_data = cords_data.get("data", [])
     if not cards_data or not isinstance(cards_data, list):
+        log_print(DEBUG, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  "[", course.course_name, "] ", DarkGray,
+                  f"章节{node_id}的data为空或格式异常")
         return
     first_data = cards_data[0]
     if not isinstance(first_data, dict):
@@ -500,6 +585,10 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
         return
     cards = card_data.get("data", [])
     if not cards or not isinstance(cards, list):
+        log_print(DEBUG, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  "[", course.course_name, "] ", DarkGray,
+                  f"章节{node_id}无卡片数据")
         return
 
     # 获取 knowledge_id
@@ -546,7 +635,12 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
         return
 
     # 创建 KnowledgeItem 用于日志输出
-    knowledge_item = KnowledgeItem(id=node_id, name=f"章节{node_id}")
+    ki_data = (knowledge_map or {}).get(node_id, {})
+    knowledge_item = KnowledgeItem(
+        id=node_id,
+        name=ki_data.get("name", f"章节{node_id}"),
+        label=ki_data.get("label", "")
+    )
 
     # === Step 3: ParsePointDto → 分离为6种DTO列表 ===
     video_dtos = [d.video for d in point_dtos if d.video.is_set]
@@ -595,9 +689,11 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
                 continue
 
             if vdto.type == "video":
-                _execute_video(setting, user, cache, course, vdto)
+                _execute_video(setting, user, cache,
+                               course, knowledge_item, vdto)
             elif vdto.type == "insertaudio":
-                _execute_audio(setting, user, cache, course, vdto)
+                _execute_audio(setting, user, cache,
+                               course, knowledge_item, vdto)
 
             rand_sleep = random.randint(10, 60)
             time.sleep(rand_sleep)
@@ -730,7 +826,8 @@ def _page_mobile_chapter_card_action(
             return None, "", Exception("验证码绕过后卡片响应仍为空")
         attachment, enc = xxt_api.parse_attachment_setting(html_body)
         if enc == "CAPTCHA":
-            return None, "", Exception("验证码绕过失败，请手动处理")
+            # 对齐Go: 触发验证码时仅跳过，不显示警告
+            return None, "", Exception("触发验证码")
 
     if enc == "FACE":
         # 人脸识别绕过
@@ -803,9 +900,7 @@ def _bypass_captcha(setting: Setting, cache: XueXiTUserCache) -> bool:
                         return True
         except Exception:
             pass
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ", Yellow,
-                  "验证码自动识别失败，请手动处理")
+        # 对齐Go: 验证码识别失败时静默跳过(Go根本不尝试自动解决)
         return False
     except Exception as e:
         log_print(INFO, f"[{platform}]",
@@ -913,7 +1008,9 @@ def _fill_dto_from_iframe(dto: PointDto, module_type: str,
             hd.class_id = str(class_id)
             hd.knowledge_id = knowledge_id
             hd.cpi = str(cpi)
+            hd.object_id = str(tp_data.get("objectid", ""))
             hd.job_id = job_id
+            hd.title = tp_data.get("title", "")
             hd.link_type = int(tp_data.get("linkType", 0))
             hd.is_set = True
 
@@ -1254,6 +1351,7 @@ def _video_submit_with_relogin(cache: XueXiTUserCache, video: PointVideoDto,
         return body, resp
 
     # 500/202/400/403: ReLogin后重试 (完全对齐Go聚合层)
+    # Go: 触发403的时候会进行一次重登测试，如果之后还是403那说明是人脸了
     if status_code in (500, 202, 400, 403):
         xxt_api.relogin(cache)
         if mode == 1:
@@ -1269,18 +1367,24 @@ def _video_submit_with_relogin(cache: XueXiTUserCache, video: PointVideoDto,
 
 
 def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
-                   course: XueXiTCourse, video: PointVideoDto):
+                   course: XueXiTCourse, knowledge_item: KnowledgeItem,
+                   video: PointVideoDto):
     """执行视频学习 - 完全对齐 Go ExecuteVideo
     包含: 过超提交、403人脸绕过、500跳过、404重试、OutTimeMsg、isdrag=3
     """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
+    k_label = f"{knowledge_item.label} {knowledge_item.name}".strip(
+    ) if knowledge_item.label else knowledge_item.name
 
     # VideoDtoFetchAction
     if not _video_dto_fetch_action(cache, video):
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
-                  Red, f"视频任务点解析失败 objectId={video.object_id}，已自动跳过")
+                  "【", course.course_name, "】",
+                  "【", k_label, "】",
+                  "【", video.title, "】 >>> ",
+                  Red, "视频任务点解析失败，已自动跳过")
         return
 
     # 初始播放时间处理
@@ -1293,12 +1397,15 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
     extend_sec = 5           # 过超提交停留时间
     limit_time = max(500, video.duration // 2)  # 过超时间最大限制
     mode = 1                 # 0=Web模式, 1=手机模式
+    stop_val = 0             # 403重试计数器 (对齐Go stopVal)
 
-    model_print(setting.basic_setting.log_model == 0,
-                INFO, f"[{platform}]",
-                "[", Green, acct, Default, "] ",
-                Yellow, "正在学习视频：", Default,
-                f"{video.title or video.object_id} duration={video.duration}s")
+    log_print(INFO, f"[{platform}]",
+              "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              "【", k_label, "】",
+              "【", video.title, "】 >>> ",
+              Yellow, "正在学习视频：", Default,
+              f"duration={video.duration}s")
 
     while True:
         # isdrag: 首次播放(playingTime==playTime)时为3，否则为0
@@ -1321,35 +1428,59 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
         if status_code == 500:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
                       BoldRed, "视频提交触发500风控，ReLogin后重试仍失败，跳过该视频")
             break
 
-        # 403: Go聚合层ReLogin后重试同mode，仍403才传到调用层
+       # 403: 对齐Go ExecuteVideo (XueXiTongPart.go)
+        # Go逻辑: mode==1(手机端)时切换为mode==0(Web端); mode==0时尝试人脸绕过
         if status_code == 403:
             if mode == 1:
-                # 手机端403 → 切换为Web端 (Go ExecuteVideo逻辑)
                 mode = 0
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
-                          Yellow, "手机端403，切换为Web端...")
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", video.title, "】 >>> ", Yellow,
+                          "检测到手机端触发403正在切换为Web端...")
                 continue
-            # Web端仍403 → 人脸识别绕过 (Go ExecuteVideo逻辑)
+            # mode == 0: Web端仍403，说明是人脸校验，尝试绕过
             log_print(INFO, f"[{platform}]",
-                      "[", Green, acct, Default, "] ", Yellow,
-                      "触发403人脸识别，正在尝试自动绕过...")
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ", Yellow,
+                      "触发403正在尝试绕过人脸识别...")
             face_err = xxt_api.pass_face_pc_action(
                 cache, video.course_id, video.class_id, video.cpi,
                 str(video.knowledge_id), video.enc,
                 video.job_id, video.object_id, video.mid,
                 video.random_capture_time)
             if face_err:
+                err_str = str(face_err)
+                if "没有历史人脸" in err_str or "上传人脸失败" in err_str:
+                    log_print(INFO, f"[{platform}]",
+                              "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】",
+                              "【", k_label, "】",
+                              "【", video.title, "】 >>> ",
+                              BoldRed, f"上传人脸失败，已自动跳过该视频: {face_err}")
+                    break
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
-                          BoldRed, f"403人脸绕过失败: {face_err}，跳过该视频")
-                return
-            log_print(INFO, f"[{platform}]",
-                      "[", Green, acct, Default, "] ", Green,
-                      "403人脸绕过成功，继续播放...")
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", video.title, "】 >>> ",
+                          Red, f"绕过人脸失败: {face_err}")
+            else:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", video.title, "】 >>> ", Green,
+                          "绕过人脸成功")
             time.sleep(5)  # Go: 不要删！一定要等待一小段时间
             continue
 
@@ -1357,6 +1488,9 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
         if status_code in (202, 400):
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
                       BoldRed, f"视频提交异常 status={status_code}，已跳过")
             break
 
@@ -1367,6 +1501,9 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
         if status_code and status_code != 200:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
                       BoldRed, f"视频提交异常 status={status_code}")
             break
 
@@ -1374,6 +1511,9 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
         if not resp_data or "isPassed" not in resp_data:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
                       BoldRed, f"视频提交返回异常: {body[:200] if body else 'empty'}")
             break
 
@@ -1384,14 +1524,19 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
         if out_time_msg == "观看时长超过阈值":
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
                       Green, f"观看时长超过阈值，已直接提交 passed={is_passed}")
             break
 
         if is_passed and playing_time >= video.duration:
+            stop_val = 0  # 视频完成后重置计数器
             if over_time == 0:
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】",
+                          "【", k_label, "】",
                           "【", video.title, "】 >>> ",
                           "提交状态：", Green, str(is_passed), Default,
                           f" 观看时间：{video.duration}/{video.duration}",
@@ -1400,39 +1545,47 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】",
+                          "【", k_label, "】",
                           "【", video.title, "】 >>> ",
                           "提交状态：", Green, str(is_passed), Default,
+                          f" 观看时间：{video.duration}/{video.duration}",
                           f" 过超时间：{over_time}/{limit_time}",
-                          Green, " 过超提交成功")
+                          Green, " 过超提交成功",
+                          f" 观看进度：100.00%")
             break
 
         # 日志
         if over_time == 0:
             pct = (playing_time / video.duration *
                    100) if video.duration > 0 else 0
-            model_print(setting.basic_setting.log_model == 0,
-                        INFO, f"[{platform}]",
-                        "[", Green, acct, Default, "] ",
-                        "【", video.title, "】 >>> ",
-                        "提交状态：", Green, str(is_passed), Default,
-                        f" 观看时间：{playing_time}/{video.duration}",
-                        f" 观看进度：{pct:.2f}%")
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
+                      "提交状态：", Green, str(is_passed), Default,
+                      f" 观看时间：{playing_time}/{video.duration}",
+                      f" 观看进度：{pct:.2f}%")
         else:
             pct = (playing_time / video.duration *
                    100) if video.duration > 0 else 0
-            model_print(setting.basic_setting.log_model == 0,
-                        INFO, f"[{platform}]",
-                        "[", Green, acct, Default, "] ",
-                        "【", video.title, "】 >>> ",
-                        "提交状态：", Green, str(is_passed), Default,
-                        f" 观看时间：{playing_time}/{video.duration}",
-                        f" 过超时间：{over_time}/{limit_time}",
-                        f" 观看进度：{pct:.2f}%")
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
+                      "提交状态：", Green, str(is_passed), Default,
+                      f" 观看时间：{playing_time}/{video.duration}",
+                      f" 过超时间：{over_time}/{limit_time}",
+                      f" 观看进度：{pct:.2f}%")
 
         # 过超提交检测
         if over_time >= limit_time:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
                       Red, "过超提交失败，自动进行下一任务...")
             break
 
@@ -1445,6 +1598,9 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
             if not video.job_id and video.attachment is None:
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", video.title, "】 >>> ",
                           Green, "该视频为非任务点，直接跳入下一视频")
                 break
             else:
@@ -1512,15 +1668,21 @@ def _audio_submit_with_relogin(cache: XueXiTUserCache, audio: PointVideoDto,
 
 
 def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
-                   course: XueXiTCourse, audio: PointVideoDto):
+                   course: XueXiTCourse, knowledge_item: KnowledgeItem,
+                   audio: PointVideoDto):
     """执行音频学习 - 完全对齐 Go ExecuteAudio"""
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
+    k_label = f"{knowledge_item.label} {knowledge_item.name}".strip(
+    ) if knowledge_item.label else knowledge_item.name
 
     if not _video_dto_fetch_action(cache, audio):
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
-                  Red, f"音频任务点解析失败 objectId={audio.object_id}")
+                  "【", course.course_name, "】",
+                  "【", k_label, "】",
+                  "【", audio.title, "】 >>> ",
+                  Red, "音频任务点解析失败，已自动跳过")
         return
 
     playing_time = audio.play_time
@@ -1532,12 +1694,15 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
     extend_sec = 5
     limit_time = max(500, audio.duration // 2)
     mode = 1
+    stop_val = 0  # 403重试计数器 (对齐Go stopVal)
 
-    model_print(setting.basic_setting.log_model == 0,
-                INFO, f"[{platform}]",
-                "[", Green, acct, Default, "] ",
-                Yellow, "正在学习音频：", Default,
-                f"{audio.title or audio.object_id} duration={audio.duration}s")
+    log_print(INFO, f"[{platform}]",
+              "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              "【", k_label, "】",
+              "【", audio.title, "】 >>> ",
+              Yellow, "正在学习音频：", Default,
+              f"duration={audio.duration}s")
 
     while True:
         if playing_time != audio.duration:
@@ -1554,20 +1719,60 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
         if status_code == 500:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title, "】 >>> ",
                       BoldRed, "音频提交触发500风控，ReLogin后仍失败，已跳过")
             break
 
         if status_code == 403:
+            # 对齐Go ExecuteAudio (XueXiTongPart.go): mode==1→切换Web端; mode==0→人脸绕过
             if mode == 1:
                 mode = 0
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
-                          Yellow, "手机端403，切换为Web端...")
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", audio.title, "】 >>> ", Yellow,
+                          "检测到手机端触发403正在切换为Web端...")
                 continue
+            # mode == 0: Web端仍403，尝试人脸绕过
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
-                      BoldRed, "触发403人脸识别(暂未实现)，跳过该音频")
-            return
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title, "】 >>> ", Yellow,
+                      "触发403正在尝试绕过人脸识别...")
+            face_err = xxt_api.pass_face_pc_action(
+                cache, audio.course_id, audio.class_id, audio.cpi,
+                str(audio.knowledge_id), audio.enc,
+                audio.job_id, audio.object_id, audio.mid,
+                audio.random_capture_time)
+            if face_err:
+                err_str = str(face_err)
+                if "没有历史人脸" in err_str or "上传人脸失败" in err_str:
+                    log_print(INFO, f"[{platform}]",
+                              "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】",
+                              "【", k_label, "】",
+                              "【", audio.title, "】 >>> ",
+                              BoldRed, f"上传人脸失败，已自动跳过该音频: {face_err}")
+                    break
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", audio.title, "】 >>> ",
+                          Red, f"绕过人脸失败: {face_err}")
+            else:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", audio.title, "】 >>> ", Green,
+                          "绕过人脸成功")
+            time.sleep(5)
+            continue
 
         if status_code == 404:
             time.sleep(10)
@@ -1576,6 +1781,9 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
         if status_code and status_code != 200:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title, "】 >>> ",
                       BoldRed, f"音频提交异常 status={status_code}")
             break
 
@@ -1589,18 +1797,30 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
         if out_time_msg == "观看时长超过阈值":
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title, "】 >>> ",
                       Green, "音频提交时长超过阈值，已直接提交")
             break
 
         if is_passed and playing_time >= audio.duration:
+            stop_val = 0  # 音频完成后重置计数器
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
-                      Green, f"音频完成 passed={is_passed}")
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title, "】 >>> ",
+                      "提交状态：", Green, str(is_passed), Default,
+                      f" 观看时间：{audio.duration}/{audio.duration}",
+                      f" 观看进度：100.00%")
             break
 
         if over_time >= limit_time:
             log_print(INFO, f"[{platform}]",
                       "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title, "】 >>> ",
                       Red, "音频过超提交失败")
             break
 
@@ -1612,6 +1832,9 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
             if not audio.job_id and audio.attachment is None:
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】",
+                          "【", k_label, "】",
+                          "【", audio.title, "】 >>> ",
                           Green, "该音频为非任务点，直接跳过")
                 break
             else:
@@ -1661,10 +1884,12 @@ def _execute_hyperlink(cache: XueXiTUserCache, course: XueXiTCourse,
     """执行外链任务 - 对应 Go ExecuteHyperlink"""
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
-    if not hdto.object_id:
+    if not hdto.job_id:
         return
     body, _ = xxt_api.hyperlink_submit_api(
-        cache, hdto.object_id, str(hdto.knowledge_id), cache.uid, retry=5)
+        cache, hdto.job_id, hdto.knowledge_id,
+        hdto.course_id, hdto.class_id, hdto.jtoken,
+        retry=5)
     resp_data = safe_json_parse(body) if body else None
     if resp_data and resp_data.get("status") is True:
         log_print(INFO, f"[{platform}]",
@@ -1781,23 +2006,94 @@ def _execute_live(setting: Setting, user: User, cache: XueXiTUserCache,
 def _execute_bbs(setting: Setting, user: User, cache: XueXiTUserCache,
                  course: XueXiTCourse, knowledge: KnowledgeItem,
                  bdto: PointBBsDto):
-    """执行讨论任务 - 对应 Go ExecuteBBS
-    流程: PullPhoneBbsInfo → AI答题/外挂题库/内置AI → 发表讨论回复
+    """执行讨论任务 - 对齐Go ExecuteBbsTest + PullPhoneBbsInfoAction
+    流程: PullPhoneBbsInfoApi(HTML) → 提取topicId/classId →
+          PullPhoneBbsDetailApi(JSON) → 获取uuid/title/content →
+          AI答题 → AnswerPhoneBbsApi
     """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
     cc = user.courses_custom
 
-    # 拉取讨论主题
-    topic_body, topic_err = xxt_api.pull_phone_bbs_info_api(
-        cache, bdto.job_id, course.course_id, course.key, retry=5)
+    # 1. 拉取讨论章节页面HTML - 对齐Go PullPhoneBbsInfoApi
+    topic_body, _topic_resp = xxt_api.pull_phone_bbs_info_api(
+        cache, bdto.mid, bdto.job_id, bdto.knowledge_id,
+        course.course_id, bdto.class_id, retry=5)
     if not topic_body:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】",
                   "【", knowledge.name, "】",
                   "【", bdto.title, "】",
-                  BoldRed, "无法正常拉取讨论任务点主题，已自动跳过")
+                  BoldRed, "拉取讨论页面失败，已自动跳过")
+        return
+
+    # 2. 解析HTML提取字段 - 对齐Go PullPhoneBbsInfoAction
+    #    Go提取: groupId, bbsId, topicId, classId, courseId, classChatId, role
+    bbs_group_id = ""
+    bbs_bbs_id = ""
+    bbs_topic_id = ""
+    bbs_class_id = ""
+    bbs_course_id = ""
+    bbs_class_chat_id = ""
+    bbs_role = ""
+    try:
+        from bs4 import BeautifulSoup as BS
+        soup = BS(topic_body, "html.parser")
+        gid_input = soup.find("input", id="groupId")
+        if gid_input:
+            bbs_group_id = gid_input.get("value", "")
+        bid_input = soup.find("input", id="bbsId")
+        if bid_input:
+            bbs_bbs_id = bid_input.get("value", "")
+        tid_input = soup.find("input", id="topicId")
+        if tid_input:
+            bbs_topic_id = tid_input.get("value", "")
+        # 对齐Go: 使用regex提取classId/courseId/classChatId/role
+        for m in re.finditer(r'classId:\s*"([^"]+)"|courseId:\s*"([^"]+)"|classChatId:\s*"([^"]+)"|role:\s*"([^"]+)"', topic_body):
+            if m.group(1):
+                bbs_class_id = m.group(1)
+            if m.group(2):
+                bbs_course_id = m.group(2)
+            if m.group(3):
+                bbs_class_chat_id = m.group(3)
+            if m.group(4):
+                bbs_role = m.group(4)
+    except Exception:
+        pass
+
+    if not bbs_topic_id:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  "【", knowledge.name, "】",
+                  "【", bdto.title, "】",
+                  BoldRed, "无法解析讨论topicId，已自动跳过")
+        return
+
+    final_class_id = bbs_class_id or bdto.class_id
+
+    # 3. 拉取讨论详细信息 - 对齐Go PullPhoneBbsDetailApi
+    detail_body, _detail_resp = xxt_api.pull_phone_bbs_detail_api(
+        cache, bbs_topic_id, retry=3)
+    topic_uuid = ""
+    topic_title = bdto.title or "发表讨论回复"
+    topic_content = ""
+    if detail_body:
+        detail_data = safe_json_parse(detail_body)
+        if detail_data and "data" in detail_data:
+            d = detail_data["data"]
+            topic_uuid = d.get("uuid", "")
+            topic_title = d.get("title", topic_title)
+            topic_content = d.get("text_content", "")
+
+    if not topic_uuid:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  "【", knowledge.name, "】",
+                  "【", bdto.title, "】",
+                  BoldRed, "无法获取讨论uuid，已自动跳过")
         return
 
     log_print(INFO, f"[{platform}]",
@@ -1807,24 +2103,24 @@ def _execute_bbs(setting: Setting, user: User, cache: XueXiTUserCache,
               "【", bdto.title, "】",
               Yellow, "正在执行讨论任务点...")
 
-    # 根据答题模式获取回答内容
+    # 4. 根据答题模式获取回答内容
     content = ""
     if cc.auto_exam == 1:
-        # AI答题
         try:
             from logic.core.ai_client import ai_problem_message
             ai = setting.ai_setting
+            prompt = topic_title
+            if topic_content:
+                prompt = topic_title + "\n" + topic_content
             answer = ai_problem_message(
-                ai.ai_url, ai.model, ai.api_key, ai.ai_type,
-                bdto.title or bdto.detail or "发表讨论回复")
+                ai.ai_url, ai.model, ai.api_key, ai.ai_type, prompt)
             content = answer if answer else "同意"
-        except Exception as e:
+        except Exception:
             content = "同意"
     elif cc.auto_exam == 3:
-        # 学习通内置AI
         try:
             body, _ = xxt_api.xxt_ai_api(
-                cache, bdto.title or "发表讨论回复",
+                cache, topic_title,
                 course.course_id, course.key, str(course.cpi))
             data = safe_json_parse(body) if body else None
             content = data.get("answer", "同意") if data else "同意"
@@ -1833,26 +2129,110 @@ def _execute_bbs(setting: Setting, user: User, cache: XueXiTUserCache,
     else:
         content = "同意"
 
-    # 发表讨论回复
-    reply_body, reply_err = xxt_api.bbs_reply_api(
-        cache, bdto.job_id, course.course_id, course.key, content, retry=5)
-    if reply_err:
+    # 5. 发表讨论回复 - 对齐Go AnswerPhoneBbsApi
+    reply_body, reply_err = xxt_api.answer_phone_bbs_api(
+        cache, final_class_id, topic_uuid, content, retry=3)
+    # 对齐Go: 解析JSON检查result字段
+    reply_data = safe_json_parse(reply_body) if reply_body else None
+    if reply_err or not reply_data:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】",
                   "【", knowledge.name, "】",
                   "【", bdto.title, "】",
-                  BoldRed, f"讨论任务点提交异常: {reply_err}")
+                  BoldRed, f"讨论任务点提交异常: {reply_err or '响应为空'}")
     else:
-        reply_data = safe_json_parse(reply_body) if reply_body else None
-        msg = reply_data.get(
-            "msg", reply_body[:100]) if reply_data else "unknown"
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", knowledge.name, "】",
-                  "【", bdto.title, "】 >>> ",
-                  "讨论任务点状态：", Green, str(msg))
+        result_val = reply_data.get("result", None)
+        msg_val = reply_data.get("msg", "")
+        if result_val == 1 or reply_data.get("status") is True:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", knowledge.name, "】",
+                      "【", bdto.title, "】 >>> ",
+                      "讨论任务点状态：", Green, f"{msg_val or '提交成功'}")
+        else:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", knowledge.name, "】",
+                      "【", bdto.title, "】",
+                      BoldRed, f"讨论任务点提交异常: {reply_body[:200]}")
+
+
+# ============ 相似度匹配 - 对齐Go qutils.SimilarityArraySelect ============
+
+def _levenshtein(a: str, b: str) -> int:
+    """Levenshtein编辑距离 - 对齐Go qutils.Levenshtein"""
+    la, lb = len(a), len(b)
+    if la == 0:
+        return lb
+    if lb == 0:
+        return la
+    # 优化：只用一维数组
+    prev = list(range(lb + 1))
+    for i in range(1, la + 1):
+        curr = [i] + [0] * lb
+        for j in range(1, lb + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            curr[j] = min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost)
+        prev = curr
+    return prev[lb]
+
+
+def _similarity(a: str, b: str) -> float:
+    """相似度 0.0~1.0 - 对齐Go qutils.Similarity"""
+    max_len = max(len(a), len(b))
+    if max_len == 0:
+        return 1.0
+    return 1.0 - _levenshtein(a, b) / max_len
+
+
+def _similarity_array_select(target: str, options: List[str]) -> List[str]:
+    """对齐Go qutils.SimilarityArraySelect
+    对千单选题: 返回单个最大匹配字母 ["A"]
+    对千多选题: target可能包含多个答案(用逗号/顿号/换行分隔), 返回排序后的字母列表
+    """
+    if not target or not options:
+        return ["A"]
+
+    # 多选题: 尝试分割AI答案 (常见分隔符: ，、, \n ; 等)
+    # 对齐Go: for _, item := range ch.Answers { answers += SimilarityArraySelect(item, candidateSelects) }
+    parts = re.split(r'[,，、;\n|/]+', target)
+    parts = [p.strip().strip("'\"\u2018\u2019\u201c\u201d\u300c\u300d\u300e\u300f")
+             for p in parts if p.strip()]
+
+    if not parts:
+        parts = [target]
+
+    letters_map = {}
+    for part in parts:
+        best_score = -1.0
+        best_idx = 0
+        for i, opt in enumerate(options):
+            score = _similarity(part, opt)
+            # 也尝试部分匹配: AI可能只返回选项的一部分
+            if score < 0.5 and len(part) > 2:
+                # 检查是否包含关系（作为候选）
+                if part in opt or opt in part:
+                    score = max(score, 0.6)
+            if score > best_score:
+                best_score = score
+                best_idx = i
+        letter = chr(65 + best_idx)
+        letters_map[letter] = True
+
+    # 如果完全无法匹配，尝试检查答案本身是否是字母
+    if all(score < 0.2 for score in [_similarity(p, options[0] if options else "") for p in parts]):
+        direct = []
+        for ch in target.upper():
+            if ch.isalpha() and ord(ch) - 65 < len(options):
+                direct.append(ch)
+        if direct:
+            return sorted(set(direct))
+
+    result = sorted(letters_map.keys())
+    return result if result else ["A"]
 
 
 # ============ 章测自动答题 ============
@@ -1861,19 +2241,19 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                          course: XueXiTCourse, knowledge: KnowledgeItem,
                          wdto: PointWorkDto):
     """章测自动答题 - 对应 Go chapterTestAction
-    流程: WorkFetchQuestion → 解析题目 → AI答题 → WorkNewSubmitAnswer
+    流程: WorkFetchQuestion → 解析题目+元数据 → AI答题 → WorkNewSubmitAnswer
     """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
     cc = user.courses_custom
 
     # 获取题目页面
-    body, _ = xxt_api.work_fetch_question_api(cache, wdto, retry=5)
+    body, resp = xxt_api.work_fetch_question_api(cache, wdto, retry=5)
     if not body:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】",
-                  BoldRed, "章测题目页面获取失败")
+                  BoldRed, f"章测题目页面获取失败 (status={resp.status_code if resp else 'N/A'})")
         return
 
     if "已截止" in body or "不能作答" in body:
@@ -1883,8 +2263,8 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                   Yellow, "该试卷已到截止时间，已自动跳过")
         return
 
-    # 解析题目并AI答题
-    questions = _parse_work_questions(body)
+    # 解析题目并提取元数据
+    questions, meta = _parse_work_questions_v2(body)
     if not questions:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
@@ -1900,33 +2280,46 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
     elif cc.auto_exam == 3:
         mode_str = "内置AI"
 
+    title = meta.get("title", knowledge.name)
     log_print(INFO, f"[{platform}]",
               "[", Green, acct, Default, "] ",
               f"<{mode_str}>",
               "【", course.course_name, "】",
-              "【", knowledge.name, "】",
+              "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
+              "【", title, "】",
               Yellow, f"正在{mode_str}写章节作业(共{len(questions)}题)...")
 
     # 对每道题AI答题
-    answer_data = {}
+    answerwqbid = ""
+    ai_answered = 0  # AI实际给出答案的题数
+    ai_raw_answers = []  # 调试用：记录AI原始返回值
     for q in questions:
         q_type = q.get("type", "")
         q_text = q.get("text", "")
         q_id = q.get("id", "")
         answer = ""
 
+        # 提取选项纯文本(去掉 "A." 前缀) - 对齐Go TurnStandardQuestion
+        raw_options = q.get("options", [])
+        opt_texts_for_ai = []
+        for opt in raw_options:
+            dot_idx = opt.find(".")
+            if dot_idx >= 0:
+                opt_texts_for_ai.append(opt[dot_idx+1:].strip())
+            else:
+                opt_texts_for_ai.append(opt)
+
         if cc.auto_exam == 1:
-            # AI答题
             try:
                 from logic.core.ai_client import ai_problem_message
                 ai = setting.ai_setting
+                # 对齐Go: 传递题型和选项，AI返回JSON数组格式答案
                 answer = ai_problem_message(
                     ai.ai_url, ai.model, ai.api_key, ai.ai_type,
-                    q_text)
+                    q_text, options=opt_texts_for_ai, q_type=q_type)
             except Exception:
                 answer = ""
         elif cc.auto_exam == 3:
-            # 内置AI
             try:
                 ai_body, _ = xxt_api.xxt_ai_api(
                     cache, q_text, course.course_id, course.key, str(course.cpi))
@@ -1935,40 +2328,283 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             except Exception:
                 answer = ""
         else:
-            answer = "A"  # 默认答案
+            answer = "A"
+
+        # 清理AI答案中的引号和多余空白 - 防止SimilarityArraySelect匹配失败
+        # AI常返回 '认清中国国情' 或 "认清中国国情" 带引号格式
+        if answer:
+            answer = answer.strip()
+            # 去除首尾成对的单引号或双引号
+            if len(answer) >= 2 and answer[0] == answer[-1] and answer[0] in ("'", '"', '\u2018', '\u2019', '\u201c', '\u201d'):
+                answer = answer[1:-1].strip()
+            # 也处理中文引号「」『』
+            if len(answer) >= 2 and answer[0] in ('「', '『') and answer[-1] in ('」', '』'):
+                answer = answer[1:-1].strip()
+
+        # 记录AI原始返回（调试用）
+        ai_raw_answers.append(repr(answer[:50]) if answer else "<empty>")
+
+        # 记录AI是否实际给出了答案(在AnswerFixedPattern之前)
+        if answer.strip():
+            ai_answered += 1
 
         # AnswerFixedPattern: 防止留空
-        if not answer and q_type in ("choice", "judge"):
-            answer = "A" if q_type == "choice" else "True"
+        if not answer and q_type in ("single_choice", "multiple_choice", "choice", "judge"):
+            answer = "A" if q_type in (
+                "single_choice", "choice", "multiple_choice") else "true"
+
+        # AnswerFixedPattern: 判断题答案修正 - 对齐Go AnswerFixedPattern
+        if q_type == "judge":
+            answer = answer.replace("对", "正确").replace(
+                "√", "正确").replace("×", "错误")
 
         if q_id:
-            answer_data[q_id] = answer
+            answerwqbid += q_id + ","
+            q["answer"] = answer
+
         time.sleep(random.randint(1, 2))
 
-    # 提交答案
-    answer_data.update({
-        "courseId": wdto.course_id,
-        "classId": wdto.class_id,
-        "knowledgeId": str(wdto.knowledge_id),
-        "workId": wdto.work_id,
-        "jobId": wdto.job_id,
-        "cpi": wdto.cpi,
-        "enc": wdto.enc,
-        "ktoken": wdto.k_token,
-    })
-
-    is_submit = cc.exam_auto_submit in (1, 2)
-    result_body, _ = xxt_api.work_new_submit_answer_api(
-        cache, wdto.course_id, wdto.class_id,
-        str(wdto.knowledge_id), wdto.work_id,
-        answer_data, retry=3)
-
+    # 调试日志：显示AI返回的原始答案
     log_print(INFO, f"[{platform}]",
               "[", Green, acct, Default, "] ",
               f"<{mode_str}>",
               "【", course.course_name, "】",
-              "【", knowledge.name, "】",
-              Green, f"章节作业{mode_str}答题完毕，服务器返回：{result_body[:200] if result_body else 'empty'}")
+              Yellow, f"[AI调试] ai_answered={ai_answered} auto_exam={cc.auto_exam} "
+              f"题数={len(questions)} answers={ai_raw_answers}")
+
+    # 检查AI是否可用 - 如果AI没有给出任何实际答案，跳过提交
+    if ai_answered == 0 and cc.auto_exam in (1, 3) and questions:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
+                  "【", title, "】",
+                  Yellow, f"AI未返回任何答案(余额不足?)，跳过提交")
+        return
+
+    # 构建提交数据 - 完全对齐Go WorkNewSubmitAnswer的multipart fields
+    is_submit = cc.exam_auto_submit in (1, 2)
+    submit_state = "" if is_submit else "1"  # Go: ""为交卷, "1"为暂存
+
+    # totalQuestionNum: 必须使用HTML中的原始值(通常是哈希字符串)
+    # Go代码直接传递: question.TotalQuestionNum = informMap["totalQuestionNum"]
+    # 服务器会验证此值与session中存储的值是否匹配
+    # 绝对不能覆盖为数字! 否则服务器返回code-2
+    raw_total_q = meta.get("totalQuestionNum", "")
+    total_q_num = raw_total_q  # 保持原样，不转换为数字
+    if not total_q_num:
+        total_q_num = str(len(questions))  # 兆底：如果HTML中完全没有，才用题数
+
+    submit_data = {
+        "pyFlag": submit_state,
+        "courseId": meta.get("courseId", wdto.course_id),
+        "classId": meta.get("classId", wdto.class_id),
+        "api": meta.get("api", ""),
+        "workAnswerId": meta.get("workAnswerId", ""),
+        "answerId": meta.get("answerId", ""),
+        "totalQuestionNum": total_q_num,
+        "fullScore": meta.get("fullScore", ""),
+        "knowledgeid": meta.get("knowledgeid", str(wdto.knowledge_id)),
+        "oldSchoolId": meta.get("oldSchoolId", ""),
+        "oldWorkId": meta.get("oldWorkId", wdto.work_id),
+        "jobid": meta.get("jobid", wdto.job_id),
+        "workRelationId": meta.get("workRelationId", ""),
+        "enc": "",
+        "enc_work": meta.get("enc_work", ""),
+        "userId": cache.cookie_dict.get("_uid", cache.uid),
+        "cpi": meta.get("cpi", wdto.cpi),
+        "workTimesEnc": "",
+        "randomOptions": meta.get("randomOptions", "false"),
+        "isAccessibleCustomFid": "0",
+        # 注意: Go的WorkNewSubmitAnswer不发送cfid和uploadEnc字段!
+        # 虽然ParseWorkInform读取了它们,但提交时从未写入multipart form
+    }
+
+    # 添加每道题的答案 - 完全对齐Go WorkNewSubmitAnswer的各题型写入
+    # 关键: Go代码中answertype写在answer之后! (writer.WriteField("answer"+qid) 先于 answertype)
+    for q in questions:
+        q_id = q.get("id", "")
+        if not q_id:
+            continue
+        aw_type = q.get("answertype", "0")
+        q_type = q.get("type", "")
+        answer = q.get("answer", "")
+        # 注意: answertype 在各题型的 answer 之后写入 (对齐Go)
+
+        if q_type == "single_choice":
+            # 单选题: 不分割答案! AI可能返回含逗号的完整选项文本
+            # 对齐Go: for _, item := range ch.Answers { answers += SimilarityArraySelect(item, opts) }
+            # Go的ch.Answers中每个元素都是完整的，不在SimilarityArraySelect内部做分割
+            options = q.get("options", [])
+            if options:
+                opt_texts = []
+                for opt in options:
+                    dot_idx = opt.find(".")
+                    if dot_idx >= 0:
+                        opt_texts.append(opt[dot_idx+1:].strip())
+                    else:
+                        opt_texts.append(opt)
+                # 单选题: 整个answer作为一个整体匹配，返回单个字母
+                best_score = -1.0
+                best_idx = 0
+                for i, opt_text in enumerate(opt_texts):
+                    score = _similarity(answer, opt_text)
+                    if score < 0.5 and len(answer) > 2:
+                        if answer in opt_text or opt_text in answer:
+                            score = max(score, 0.6)
+                    if score > best_score:
+                        best_score = score
+                        best_idx = i
+                submit_data[f"answer{q_id}"] = chr(65 + best_idx)
+            else:
+                submit_data[f"answer{q_id}"] = answer
+            submit_data[f"answertype{q_id}"] = aw_type
+
+        elif q_type == "multiple_choice":
+            # 多选题: 可以按逗号分割，每个部分分别匹配
+            options = q.get("options", [])
+            if options:
+                opt_texts = []
+                for opt in options:
+                    dot_idx = opt.find(".")
+                    if dot_idx >= 0:
+                        opt_texts.append(opt[dot_idx+1:].strip())
+                    else:
+                        opt_texts.append(opt)
+                result_letters = _similarity_array_select(answer, opt_texts)
+                submit_data[f"answer{q_id}"] = "".join(result_letters)
+            else:
+                submit_data[f"answer{q_id}"] = answer
+            submit_data[f"answertype{q_id}"] = aw_type
+
+        elif q_type == "judge":
+            # 对齐Go: "正确"→"true", "错误"→"false"
+            judge_answer = answer
+            if judge_answer == "正确":
+                judge_answer = "true"
+            elif judge_answer == "错误":
+                judge_answer = "false"
+            elif judge_answer not in ("true", "false"):
+                # 如果AI返回的不是标准格式，默认true
+                judge_answer = "true"
+            submit_data[f"answer{q_id}"] = judge_answer
+            submit_data[f"answertype{q_id}"] = aw_type
+
+        elif q_type == "fill":
+            # 对齐Go: answer{qid}{index} → tiankongsize → answertype
+            answer_fields = q.get("answer_fields", {})
+            for k, v in answer_fields.items():
+                if k.startswith(f"answer{q_id}"):
+                    submit_data[k] = answer  # 所有空填同一个AI答案
+                elif k.startswith(f"tiankongsize{q_id}"):
+                    submit_data[k] = v
+            submit_data[f"answertype{q_id}"] = aw_type
+
+        else:
+            # 简答/论述/名词解释/其它
+            submit_data[f"answer{q_id}"] = answer
+            submit_data[f"answertype{q_id}"] = aw_type
+
+    # 确保enc_work和totalQuestionNum在submit_data中
+    submit_data["enc_work"] = meta.get("enc_work", "")
+    # 重要: 不要覆盖totalQuestionNum! 保持HTML中的原始哈希值
+    # Go代码: writer.WriteField("totalQuestionNum", totalQuestionNum) 直接使用HTML原始值
+
+    # Go版顺序: answer/answertype字段在answerwqbid之前
+    # 对齐Go WorkNewSubmitAnswer: writer.WriteField("answerwqbid", answerwqbid) 在最后
+    submit_data["answerwqbid"] = answerwqbid
+
+    # 第二层保护：提交前再次验证AI答案不为空
+    if ai_answered == 0 and cc.auto_exam in (1, 3):
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
+                  "【", title, "】",
+                  Yellow, f"[保护] AI未返回答案，阻止提交(ai_answered={ai_answered})")
+        return
+
+    # 详细调试: 输出所有答案字段
+    answer_debug = []
+    for q in questions:
+        q_id = q.get('id', '')
+        q_type = q.get('type', '')
+        raw_ans = q.get('answer', '')
+        submitted = submit_data.get(f'answer{q_id}', '<MISSING>')
+        answer_debug.append(
+            f"q{q_id}({q_type}):raw={repr(raw_ans[:30])}→sub={repr(submitted[:20])}")
+    log_print(INFO, f"[{platform}]",
+              "[", Green, acct, Default, "] ",
+              f"<{mode_str}>",
+              "【", course.course_name, "】",
+              Yellow, f"[提交调试] {' | '.join(answer_debug[:8])}")
+    if len(answer_debug) > 8:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  Yellow, f"[提交调试2] {' | '.join(answer_debug[8:16])}")
+    if len(answer_debug) > 16:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  Yellow, f"[提交调试3] {' | '.join(answer_debug[16:])}")
+
+    result_body, result_resp = xxt_api.work_new_submit_answer_api(
+        cache, wdto.course_id, wdto.class_id,
+        str(wdto.knowledge_id), wdto.work_id,
+        submit_data, retry=3)
+
+    # 响应验证 - 对齐Go: gojsonq.New().JSONString(resultStr).Find("status")
+    status_code = result_resp.status_code if result_resp else 0
+    result_str = result_body or ""
+    is_success = False
+    try:
+        resp_json = safe_json_parse(result_str)
+        if resp_json and resp_json.get("status") is True:
+            is_success = True
+    except Exception:
+        pass
+
+    if is_success:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
+                  "【", title, "】",
+                  Green, f"章节作业{mode_str}答题完毕,服务器返回信息：{result_str[:300]}")
+    else:
+        # 诊断日志：显示完整submit_data
+        submit_fields = []
+        for sk, sv in submit_data.items():
+            if sk.startswith('answer') and not sk.startswith('answerwqbid'):
+                submit_fields.append(f"{sk}={repr(str(sv)[:40])}")
+            elif sk in ('pyFlag', 'courseId', 'classId', 'totalQuestionNum',
+                        'enc_work', 'workAnswerId', 'answerId', 'userId',
+                        'knowledgeid', 'oldWorkId', 'jobid', 'cpi'):
+                submit_fields.append(f"{sk}={repr(str(sv)[:30])}")
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
+                  "【", title, "】",
+                  BoldRed, f"章节作业{mode_str}答题失败(status={status_code}),服务器返回信息：{result_str[:300]}")
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  f"<{mode_str}>",
+                  "【", course.course_name, "】",
+                  Yellow, f"[完整提交字段] {' | '.join(submit_fields[:15])}")
+        if len(submit_fields) > 15:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      f"<{mode_str}>",
+                      "【", course.course_name, "】",
+                      Yellow, f"[完整提交字段2] {' | '.join(submit_fields[15:])}")
 
 
 def _parse_work_questions(html_body: str) -> List[Dict]:
@@ -1999,35 +2635,207 @@ def _parse_work_questions(html_body: str) -> List[Dict]:
     return questions
 
 
+def _parse_work_questions_v2(html_body: str) -> Tuple[List[Dict], Dict]:
+    """从作业页面HTML解析题目列表+元数据 - 对齐Go ParseWorkQuestionAction
+    使用 BeautifulSoup + div.Py-mian1 块解析每道题（与Go的ParseQuestionSets完全对齐）
+    Returns: (questions_list, metadata_dict)
+    """
+    questions = []
+    meta = {}
+    if not html_body:
+        return questions, meta
+
+    # === 提取元数据 - 对齐Go ParseWorkInform ===
+    meta_fields = ["userId", "courseId", "classId", "api", "workAnswerId",
+                   "answerId", "totalQuestionNum", "fullScore", "knowledgeid",
+                   "oldSchoolId", "oldWorkId", "jobid", "workRelationId",
+                   "enc", "enc_work", "cpi", "workTimesEnc", "randomOptions",
+                   "cfid", "uploadEnc", "workId"]
+    for field in meta_fields:
+        val = _html_input_get(html_body, field)
+        if val:
+            meta[field] = val
+    # 提取title
+    title_match = re.search(
+        r'class=["\'][^"\']*chapter-title[^"\']*["\'][^>]*workname=["\']([^"\']*)["\']',
+        html_body, re.IGNORECASE)
+    if title_match:
+        meta["title"] = title_match.group(1)
+    if "title" not in meta:
+        t_match = re.search(
+            r'<title[^>]*>(.*?)</title>', html_body, re.IGNORECASE | re.DOTALL)
+        if t_match:
+            meta["title"] = re.sub(r'<[^>]+>', '', t_match.group(1)).strip()
+
+    # === Go题目类型映射 ===
+    type_cn_to_key = {
+        "单选题": "single_choice", "多选题": "multiple_choice",
+        "判断题": "judge", "填空题": "fill",
+        "简答题": "short", "名词解释": "term_explanation",
+        "论述题": "essay", "连线题": "matching", "辨析题": "judge",
+        "投票题": "single_choice",
+    }
+    type_to_answertype = {
+        "single_choice": "0", "multiple_choice": "1", "fill": "2",
+        "judge": "3", "short": "4", "term_explanation": "5",
+        "essay": "6", "matching": "11",
+    }
+
+    # === 使用BeautifulSoup解析 - 完全对齐Go goquery ===
+    try:
+        soup = BeautifulSoup(html_body, "html.parser")
+    except Exception:
+        return questions, meta
+
+    # 对齐Go: questionNodes := doc.Find("div.Py-mian1")
+    question_nodes = soup.find_all("div", class_="Py-mian1")
+
+    for idx, node in enumerate(question_nodes):
+        # 对齐Go: dataAttr, exists := questionNode.Attr("data")
+        qid = node.get("data", "") or f"question_{idx+1}"
+
+        # 提取题目类型 (Go: .Py-m1-title .quesType)
+        type_text = ""
+        title_div = node.find(class_="Py-m1-title")
+        if title_div:
+            ques_type_span = title_div.find(class_="quesType")
+            if ques_type_span:
+                raw_type = ques_type_span.get_text(strip=True)
+                type_in_brackets = re.search(r'\[([^\]]+)\]', raw_type)
+                type_text = type_in_brackets.group(
+                    1) if type_in_brackets else raw_type
+        q_type = type_cn_to_key.get(type_text, "short")
+        aw_type = type_to_answertype.get(q_type, "0")
+
+        # 提取题目文本 (Go: .Py-m1-title .workTextWrap)
+        text = ""
+        if title_div:
+            text_wrap = title_div.find(class_="workTextWrap")
+            if text_wrap:
+                text = text_wrap.get_text(strip=True)
+        if not text:
+            text = f"题目{qid}"
+
+        # 提取选项和构建答案字段
+        options = []
+        answer_fields = {}
+
+        if q_type in ("single_choice", "multiple_choice"):
+            # 对齐Go: .answerList.singleChoice li / .answerList.multiChoice li
+            css_class = "singleChoice" if q_type == "single_choice" else "multiChoice"
+            answer_list = node.find(
+                class_=lambda c: c and "answerList" in c and css_class in c)
+            if answer_list:
+                for li in answer_list.find_all("li"):
+                    em = li.find("em", class_="choose-opt")
+                    if em:
+                        letter = em.get(
+                            "id-param", "") or em.get_text(strip=True)
+                        cc_content = li.find("cc")
+                        opt_text = cc_content.get_text(
+                            strip=True) if cc_content else ""
+                        if letter:
+                            options.append(f"{letter}. {opt_text}")
+            answer_fields[f"answer{qid}"] = ""
+
+        elif q_type == "judge":
+            # 对齐Go: .answerList.panduan li, 提取val-param属性
+            answer_list = node.find(
+                class_=lambda c: c and "answerList" in c and "panduan" in c)
+            if answer_list:
+                for li in answer_list.find_all("li"):
+                    val_param = li.get("val-param", "")
+                    if val_param == "true":
+                        options.append("对")
+                    elif val_param == "false":
+                        options.append("错")
+            answer_fields[f"answer{qid}"] = ""
+
+        elif q_type == "fill":
+            # 对齐Go: ul.blankList2 提取空数
+            blank_lists = node.find_all("ul", class_="blankList2")
+            blank_count = 0
+            for bl in blank_lists:
+                p_tags = bl.find_all("p")
+                blank_count += len(p_tags)
+            if blank_count == 0:
+                blank_count = 1
+            for bi in range(1, blank_count + 1):
+                answer_fields[f"answer{qid}{bi}"] = ""
+            answer_fields[f"tiankongsize{qid}"] = str(blank_count)
+
+        else:
+            # 简答/论述/名词解释/其它
+            answer_fields[f"answer{qid}"] = ""
+
+        questions.append({
+            "id": qid,
+            "text": text,
+            "type": q_type,
+            "answertype": aw_type,
+            "options": options,
+            "answer_fields": answer_fields,
+        })
+
+    return questions, meta
+
+
 def _parse_exam_list_html(html_body: str) -> List[Dict]:
-    """Parse exam list from chaoxing getExamList HTML response."""
+    """Parse exam list from chaoxing HTML - matches Go PullExamListAction
+    Go uses goquery: doc.Find("ul.nav li") with li.Attr("data")
+    """
     exam_list = []
     if not html_body:
         return exam_list
 
-    exam_pattern = re.compile(
-        r'<a[^>]*href="[^"]*[?&]examId=(\d+)[^"]*"[^>]*>(.*?)</a>',
-        re.IGNORECASE | re.DOTALL)
-    status_pattern = re.compile(r'(待做|待重考|已完成)', re.IGNORECASE)
-    enc_pattern = re.compile(r'[?&]enc=([^&"\']+)', re.IGNORECASE)
+    # Match <li ... data="URL"> ... </li> within ul.nav
+    # First try to find ul.nav block
+    nav_match = re.search(r'<ul[^>]*class=["\'][^"\']*nav[^"\']*["\'][^>]*>(.*?)</ul>',
+                          html_body, re.IGNORECASE | re.DOTALL)
+    search_html = nav_match.group(1) if nav_match else html_body
 
-    for m in exam_pattern.finditer(html_body):
-        exam_id = m.group(1)
-        inner_html = m.group(2)
-        name = re.sub(r'<[^>]+>', '', inner_html).strip()
-        context_start = max(0, m.start() - 500)
-        context_end = min(len(html_body), m.end() + 500)
-        context = html_body[context_start:context_end]
-        status_match = status_pattern.search(context)
-        status = status_match.group(1) if status_match else ""
-        enc_match = enc_pattern.search(context)
-        enc = enc_match.group(1) if enc_match else ""
+    li_pattern = re.compile(
+        r'<li[^>]*\bdata=["\']([^"\']+)["\'][^>]*>(.*?)</li>',
+        re.IGNORECASE | re.DOTALL)
+
+    for li_match in li_pattern.finditer(search_html):
+        raw_url = li_match.group(1)
+        li_inner = li_match.group(2)
+
+        # Parse URL params
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(raw_url if raw_url.startswith(
+            "http") else "http://x?" + raw_url.lstrip("?"))
+        params = {}
+        for k, v in parse_qs(parsed.query).items():
+            params[k] = v[0] if v else ""
+
+        # Extract name from <p> tag within <div>
+        name_match = re.search(
+            r'<p[^>]*>(.*?)</p>', li_inner, re.IGNORECASE | re.DOTALL)
+        name = re.sub(r'<[^>]+>', '', name_match.group(1)
+                      ).strip() if name_match else ""
+
+        # Extract status from first <span>
+        span_matches = list(re.finditer(
+            r'<span[^>]*>(.*?)</span>', li_inner, re.IGNORECASE | re.DOTALL))
+        status = re.sub(r'<[^>]+>', '', span_matches[0].group(1)
+                        ).strip() if span_matches else ""
+        remain = re.sub(r'<[^>]+>', '', span_matches[1].group(1)
+                        ).strip() if len(span_matches) > 1 else ""
+
         exam_list.append({
-            "examId": exam_id,
-            "name": name[:100] if name else f"考试{exam_id}",
-            "enc": enc,
+            "name": name or f"考试{params.get('taskrefId', '')}",
             "status": status,
-            "questionTotal": 0,
+            "remainTime": remain,
+            "rawUrl": raw_url,
+            "taskrefId": params.get("taskrefId", ""),
+            "courseId": params.get("courseId", ""),
+            "userId": params.get("userId", ""),
+            "clazzId": params.get("clazzId", ""),
+            "type": params.get("type", ""),
+            "enc_task": params.get("enc_task", ""),
+            "msgId": params.get("msgId", "0"),
         })
 
     if not exam_list:
@@ -2041,48 +2849,59 @@ def _parse_exam_list_html(html_body: str) -> List[Dict]:
 
 
 def _parse_work_list_html(html_body: str) -> List[Dict]:
-    """Parse work list from chaoxing getWorkList HTML response.
-    Extracts work items with workId, name, enc, status, questionTotal.
+    """Parse work list from chaoxing HTML - matches Go PullWorkListAction
+    Go uses goquery: doc.Find("ul.nav li") with li.Attr("data")
     """
     work_list = []
     if not html_body:
         return work_list
 
-    # Try to find work item blocks - typical pattern:
-    # <div class="...WorkList..."> ... <a href="...workId=xxx..."> ... </a> ... </div>
-    # Look for links containing workId parameter
-    work_pattern = re.compile(
-        r'<a[^>]*href="[^"]*[?&]workId=(\d+)[^"]*"[^>]*>(.*?)</a>',
-        re.IGNORECASE | re.DOTALL)
-    # Look for status text
-    status_pattern = re.compile(r'(待做|未交|待重做|已交|已批)', re.IGNORECASE)
-    # Look for enc parameter
-    enc_pattern = re.compile(r'[?&]enc=([^&"\']+)', re.IGNORECASE)
+    # Match <li ... data="URL"> ... </li> within ul.nav
+    nav_match = re.search(r'<ul[^>]*class=["\'][^"\']*nav[^"\']*["\'][^>]*>(.*?)</ul>',
+                          html_body, re.IGNORECASE | re.DOTALL)
+    search_html = nav_match.group(1) if nav_match else html_body
 
-    for m in work_pattern.finditer(html_body):
-        work_id = m.group(1)
-        inner_html = m.group(2)
-        # Extract name from inner text
-        name = re.sub(r'<[^>]+>', '', inner_html).strip()
-        # Try to find status near this link
-        context_start = max(0, m.start() - 500)
-        context_end = min(len(html_body), m.end() + 500)
-        context = html_body[context_start:context_end]
-        status_match = status_pattern.search(context)
-        status = status_match.group(1) if status_match else ""
-        # Extract enc from nearby href
-        enc_match = enc_pattern.search(context)
-        enc = enc_match.group(1) if enc_match else ""
+    li_pattern = re.compile(
+        r'<li[^>]*\bdata=["\']([^"\']+)["\'][^>]*>(.*?)</li>',
+        re.IGNORECASE | re.DOTALL)
+
+    for li_match in li_pattern.finditer(search_html):
+        raw_url = li_match.group(1)
+        li_inner = li_match.group(2)
+
+        from urllib.parse import urlparse, parse_qs
+        parsed = urlparse(raw_url if raw_url.startswith(
+            "http") else "http://x?" + raw_url.lstrip("?"))
+        params = {}
+        for k, v in parse_qs(parsed.query).items():
+            params[k] = v[0] if v else ""
+
+        name_match = re.search(
+            r'<p[^>]*>(.*?)</p>', li_inner, re.IGNORECASE | re.DOTALL)
+        name = re.sub(r'<[^>]+>', '', name_match.group(1)
+                      ).strip() if name_match else ""
+
+        span_matches = list(re.finditer(
+            r'<span[^>]*>(.*?)</span>', li_inner, re.IGNORECASE | re.DOTALL))
+        status = re.sub(r'<[^>]+>', '', span_matches[0].group(1)
+                        ).strip() if span_matches else ""
+        remain = re.sub(r'<[^>]+>', '', span_matches[1].group(1)
+                        ).strip() if len(span_matches) > 1 else ""
 
         work_list.append({
-            "workId": work_id,
-            "name": name[:100] if name else f"作业{work_id}",
-            "enc": enc,
+            "name": name or f"作业{params.get('taskrefId', '')}",
             "status": status,
-            "questionTotal": 0,  # Will be determined during processing
+            "remainTime": remain,
+            "rawUrl": raw_url,
+            "taskrefId": params.get("taskrefId", ""),
+            "courseId": params.get("courseId", ""),
+            "userId": params.get("userId", ""),
+            "clazzId": params.get("clazzId", ""),
+            "type": params.get("type", ""),
+            "enc_task": params.get("enc_task", ""),
+            "msgId": params.get("msgId", "0"),
         })
 
-    # Also try JSON response format (some endpoints return JSON)
     if not work_list:
         json_data = safe_json_parse(html_body)
         if json_data:
@@ -2090,7 +2909,6 @@ def _parse_work_list_html(html_body: str) -> List[Dict]:
                 return json_data
             if isinstance(json_data, dict):
                 return json_data.get("data", [])
-
     return work_list
 
 
@@ -2125,31 +2943,127 @@ def _write_course_work_and_exam(setting: Setting, user: User,
         _exam_action(setting, user, cache, course)
 
 
+def _html_input_get(html: str, elem_id: str) -> str:
+    """从HTML中提取指定id的input的value - 对应 Go paperDoc.Find("#id").Attr("value")
+    Also falls back to name= attribute for compatibility"""
+    m = re.search(r'id=["\']' + re.escape(elem_id) +
+                  r'["\'][^>]*value=["\']([^"\']*)["\']', html, re.IGNORECASE)
+    if not m:
+        m = re.search(r'value=["\']([^"\']*)["\'][^>]*id=["\']' +
+                      re.escape(elem_id) + r'["\']', html, re.IGNORECASE)
+    # Fallback: try name= attribute (some hidden fields use name instead of id)
+    if not m:
+        m = re.search(r'name=["\']' + re.escape(elem_id) +
+                      r'["\'][^>]*value=["\']([^"\']*)["\']', html, re.IGNORECASE)
+    if not m:
+        m = re.search(r'value=["\']([^"\']*)["\'][^>]*name=["\']' +
+                      re.escape(elem_id) + r'["\']', html, re.IGNORECASE)
+    return m.group(1) if m else ""
+
+
+def _html_input_name_get(html: str, name: str) -> str:
+    """从HTML中提取指定name的input的value"""
+    m = re.search(r'name=["\']' + re.escape(name) +
+                  r'["\'][^>]*value=["\']([^"\']*)["\']', html, re.IGNORECASE)
+    if not m:
+        m = re.search(r'value=["\']([^"\']*)["\'][^>]*name=["\']' +
+                      re.escape(name) + r'["\']', html, re.IGNORECASE)
+    return m.group(1) if m else ""
+
+
+def _html_work_question_turn_entity(html: str) -> Dict:
+    """解析作业题目HTML提取元数据 - 对应 Go HtmlWorkQuestionTurnEntity"""
+    q = {}
+    qid = _html_input_get(html, "questionId")
+    q["questionId"] = qid
+    q["questionTypeCode"] = _html_input_name_get(html, f"type{qid}")
+    # Extract questionTypeStr from span.focusSpan
+    focus_match = re.search(
+        r'class=["\']focusSpan["\'][^>]*aria-label=["\']([^"\']*)["\']', html)
+    if focus_match:
+        qtype_str = re.sub(r'^\s*\d+\.\s*', '', focus_match.group(1))
+        q["questionTypeStr"] = qtype_str
+    # Extract question content from div.workWrap or div.ans-cc
+    title_match = re.search(
+        r'class=["\'][^"\']*workWrap[^"\']*["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL)
+    if title_match:
+        q["questionContent"] = re.sub(
+            r'<[^>]+>', '', title_match.group(1)).strip()
+    # Extract options from div.centerSpan
+    options = {}
+    for opt_m in re.finditer(r'<div[^>]*class=["\']centerSpan["\'][^>]*id=["\']([A-Z])["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL):
+        letter = opt_m.group(1)
+        text = re.sub(r'<[^>]+>', '', opt_m.group(2)).strip()
+        if text:
+            options[letter] = text
+    q["options"] = [options.get(l, "")
+                    for l in "ABCDEFGHIJKLMN" if options.get(l, "")]
+
+    # Extract all metadata hidden fields
+    for field_id in ["courseId", "testUserRelationId", "classId", "type", "isphone",
+                     "imei", "subCount", "remainTime", "tempSave", "timeOver",
+                     "encRemainTime", "encLastUpdateTime", "cpi", "enc", "source",
+                     "userId", "enterPageTime", "answeredView", "paperGroupId",
+                     "workId", "currentTime", "currentCpi", "currentUploadEnc",
+                     "matchEnc", "cfid", "addTimes", "limitWorkSubmitTimes",
+                     "encWork", "index"]:
+        q[field_id] = _html_input_get(html, field_id)
+    q["score"] = _html_input_name_get(html, f"score{qid}")
+    return q
+
+
+def _html_exam_question_turn_entity(html: str) -> Dict:
+    """解析考试题目HTML提取元数据 - 对应 Go HtmlQuestionTurnEntity"""
+    q = {}
+    qid = _html_input_get(html, "questionId")
+    q["questionId"] = qid
+    q["questionTypeCode"] = _html_input_name_get(html, f"type{qid}")
+    q["questionTypeStr"] = _html_input_name_get(html, f"typeName{qid}")
+    # Extract question content from div.tit
+    tit_match = re.search(
+        r'class=["\']tit["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL)
+    if tit_match:
+        q["questionContent"] = re.sub(
+            r'<[^>]+>', '', tit_match.group(1)).strip()
+    # Extract options from .singleChoice
+    options = {}
+    for opt_m in re.finditer(r'<div[^>]*class=["\'][^"\']*singleChoice[^"\']*["\'][^>]*name=["\']([A-Z])["\'][^>]*>.*?class=["\'][^"\']*answerInfo[^"\']*cc[^"\']*["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL):
+        letter = opt_m.group(1)
+        text = opt_m.group(2).strip()
+        options[letter] = letter + re.sub(r'<[^>]+>', '', text).strip()
+    q["options"] = [options.get(l, "")
+                    for l in "ABCDEFGHIJKLMN" if options.get(l, "")]
+
+    for field_id in ["courseId", "testPaperId", "testUserRelationId", "classId",
+                     "type", "isphone", "imei", "subCount", "remainTime",
+                     "tempSave", "timeOver", "encRemainTime", "encLastUpdateTime",
+                     "cpi", "enc", "source", "userId", "enterPageTime",
+                     "answeredView", "exitdtime", "paperGroupId"]:
+        q[field_id] = _html_input_get(html, field_id)
+    q["score"] = _html_input_name_get(html, f"score{qid}")
+    return q
+
+
 def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                  course: XueXiTCourse):
-    """作业处理 - 对应 Go workAction
-    流程: PullWorkList → EnterWork → PullWorkQuestion → AI答题 → SubmitWorkAnswer
-    Note: The chaoxing getWorkList endpoint returns HTML, not JSON.
-    We parse the HTML to extract work items.
+    """作业处理 - 对应 Go workAction + EnterWorkAction
+    流程: PullWorkList → EnterWork(解析hidden fields) → PullWorkPaper → 逐题(PullWorkQuestion → AI → SubmitWorkAnswer)
     """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
     cc = user.courses_custom
 
-    # 拉取作业列表 (returns HTML page)
-    list_body, list_resp = xxt_api.pull_work_list_api(
+    list_body, _ = xxt_api.pull_work_list_api(
         cache, course.course_id, course.key, str(course.cpi), retry=3)
     if not list_body:
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "[", course.course_name, "] ", Red, "拉取作业列表失败，已自动跳过")
         return
 
-    # Parse work list from HTML response
     work_list = _parse_work_list_html(list_body)
     if not work_list:
-        # No pending work items - silently return
         return
+
     for work in work_list:
         if not isinstance(work, dict):
             continue
@@ -2157,43 +3071,97 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         if status not in ("待做", "未交", "待重做"):
             continue
 
-        work_id = work.get("workId", "")
+        task_ref_id = work.get("taskrefId", "")
         work_name = work.get("name", "")
-        work_enc = work.get("enc", "")
-        total_q = work.get("questionTotal", 0)
+        enc_task = work.get("enc_task", "")
+        msg_id = work.get("msgId", "0")
 
-        # 进入作业
-        enter_body, enter_err = xxt_api.enter_work_api(
-            cache, work_id, work_enc, course.course_id, course.key,
+        # 进入作业 - 解析enter page HTML
+        enter_body, enter_resp = xxt_api.enter_work_api(
+            cache, task_ref_id, enc_task, course.course_id, course.key,
             str(course.cpi), retry=3)
-        if enter_err:
-            log_print(INFO, f"[{platform}]",
-                      "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】",
-                      "【", work_name, "】",
-                      Red, f"进入作业失败: {enter_err}")
+        if not enter_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
+                      Red, f"进入作业失败 (status={enter_resp.status_code if enter_resp else 'N/A'}, body={(enter_body or '')[:100]})")
             continue
 
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", work_name, "】",
-                  Yellow, "正在写作业中...")
+        # 提取题目数量
+        qt_match = re.search(r'共包含\s*(\d+)\s*道题目', enter_body)
+        question_total = int(qt_match.group(1)) if qt_match else 0
+        if not question_total and "待重做" in enter_body:
+            qt_match2 = re.search(r'共\s*(\d+)\s*题', enter_body)
+            question_total = int(qt_match2.group(1)) if qt_match2 else 0
+
+        # 提取hidden fields
+        exam_relation_id = _html_input_get(enter_body, "testPaperId")
+        answer_id = _html_input_get(enter_body, "testUserRelationId")
+        cpi_val = _html_input_get(enter_body, "cpi") or str(course.cpi)
+
+        # extractParams from HTML
+        cpi_match = re.search(r'cpi=(\d+)', enter_body)
+        aid_match = re.search(r'workAnswerId=(\d+)', enter_body)
+        enc_match = re.search(r'enc=([a-fA-F0-9]+)', enter_body)
+        if cpi_match:
+            cpi_val = cpi_match.group(1)
+        if aid_match:
+            answer_id = aid_match.group(1)
+        enc_val = enc_match.group(1) if enc_match else ""
+
+        # 检查是否已过时
+        if "已过时效，不能操作!" in enter_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
+                      Red, "该作业已过时，已自动跳过")
+            continue
+
+        # 拉取 work paper (same URL as pull_work_question but first fetch)
+        paper_body, _ = xxt_api.pull_work_question_api(
+            cache, course.course_id, course.key,
+            task_ref_id, 0, cpi_val,
+            work_answer_id=answer_id, enc=enc_val,
+            msg_id=msg_id, retry=3)
+        if not paper_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
+                      Red, f"拉取作业试卷失败 (body为空)")
+            continue
+
+        if "已过时效，不能操作!" in paper_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
+                      Red, "该作业已过时，已自动跳过")
+            continue
+
+        # Parse paper to get metadata
+        paper_entity = _html_work_question_turn_entity(paper_body)
+        enc_val = paper_entity.get("enc", enc_val) or enc_val
+        enc_remain_time = paper_entity.get("encRemainTime", "")
+        enc_last_update_time = paper_entity.get("encLastUpdateTime", "")
+        if not question_total:
+            question_total = 1  # at least 1
+
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】【", work_name, "】",
+                  Yellow, f"正在写作业中(共{question_total}题)...")
 
         # 逐题回答
-        for qi in range(total_q):
+        for qi in range(question_total):
             # 拉取题目
             q_body, _ = xxt_api.pull_work_question_api(
                 cache, course.course_id, course.key,
-                work_id, qi, str(course.cpi),
-                retry=3)
+                task_ref_id, qi, cpi_val,
+                work_answer_id=answer_id, enc=enc_val,
+                msg_id=msg_id, retry=3)
             if not q_body:
                 continue
 
-            log_print(INFO, f"[{platform}]",
-                      "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】",
-                      "【", work_name, "】",
+            q_entity = _html_work_question_turn_entity(q_body)
+            q_text = q_entity.get("questionContent", q_body[:500])
+            q_type_code = q_entity.get("questionTypeCode", "0")
+
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
                       Yellow, f"写作业状态中，正在回答第{qi+1}题")
 
             # AI答题
@@ -2202,44 +3170,138 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 try:
                     from logic.core.ai_client import ai_problem_message
                     ai = setting.ai_setting
+                    # 对齐Go: 传递题型和选项
+                    _wt_code_map = {'0': 'single_choice', '1': 'multiple_choice',
+                                    '2': 'fill', '3': 'judge', '4': 'short',
+                                    '5': 'term_explanation', '6': 'essay',
+                                    '11': 'matching', '8': 'short'}
+                    _wt = _wt_code_map.get(q_type_code, '')
+                    _w_opts = q_entity.get('options', [])
                     answer = ai_problem_message(
                         ai.ai_url, ai.model, ai.api_key, ai.ai_type,
-                        q_body[:500])
+                        q_text, options=_w_opts, q_type=_wt)
                 except Exception:
                     answer = ""
             elif cc.auto_exam == 3:
                 try:
                     ai_body, _ = xxt_api.xxt_ai_api(
-                        cache, q_body[:500], course.course_id,
-                        course.key, str(course.cpi))
+                        cache, q_text, course.course_id, course.key, cpi_val)
                     ai_data = safe_json_parse(ai_body) if ai_body else None
                     answer = ai_data.get("answer", "") if ai_data else ""
                 except Exception:
                     answer = ""
+            if not answer:
+                answer = "A" if q_type_code in ("0", "1") else (
+                    "true" if q_type_code == "3" else "答案")
 
-            # 提交答案
-            is_last = (qi + 1 == total_q)
+            # 判断答案格式 - 对齐Go的SimilarityArraySelect逻辑
+            options = q_entity.get("options", [])
+            if q_type_code in ("0", "1") and options:
+                # 匹配答案到选项字母
+                answer_letter = "A"
+                for i, opt in enumerate(options):
+                    if answer and opt and (answer in opt or opt in answer):
+                        answer_letter = chr(65 + i)
+                        break
+                answer = answer_letter
+
+            # 构建提交数据 - 对齐Go SubmitWorkAnswerApi (用list of tuples支持重复字段)
+            # 关键: Go PullWorkQuestionAction 中 AnswerId/WordId 从 enter page 设置作为后备值
+            is_last = (qi + 1 == question_total)
             is_submit = cc.exam_auto_submit in (1, 2) and is_last
-            submit_data = {"answer": answer, "questionIndex": str(qi)}
-            submit_body, submit_err = xxt_api.submit_work_answer_api(
-                cache, submit_data, is_submit=is_submit, retry=3)
-            if submit_err:
-                log_print(INFO, f"[{platform}]",
-                          "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】",
-                          "【", work_name, "】",
-                          Red, f"作业提交失败: {submit_err}")
-            else:
-                log_print(INFO, f"[{platform}]",
-                          "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】",
-                          "【", work_name, "】",
-                          Green, f"第{qi+1}题回答成功，服务器返回:{(submit_body or '')[:200]}")
 
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", work_name, "】",
+            course_id_val = q_entity.get("courseId", "") or course.course_id
+            work_rel_id = q_entity.get("workId", "") or task_ref_id
+            class_id_val = q_entity.get("classId", "") or course.key
+            qid = q_entity.get("questionId", "")
+            # Go: qsEntity.AnswerId = exam.AnswerId (从enter page 设置的后备值)
+            work_answer_id = q_entity.get(
+                "testUserRelationId", "") or answer_id
+
+            submit_data = [
+                ("workExamUploadUrl", ""),
+                ("workExamUploadCrcUrl", ""),
+                ("workRelationAnswerId", work_answer_id),
+                ("knowledgeid", "0"),
+                ("enc", q_entity.get("enc", enc_val) or enc_val),
+                ("source", q_entity.get("source", "0")),
+                ("encWork", q_entity.get("encWork", "")),
+                # Go源码中values.Add重复添加两次courseId/workRelationId/classId
+                ("courseId", course_id_val),
+                ("workRelationId", work_rel_id),
+                ("classId", class_id_val),
+                ("courseId", course_id_val),
+                ("workRelationId", work_rel_id),
+                ("classId", class_id_val),
+                ("workTimesEnc", ""),
+                ("questionId", qid),
+                ("index", str(qi)),  # 使用循环变量，而非HTML中的固定值
+            ]
+            # 设置题型相关字段
+            submit_data.append((f"type{qid}", q_type_code))
+            submit_data.append((f"score{qid}", q_entity.get("score", "")))
+            if q_type_code == "0":  # 单选
+                submit_data.append((f"answer{qid}", answer))
+            elif q_type_code == "1":  # 多选
+                submit_data.append((f"answers{qid}", answer))
+            elif q_type_code == "3":  # 判断 - 对齐Go: "true"/"false"
+                # Go: arraySelect→A→"true", else→"false"
+                judge_answer = answer
+                if judge_answer not in ("true", "false"):
+                    # 尝试转换为标准格式
+                    judge_answer = judge_answer.replace(
+                        "对", "正确").replace("√", "正确").replace("×", "错误")
+                    if judge_answer == "正确" or "正确" in judge_answer or "对" in judge_answer:
+                        judge_answer = "true"
+                    elif judge_answer == "错误" or "错误" in judge_answer or "错" in judge_answer:
+                        judge_answer = "false"
+                    else:
+                        judge_answer = "true"  # 默认
+                submit_data.append((f"answer{qid}", judge_answer))
+            elif q_type_code == "2":  # 填空
+                submit_data.append((f"answer{qid}1", answer))
+                submit_data.append((f"blankNum{qid}", "1,"))
+            else:  # 简答/论述
+                submit_data.append((f"answer{qid}", answer))
+
+            submit_body, submit_resp = xxt_api.submit_work_answer_api(
+                cache, submit_data, is_submit=is_submit, retry=3)
+            submit_status = submit_resp.status_code if submit_resp else 0
+            submit_str = submit_body or ""
+            # 响应验证
+            submit_ok = False
+            try:
+                sj = safe_json_parse(submit_str)
+                if sj and sj.get("status") is True:
+                    submit_ok = True
+            except Exception:
+                pass
+            if submit_ok:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Green, f"第{qi+1}题回答成功，服务器返回:{submit_str[:200]}")
+            else:
+                # 诊断日志：显示编码后的请求数据和完整响应
+                from urllib.parse import urlencode as _dbg_encode
+                encoded_dbg = _dbg_encode(submit_data) if isinstance(
+                    submit_data, list) else str(submit_data)
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Red, f"第{qi+1}题提交失败(status={submit_status})，服务器返回:{submit_str[:300]}")
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Yellow, f"[诊断] questionId={qid} type={q_type_code} is_submit={is_submit} "
+                          f"data_len={len(encoded_dbg)} data_snippet={encoded_dbg[:400]}")
+                # 额外的enc诊断
+                q_enc = q_entity.get("enc", "")
+                q_encwork = q_entity.get("encWork", "")
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Yellow, f"[enc诊断] q_entity.enc='{q_enc}' enc_val='{enc_val}' "
+                          f"q_entity.encWork='{q_encwork}' used_enc='{q_entity.get('enc', enc_val) or enc_val}'")
+
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】【", work_name, "】",
                   Green, "作业已完成")
 
 
@@ -2247,71 +3309,183 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
 
 def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                  course: XueXiTCourse):
-    """考试处理 - 对应 Go examAction
-    流程: PullExamList → EnterExam → PullExamQuestion → AI答题 → SubmitExamAnswer
+    """考试处理 - 对应 Go examAction + EnterExamAction
+    流程: PullExamList → EnterExam(解析hidden+examJumpUrl) → PullExamPaper → 逐题(PullExamQuestion → AI → SubmitExamAnswer)
     """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
     cc = user.courses_custom
 
-    # 拉取考试列表 (returns HTML page)
     list_body, _ = xxt_api.pull_exam_list_api(
         cache, course.course_id, course.key, str(course.cpi), retry=3)
     if not list_body:
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "[", course.course_name, "] ", Red, "拉取考试列表失败，已自动跳过")
         return
 
-    # Parse exam list from HTML or JSON
     exam_list = _parse_exam_list_html(list_body)
     if not exam_list:
         return
+
     for exam in exam_list:
         if not isinstance(exam, dict):
             continue
         status = exam.get("status", "")
-        if status not in ("待做", "待重考"):
+        if status not in ("待做", "待重考", "待重做"):
             continue
 
-        exam_id = exam.get("examId", "")
+        task_ref_id = exam.get("taskrefId", "")
         exam_name = exam.get("name", "")
-        exam_enc = exam.get("enc", "")
-        total_q = exam.get("questionTotal", 0)
+        enc_task = exam.get("enc_task", "")
+        msg_id = exam.get("msgId", "0")
 
-        # 进入考试
-        enter_body, enter_err = xxt_api.enter_exam_api(
-            cache, exam_id, exam_enc, course.course_id, course.key,
+        # 进入考试 - 对应 Go EnterExamAction
+        enter_body, enter_resp = xxt_api.enter_exam_api(
+            cache, task_ref_id, enc_task, course.course_id, course.key,
             str(course.cpi), retry=3)
-        if enter_err:
-            log_print(INFO, f"[{platform}]",
-                      "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】",
-                      "【", exam_name, "】",
-                      Red, f"进入考试失败: {enter_err}")
+        if not enter_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Red, "进入考试失败")
             continue
 
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", exam_name, "】",
-                  Yellow, "正在考试中...")
+        # 处理"待重做" - 对应 Go PullExamEnterInformHtmlApi 中的逻辑
+        # 如果enter_body含"待重做"，需要拉取重做版本的试卷(url+&redo=1)
+        is_redo_exam = "待重做" in enter_body
+
+        # 处理examJumpUrl - Go PullExamEnterInformHtmlApi中的逻辑
+        jump_match = re.search(
+            r'id=["\']examJumpUrl["\']\s+value=["\']([^"\']+)["\']', enter_body)
+        if jump_match:
+            jump_url = jump_match.group(1)
+            # 拉取嵌套页面
+            if not jump_url.startswith("http"):
+                jump_url = "https://mooc1-api.chaoxing.com" + jump_url
+            # 待重做时追加&redo=1 - 对应 Go PullReDoExamPaperHtmlApi
+            if is_redo_exam:
+                jump_url = jump_url + "&redo=1"
+            try:
+                _client = xxt_api._build_client(
+                    cache, custom_ua=xxt_api.XXTEXAMUA)
+                jump_body, _ = _client.get(jump_url, retry=3)
+                _client.close()
+                if jump_body:
+                    enter_body = jump_body
+            except Exception:
+                pass
+
+        # 检查重考
+        is_re_exam = "bnt_retake\">重考</a>" in enter_body
+        if is_re_exam:
+            re_exam_match = re.search(
+                r'class=["\']bnt_retake["\'][^>]*data=["\']([^"\']+)["\']', enter_body)
+            if re_exam_match:
+                re_exam_url = re_exam_match.group(1)
+                if not re_exam_url.startswith("http"):
+                    re_exam_url = "https://mooc1-api.chaoxing.com" + re_exam_url
+                try:
+                    _client = xxt_api._build_client(
+                        cache, custom_ua=xxt_api.XXTEXAMUA)
+                    re_body, _ = _client.get(re_exam_url, retry=3)
+                    _client.close()
+                    if re_body:
+                        enter_body = re_body
+                except Exception:
+                    pass
+
+        # 提取题目数量
+        qt_match = re.search(r'共包含\s*(\d+)\s*道题目', enter_body)
+        question_total = int(qt_match.group(1)) if qt_match else 0
+
+        # 提取hidden fields
+        exam_relation_id = _html_input_get(enter_body, "testPaperId")
+        answer_id = _html_input_get(enter_body, "testUserRelationId")
+        cpi_val = _html_input_get(enter_body, "cpi") or str(course.cpi)
+
+        # 如果是重考，先调用重考接口
+        if is_re_exam and exam_relation_id and answer_id:
+            try:
+                _client = xxt_api._build_client(
+                    cache, custom_ua=xxt_api.XXTEXAMUA)
+                _client.get(
+                    f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/restartOp"
+                    f"?examId={exam_relation_id}&examAnswerId={answer_id}"
+                    f"&courseId={course.course_id}&classId={course.key}&source=0&code=",
+                    retry=3)
+                _client.close()
+            except Exception:
+                pass
+
+        # 拉取考试试卷 - 对应 Go PullExamPaperHtmlApi / PullReDoExamPaperHtmlApi
+        api_imei = xxt_api._IMEI
+        paper_body, paper_resp = xxt_api.pull_exam_paper_api(
+            cache, course.course_id, course.key,
+            exam_relation_id, cpi_val,
+            exam_answer_id=answer_id,
+            imei=api_imei, redo=is_redo_exam, retry=3)
+        if not paper_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Red, f"拉取考试试卷失败 (status={paper_resp.status_code if paper_resp else 'N/A'})")
+            continue
+
+        # 检查访问异常 - 对应 Go EnterExamAction 中的XXTEXAMUA切换逻辑
+        # Go: strings.Contains(pullPaperHtml, "访问异常") → XXTEXAMUA = GetUA("iphone") → 递归重试
+        if "访问异常" in paper_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow, "考试访问异常，切换iPhone UA重试...")
+            xxt_api.XXTEXAMUA = xxt_api.get_ua("iphone")
+            # 重试拉取试卷
+            paper_body, paper_resp = xxt_api.pull_exam_paper_api(
+                cache, course.course_id, course.key,
+                exam_relation_id, cpi_val,
+                exam_answer_id=answer_id,
+                imei=api_imei, redo=is_redo_exam, retry=3)
+            if not paper_body or "访问异常" in paper_body:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, "考试访问异常，iPhone UA重试仍失败，跳过")
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")  # 恢复
+                continue
+
+        # Parse paper to get metadata
+        paper_entity = _html_exam_question_turn_entity(paper_body)
+        enc_val = paper_entity.get("enc", "")
+        enc_remain_time = paper_entity.get("encRemainTime", "")
+        enc_last_update_time = paper_entity.get("encLastUpdateTime", "")
+        remain_time = paper_entity.get("remainTime", "")
+        test_paper_id = paper_entity.get("testPaperId", exam_relation_id)
+        test_user_relation_id = paper_entity.get(
+            "testUserRelationId", answer_id)
+        if not question_total:
+            question_total = 1
+
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】【", exam_name, "】",
+                  Yellow, f"正在考试中(共{question_total}题)...")
 
         # 逐题回答
-        for qi in range(total_q):
-            # 拉取题目
+        for qi in range(question_total):
+            # 拉取题目 - 使用 reVersionTestStartNew URL
             q_body, _ = xxt_api.pull_exam_question_api(
                 cache, course.course_id, course.key,
-                exam_id, qi, str(course.cpi),
-                retry=3)
+                test_paper_id, test_user_relation_id,
+                cpi_val, enc_remain_time,
+                enc_val, str(int(time.time() * 1000)),
+                index=qi, retry=3)
             if not q_body:
                 continue
 
-            log_print(INFO, f"[{platform}]",
-                      "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】",
-                      "【", exam_name, "】",
-                      Yellow, f"考试状态中，正在回答第{qi+1}题，总共{total_q}题")
+            q_entity = _html_exam_question_turn_entity(q_body)
+            q_text = q_entity.get("questionContent", q_body[:500])
+            q_type_code = q_entity.get("questionTypeCode", "0")
+            q_type_str = q_entity.get("questionTypeStr", "")
+            qid = q_entity.get("questionId", "")
+
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow, f"考试状态中，正在回答第{qi+1}题，总共{question_total}题")
 
             # AI答题
             answer = ""
@@ -2319,66 +3493,132 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 try:
                     from logic.core.ai_client import ai_problem_message
                     ai = setting.ai_setting
+                    # 对齐Go: 传递题型和选项
+                    _wt_code_map = {'0': 'single_choice', '1': 'multiple_choice',
+                                    '2': 'fill', '3': 'judge', '4': 'short',
+                                    '5': 'term_explanation', '6': 'essay',
+                                    '11': 'matching', '8': 'short'}
+                    _wt = _wt_code_map.get(q_type_code, '')
+                    _w_opts = q_entity.get('options', [])
                     answer = ai_problem_message(
                         ai.ai_url, ai.model, ai.api_key, ai.ai_type,
-                        q_body[:500])
+                        q_text, options=_w_opts, q_type=_wt)
                 except Exception:
                     answer = ""
             elif cc.auto_exam == 3:
                 try:
                     ai_body, _ = xxt_api.xxt_ai_api(
-                        cache, q_body[:500], course.course_id,
-                        course.key, str(course.cpi))
+                        cache, q_text, course.course_id, course.key, cpi_val)
                     ai_data = safe_json_parse(ai_body) if ai_body else None
                     answer = ai_data.get("answer", "") if ai_data else ""
                 except Exception:
                     answer = ""
+            if not answer:
+                answer = "A" if q_type_code in ("0", "1") else (
+                    "true" if q_type_code == "3" else "答案")
 
-            # 提交答案
-            is_last = (qi + 1 == total_q)
+            # 匹配答案到选项
+            options = q_entity.get("options", [])
+            if q_type_code in ("0", "1") and options:
+                answer_letter = "A"
+                for i, opt in enumerate(options):
+                    if answer and opt and (answer in opt or opt in answer):
+                        answer_letter = chr(65 + i)
+                        break
+                answer = answer_letter
+            elif q_type_code == "3":  # 判断题 - 对齐Go: SimilarityArraySelect→A→"true", else→"false"
+                judge_answer = answer
+                if judge_answer not in ("true", "false"):
+                    judge_answer = judge_answer.replace(
+                        "对", "正确").replace("√", "正确").replace("×", "错误")
+                    if judge_answer == "正确" or "正确" in judge_answer or "对" in judge_answer:
+                        judge_answer = "true"
+                    elif judge_answer == "错误" or "错误" in judge_answer or "错" in judge_answer:
+                        judge_answer = "false"
+                    else:
+                        judge_answer = "true"  # 默认
+                answer = judge_answer
+
+            # 构建提交数据 - 对齐Go SubmitExamAnswerApi
+            is_last = (qi + 1 == question_total)
             is_submit = cc.exam_auto_submit in (1, 2) and is_last
-            submit_data = {"answer": answer, "questionIndex": str(qi)}
-            submit_body, submit_err = xxt_api.submit_exam_answer_api(
+
+            submit_data = {
+                "courseId": q_entity.get("courseId", "") or course.course_id,
+                "testPaperId": q_entity.get("testPaperId", "") or test_paper_id,
+                "testUserRelationId": q_entity.get("testUserRelationId", "") or test_user_relation_id,
+                "classId": q_entity.get("classId", "") or course.key,
+                "cpi": q_entity.get("cpi", "") or cpi_val,
+                "userId": q_entity.get("userId", "") or cache.cookie_dict.get("_uid", cache.uid),
+                "enc": q_entity.get("enc", "") or enc_val,
+                "encRemainTime": q_entity.get("encRemainTime", "") or enc_remain_time,
+                "encLastUpdateTime": q_entity.get("encLastUpdateTime", "") or enc_last_update_time,
+                "remainTime": q_entity.get("remainTime", "") or remain_time,
+                "enterPageTime": q_entity.get("enterPageTime", ""),
+                "questionId": qid,
+                "questionTypeCode": q_type_code,
+                "questionTypeStr": q_type_str,
+                "score": q_entity.get("score", ""),
+                "tid": task_ref_id,
+                "answerId": test_user_relation_id,
+                "remainTimeParam": enc_remain_time,
+                "imei": q_entity.get("imei", "") or api_imei,
+                "answer": answer,
+            }
+
+            submit_body, submit_resp = xxt_api.submit_exam_answer_api(
                 cache, submit_data, is_submit=is_submit, retry=3)
-            if submit_err:
+            # 提交试卷后恢复XXTEXAMUA - 对应 Go SubmitExamAnswerAction
+            if is_submit:
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
+            submit_status = submit_resp.status_code if submit_resp else 0
+            submit_str = submit_body or ""
+            # 处理限制提交时间的考试
+            time_match = re.search(
+                r'考试(\d+)分钟内不允许提交考试', submit_str)
+            if time_match:
+                min_time = int(time_match.group(1))
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】",
-                          "【", exam_name, "】",
-                          Red, f"试卷提交失败: {submit_err}")
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, f"检测到考试限制开考{min_time}分钟内不允许提交，已自动延时...")
+                time.sleep(min_time * 60)
+                submit_body, submit_resp = xxt_api.submit_exam_answer_api(
+                    cache, submit_data, is_submit=is_submit, retry=3)
+                submit_status = submit_resp.status_code if submit_resp else 0
+                submit_str = submit_body or ""
+
+            if "考试时间已用完" in submit_str:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, "考试时间已用完，已自动跳过")
+                break
+
+            # 响应验证
+            exam_submit_ok = False
+            try:
+                ej = safe_json_parse(submit_str)
+                if ej and ej.get("status") is True:
+                    exam_submit_ok = True
+            except Exception:
+                pass
+            if exam_submit_ok:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, f"第{qi+1}题回答成功，服务器返回:{submit_str[:200]}")
             else:
-                # 处理限制提交时间的考试
-                import re as _re
-                time_match = _re.search(
-                    r'考试(\d+)分钟内不允许提交考试', submit_body or "")
-                if time_match:
-                    min_time = int(time_match.group(1))
-                    log_print(INFO, f"[{platform}]",
-                              "[", Green, acct, Default, "] ",
-                              "【", course.course_name, "】",
-                              "【", exam_name, "】",
-                              Green, f"检测到考试限制开考{min_time}分钟内不允许提交，已自动延时...")
-                    time.sleep(min_time * 60)
-                    submit_body, submit_err = xxt_api.submit_exam_answer_api(
-                        cache, submit_data, is_submit=is_submit, retry=3)
-
-                # 检查考试时间用完
-                if "考试时间已用完" in (submit_body or ""):
-                    log_print(INFO, f"[{platform}]",
-                              "[", Green, acct, Default, "] ",
-                              "【", course.course_name, "】",
-                              "【", exam_name, "】",
-                              Red, "考试时间已用完，已自动跳过")
-                    break
-
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】",
-                          "【", exam_name, "】",
-                          Green, f"第{qi+1}题回答成功，服务器返回:{(submit_body or '')[:200]}")
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"第{qi+1}题提交失败(status={submit_status})，服务器返回:{submit_str[:300]}")
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow, f"[诊断] questionId={qid} type={q_type_code} is_submit={is_submit}")
 
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", exam_name, "】",
+                  "【", course.course_name, "】【", exam_name, "】",
                   Green, "考试已完成")

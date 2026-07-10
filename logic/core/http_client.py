@@ -6,9 +6,11 @@
 import time
 import random
 import string
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List, Union
+from urllib.parse import urlencode
 
 import httpx
+import uuid
 
 # httpx >= 0.28.0 将 proxies 参数改为 proxy
 _HTTPX_USE_PROXY = tuple(int(x)
@@ -86,7 +88,7 @@ class HttpClient:
     def load_cookies(self, cookie_dict: Dict[str, str]):
         """从 dict 批量加载 Cookie"""
         if cookie_dict:
-            for name, value in cookie_dict.items():
+            for name, value in list(cookie_dict.items()):
                 self._get_client().cookies.set(name, value)
 
     def _is_retry_needed(self, text: str) -> bool:
@@ -98,7 +100,7 @@ class HttpClient:
         )
 
     def request(self, method: str, url: str,
-                data: Optional[Dict[str, Any]] = None,
+                data: Optional[Union[Dict[str, Any], List[tuple], str]] = None,
                 json_data: Optional[Dict[str, Any]] = None,
                 headers: Optional[Dict[str, str]] = None,
                 files: Optional[Dict] = None,
@@ -121,17 +123,83 @@ class HttpClient:
 
         client = self._get_client()
         req_headers = dict(headers or {})
+        # 关键修复: 使用自定义UA(对齐Go的req.Header.Add("User-Agent", GetUA(...)))
+        # _build_client/_build_client_pe 设置的 self._ua 必须在请求中生效
+        if "User-Agent" not in req_headers and self._ua:
+            req_headers["User-Agent"] = self._ua
         last_err = None
 
         try:
+            # Fix: httpx 0.28+ treats list[tuple] as streaming data, NOT form data!
+            # Must URL-encode list[tuple] manually for proper form submission
+            if isinstance(data, list) and not use_multipart:
+                data = urlencode(data)
+
             if json_data is not None:
                 resp = client.request(
                     method, url, json=json_data, headers=req_headers
                 )
             elif use_multipart and data is not None:
-                resp = client.request(
-                    method, url, data=data, files=files, headers=req_headers
+                # 手动构建multipart/form-data body，与 Go multipart.Writer 对齐
+                boundary = uuid.uuid4().hex
+                lines: list[bytes] = []
+                if isinstance(data, dict):
+                    items = list(data.items())
+                elif isinstance(data, list):
+                    items = data
+                else:
+                    items = []
+                for k, v in items:
+                    lines.append(f"--{boundary}".encode())
+                    lines.append(
+                        f'Content-Disposition: form-data; name="{k}"'.encode()
+                    )
+                    lines.append(b"")
+                    lines.append(str(v).encode())
+                lines.append(f"--{boundary}--".encode())
+                lines.append(b"")
+                body = b"\r\n".join(lines)
+                req_headers["Content-Type"] = (
+                    f"multipart/form-data; boundary={boundary}"
                 )
+                req_headers["Content-Length"] = str(len(body))
+                # 关键修复: httpx使用content=bytes时不自动发送session cookies
+                # 必须显式从session提取并添加Cookie header，否则服务器收不到认证信息
+                if "Cookie" not in req_headers:
+                    cookie_str = "; ".join(
+                        f"{c.name}={c.value}" for c in client.cookies.jar
+                    )
+                    if cookie_str:
+                        req_headers["Cookie"] = cookie_str
+                # 调试: 对addStudentWorkNew请求输出请求头
+                if "addStudentWorkNew" in url:
+                    try:
+                        with open("_req_debug.txt", "a", encoding="utf-8") as f:
+                            f.write(f"\n=== URL: {url} ===\n")
+                            f.write(f"=== Body length: {len(body)} ===\n")
+                            for hk, hv in req_headers.items():
+                                f.write(f"  Header: {hk}: {hv}\n")
+                            # 输出body前 500 bytes
+                            f.write(f"=== Body preview ===\n")
+                            f.write(body[:500].decode(errors="replace"))
+                            f.write(f"\n=== END ===\n")
+                    except Exception:
+                        pass
+                resp = client.request(
+                    method, url, content=body, headers=req_headers
+                )
+                # 调试: 记录响应头
+                if "addStudentWorkNew" in url:
+                    try:
+                        with open("_req_debug.txt", "a", encoding="utf-8") as f:
+                            f.write(
+                                f"=== Response status: {resp.status_code} ===\n")
+                            for hk, hv in resp.headers.items():
+                                f.write(f"  Resp Header: {hk}: {hv}\n")
+                            f.write(f"  Response body: {resp.text[:300]}\n")
+                            f.write(f"=== RESP END ===\n")
+                    except Exception:
+                        pass
             elif data is not None:
                 resp = client.request(
                     method, url, data=data, headers=req_headers
@@ -140,6 +208,11 @@ class HttpClient:
                 resp = client.request(method, url, headers=req_headers)
 
             body = resp.text
+            # Debug: log empty or error responses for diagnosis
+            if not body and resp.status_code != 200:
+                import sys
+                print(f"[HTTP-DEBUG] {method} {url[:120]} -> status={resp.status_code} body=(empty)",
+                      file=sys.stderr)
             if self._is_retry_needed(body):
                 time.sleep(0.15)
                 return self.request(
@@ -161,7 +234,7 @@ class HttpClient:
         """GET 请求"""
         return self.request("GET", url, headers=headers, retry=retry)
 
-    def post_form(self, url: str, data: Dict[str, Any],
+    def post_form(self, url: str, data: Union[Dict[str, Any], List[tuple], str],
                   headers: Optional[Dict[str, str]] = None,
                   retry: int = 8,
                   use_multipart: bool = True) -> Tuple[str, Optional[httpx.Response]]:

@@ -2,10 +2,15 @@
 """学习通 API 接口层 - 对应 Go 项目的 api/xuexitong/
 完整重写：AES加密登录、移动端UA、正确的课程/章节/卡片/视频API
 """
+from urllib.parse import quote as _url_quote
+import uuid as _uuid_mod
+import hashlib as _hashlib
 import secrets
 import hashlib
 import re
 import time
+import math
+import random
 from typing import Tuple, Optional, Any, Dict, List
 from urllib.parse import urlencode, quote
 
@@ -16,6 +21,12 @@ import base64
 from logic.core.http_client import HttpClient
 from logic.xuexitong.models import XueXiTUserCache
 from logic.core.models import safe_json_parse
+import requests as _requests_lib
+import uuid as _uuid_lib
+import http.client as _http_client
+import ssl as _ssl_lib
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ============ 常量 ============
 
@@ -64,18 +75,28 @@ def get_ua(ua_type: str = "mobile") -> str:
             f"com.chaoxing.mobile/ChaoXingStudy_3_{APP_VERSION}_android_phone_{BUILD}",
             f"(@Kalimdor)_{_IMEI}",
         ])
+    elif ua_type == "iphone":
+        # 对应 Go GetUA("iphone") - 用于考试API的iPhone UA
+        return "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
     elif ua_type == "web":
         return ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.35")
     return ""
 
 
-def _build_client(cache: XueXiTUserCache, ua: str = "mobile") -> HttpClient:
-    """构建带学习通移动UA的HTTP客户端"""
+# 专门用于考试API的UA - 对应 Go XXTEXAMUA
+# 初始为mobile UA，遇到"访问异常"时切换为iphone UA
+XXTEXAMUA: str = get_ua("mobile")
+
+
+def _build_client(cache: XueXiTUserCache, ua: str = "mobile", custom_ua: str = "") -> HttpClient:
+    """构建带学习通移动UA的HTTP客户端
+    :param custom_ua: 如果提供，使用自定义UA字符串代替默认UA
+    """
     proxy = cache.proxy_ip if cache.ip_proxy_sw else None
     client = HttpClient(proxy_ip=proxy, verify_ssl=False, timeout=30.0)
-    # 设置移动端 UA
-    client._ua = get_ua(ua)
+    # 设置UA: custom_ua > get_ua(ua)
+    client._ua = custom_ua if custom_ua else get_ua(ua)
     # 从 cache 恢复会话 Cookie
     if cache.cookie_dict:
         client.load_cookies(cache.cookie_dict)
@@ -100,7 +121,7 @@ def _build_client_pe(cache: XueXiTUserCache, ua: str = "mobile") -> HttpClient:
     client._ua = get_ua(ua)
     # 只加载白名单cookie (对齐Go的CookiesFiltration)
     if cache.cookie_dict:
-        for name, value in cache.cookie_dict.items():
+        for name, value in list(cache.cookie_dict.items()):
             if name in _PE_COOKIE_WHITELIST:
                 client.cookies.set(name, value)
     return client
@@ -135,7 +156,7 @@ def _do_get(client: HttpClient, url: str, headers: Optional[Dict] = None,
     return client.get(url, headers=hdrs, retry=retry)
 
 
-def _do_post_form(client: HttpClient, url: str, data: Dict,
+def _do_post_form(client: HttpClient, url: str, data,
                   headers: Optional[Dict] = None, retry: int = 8,
                   use_multipart: bool = False) -> Tuple[str, Optional[Any]]:
     """POST 表单请求，自动附加学习通UA"""
@@ -423,7 +444,7 @@ def video_submit_study_time_api(cache: XueXiTUserCache,
         f"&duration={p.duration}"
         f"&clipTime={clip_time}"
         f"&objectId={p.object_id}"
-        f"&otherInfo={quote(p.other_info)}"
+        f"&otherInfo={p.other_info}"
         f"&courseId={p.course_id}"
         f"&jobid={p.job_id}"
         f"&userid={cache.user_id}"
@@ -480,7 +501,7 @@ def audio_submit_api(cache: XueXiTUserCache,
         f"&userid={cache.user_id}"
         f"&jobid={p.job_id}"
         f"&duration={p.duration}"
-        f"&otherInfo={quote(p.other_info)}"
+        f"&otherInfo={p.other_info}"
         f"&courseId={p.course_id}"
         f"&dtype=Audio"
         f"&view=json"
@@ -493,9 +514,11 @@ def audio_submit_api(cache: XueXiTUserCache,
     client = _build_client(cache)
     try:
         hdrs = {
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
             "Accept": "*/*",
             "Host": "mooc1-api.chaoxing.com",
-            "X-Requested-With": "XMLHttpRequest",
+            "Connection": "keep-alive",
         }
         body, resp = _do_get(client, url, headers=hdrs, retry=retry)
         if resp is not None:
@@ -520,15 +543,32 @@ def document_submit_api(cache: XueXiTUserCache, object_id: str,
         client.close()
 
 
-def hyperlink_submit_api(cache: XueXiTUserCache, object_id: str,
-                         knowledge_id: str, uid: str,
+def hyperlink_submit_api(cache: XueXiTUserCache, job_id: str,
+                         knowledge_id: int, course_id: str,
+                         class_id: str, jtoken: str,
                          retry: int = 8) -> Tuple[str, Optional[Any]]:
-    """外链任务点提交 - 对应 Go ExecuteHyperlink"""
-    url = (f"https://mooc1.chaoxing.com/ananas/status/{object_id}"
-           f"?k={knowledge_id}&_dc={uid}")
+    """外链任务点提交 - 对应 Go HyperlinkDtoCompleteReport
+    URL: https://mooc1.chaoxing.com/ananas/job/hyperlink?jobid=...&knowledgeid=...&courseid=...&clazzid=...&jtoken=...
+    """
+    import time as _time
+    dc = str(int(_time.time() * 1000))
+    url = (f"https://mooc1.chaoxing.com/ananas/job/hyperlink"
+           f"?jobid={job_id}"
+           f"&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}"
+           f"&clazzid={class_id}"
+           f"&jtoken={jtoken}"
+           f"&checkMicroTopic=true"
+           f"&microTopicId=undefined"
+           f"&_dc={dc}")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "Accept": "*/*",
+            "Host": "mooc1.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        return _do_get(client, url, headers=hdrs, retry=retry)
     finally:
         client.close()
 
@@ -706,7 +746,7 @@ def video_submit_study_time_pe_api(cache: XueXiTUserCache,
         f"&duration={p.duration}"
         f"&clipTime={clip_time}"
         f"&objectId={p.object_id}"
-        f"&otherInfo={quote(p.other_info)}"
+        f"&otherInfo={p.other_info}"
         f"&courseId={p.course_id}"
         f"&jobid={p.job_id}"
         f"&userid={cache.user_id}"
@@ -735,8 +775,8 @@ def video_submit_study_time_pe_api(cache: XueXiTUserCache,
             "Content-Type": "application/json",
             "Sec-Ch-Ua-Platform": "Windows",
             "Sec-Fetch-Site": "same-origin",
-            "Sec-Fetch-Mode": " cors",
-            "Sec-Fetch-Dest": " empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Dest": "empty",
             "Pragma": "no-cache",
         }
         body, resp = client.get(url, headers=hdrs, retry=retry)
@@ -856,9 +896,10 @@ def upload_face_image_api(cache: XueXiTUserCache, token: str,
     try:
         hdrs = {"User-Agent": client._ua}
         files = {"file": ("face.jpg", image_data, "image/jpeg")}
-        resp = client.session.post(url, headers=hdrs, files=files,
-                                   verify=False, timeout=30)
-        return resp.text if resp else "", resp
+        body, resp = client.request("POST", url, data={}, headers=hdrs,
+                                    files=files, retry=retry,
+                                    use_multipart=True)
+        return body, resp
     finally:
         client.close()
 
@@ -904,10 +945,9 @@ def get_history_face_img(cache: XueXiTUserCache,
             face_url = data.get("result", {}).get("faceUrl", "")
             if face_url:
                 # 下载人脸图片
-                img_resp = client.session.get(
-                    face_url, verify=False, timeout=30)
-                if img_resp and img_resp.status_code == 200:
-                    return body, img_resp.content
+                img_bytes, img_resp = client.get_image(face_url, retry=3)
+                if img_bytes:
+                    return body, img_bytes
         return body, None
     finally:
         client.close()
@@ -981,9 +1021,9 @@ def verification_code_api(cache: XueXiTUserCache, t: int = 7,
     client = _build_client(cache)
     try:
         hdrs = {"User-Agent": client._ua}
-        resp = client.session.get(url, headers=hdrs, verify=False, timeout=30)
+        body, resp = client.get(url, headers=hdrs, retry=retry)
         if resp and resp.status_code == 200:
-            return resp.content, None
+            return resp.content if hasattr(resp, 'content') else body.encode() if body else None, None
         return None, Exception(f"获取验证码失败 status={resp.status_code if resp else 'N/A'}")
     finally:
         client.close()
@@ -1010,22 +1050,73 @@ def pass_verification_code_api(cache: XueXiTUserCache, code: str,
 
 def work_fetch_question_api(cache: XueXiTUserCache, work_point,
                             retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取章测/作业题目页面 - 对应 Go WorkFetchQuestion"""
-    url = (f"https://mooc1.chaoxing.com/work/doWork"
-           f"?courseId={work_point.course_id}"
-           f"&classId={work_point.class_id}"
-           f"&knowledgeId={work_point.knowledge_id}"
-           f"&workId={work_point.work_id}"
-           f"&jobId={work_point.job_id}"
-           f"&schoolId={work_point.school_id}"
-           f"&cpi={work_point.cpi}"
-           f"&ktoken={work_point.k_token}"
-           f"&enc={work_point.enc}"
-           f"&puid={work_point.puid}"
-           f"&ut=s")
+    """获取章测/作业题目页面 - 对应 Go WorkFetchQuestion
+    URL: https://mooc1-api.chaoxing.com/android/mworkspecial
+    Headers: Host: mooc1-api.chaoxing.com, Accept: */*, Connection: keep-alive
+    """
+    school_id = work_point.school_id or "0"
+    workid_val = f"{school_id}-{work_point.work_id}" if school_id != "0" else work_point.work_id
+    params = {
+        "courseid": work_point.course_id,
+        "workid": workid_val,
+        "jobid": work_point.job_id,
+        "needRedirect": "true",
+        "knowledgeid": str(work_point.knowledge_id),
+        "userid": work_point.puid,
+        "ut": "s",
+        "clazzId": work_point.class_id,
+        "cpi": work_point.cpi,
+        "ktoken": work_point.k_token,
+        "enc": work_point.enc,
+    }
+    url = "https://mooc1-api.chaoxing.com/android/mworkspecial?" + \
+        "&".join(f"{k}={v}" for k, v in params.items())
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "*/*",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        if body and "无效的权限,code=2" in body:
+            # Fallback: WorkFetch2Question
+            return work_fetch2_question_api(cache, work_point, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def work_fetch2_question_api(cache: XueXiTUserCache, work_point,
+                             retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """获取章测题目(Fallback) - 对应 Go WorkFetch2Question
+    URL: https://mooc1-api.chaoxing.com/mooc-ans/work/phone/work
+    """
+    params = {
+        "workId": work_point.work_id,
+        "courseId": work_point.course_id,
+        "clazzId": work_point.class_id,
+        "knowledgeId": str(work_point.knowledge_id),
+        "jobId": "",
+        "enc": work_point.enc,
+        "cpi": work_point.cpi,
+        "originJobId": work_point.job_id,
+    }
+    url = "https://mooc1-api.chaoxing.com/mooc-ans/work/phone/work?" + \
+        "&".join(f"{k}={v}" for k, v in params.items())
+    client = _build_client(cache)
+    try:
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "*/*",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
@@ -1035,19 +1126,96 @@ def work_new_submit_answer_api(cache: XueXiTUserCache,
                                knowledge_id: str, work_id: str,
                                answer_data: Dict,
                                retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """提交章测/作业答案 - 对应 Go WorkNewSubmitAnswer"""
-    url = "https://mooc1.chaoxing.com/work/addStudentWorkNew"
-    client = _build_client(cache)
-    try:
-        hdrs = {
-            "User-Agent": client._ua,
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        body, resp = _do_post_form(client, url, answer_data, headers=hdrs,
-                                   retry=retry)
-        return body, resp
-    finally:
-        client.close()
+    """提交章测/作业答案 - 对应 Go WorkNewSubmitAnswer
+    URL: https://mooc1.chaoxing.com/mooc-ans/work/addStudentWorkNew
+    *** 使用http.client标准库发送,完全控制HTTP请求的每个细节 ***
+    不使用requests/httpx,避免任何自动header注入或body编码
+    """
+    enc_work = answer_data.get("enc_work", "")
+    total_q = answer_data.get("totalQuestionNum", "")
+    path = (f"/mooc-ans/work/addStudentWorkNew"
+            f"?_classId={class_id}&courseid={course_id}"
+            f"&token={enc_work}&totalQuestionNum={total_q}"
+            f"&ua=pc&formType=post&saveStatus=1&version=1&tempsave=1")
+
+    # 获取mobile UA (与Go一致)
+    mobile_ua = get_ua("mobile")
+
+    # 手动构建multipart body (与Go multipart.Writer完全一致)
+    boundary = _uuid_lib.uuid4().hex
+    lines: list = []
+    items = list(answer_data.items()) if isinstance(
+        answer_data, dict) else list(answer_data)
+    for k, v in items:
+        lines.append(f"--{boundary}")
+        lines.append(f'Content-Disposition: form-data; name="{k}"')
+        lines.append("")
+        lines.append(str(v))
+    lines.append(f"--{boundary}--")
+    lines.append("")
+    body = "\r\n".join(lines).encode()
+
+    # 构建Cookie字符串
+    cookie_str = "; ".join(
+        f"{k}={v}" for k, v in list(cache.cookie_dict.items()))
+
+    # 请求头 - 完全对齐Go multipart.Writer.FormDataContentType()
+    # Go标准库 FormDataContentType() = "multipart/form-data; boundary=xxx" (不含charset!)
+    # 关键: 不要在hdrs中放Host header! Python http.client.putrequest()自动添加Host,
+    # 如果hdrs中也有Host,会产生重复的Host header(违反HTTP协议),导致服务器返回code-2
+    # Go的net/http会自动过滤掉header中的Host,只使用req.Host,所以Go没有这个问题
+    hdrs = {
+        "User-Agent": mobile_ua,
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "Content-Type": f"multipart/form-data; boundary={boundary}",
+        "Content-Length": str(len(body)),
+        "Cookie": cookie_str,
+    }
+
+    # 使用http.client发送
+    body_text = ""
+    resp_status = 0
+    resp_headers = {}
+    ctx = _ssl_lib.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = _ssl_lib.CERT_NONE
+
+    for attempt in range(max(1, retry)):
+        try:
+            conn = _http_client.HTTPSConnection(
+                "mooc1.chaoxing.com", 443, timeout=30, context=ctx)
+            conn.request("POST", path, body=body, headers=hdrs)
+            resp = conn.getresponse()
+            resp_status = resp.status
+            resp_headers = dict(resp.getheaders())
+            raw_body = resp.read()
+            body_text = raw_body.decode("utf-8", errors="replace")
+            conn.close()
+
+            # 提取Set-Cookie到cache
+            for hdr_name, hdr_val in resp.getheaders():
+                if hdr_name.lower() == "set-cookie":
+                    # 简单解析cookie: name=value
+                    parts = hdr_val.split(";")[0].strip()
+                    if "=" in parts:
+                        cname, cval = parts.split("=", 1)
+                        cache.cookie_dict[cname.strip()] = cval.strip()
+
+            if "502 Bad Gateway" in body_text or "504 Gateway Time-out" in body_text:
+                time.sleep(0.3)
+                continue
+            break
+        except Exception as e:
+            body_text = f'{{"error":"{str(e)}"}}'
+            time.sleep(0.3)
+
+    # 构建SimpleResp对象
+    class SimpleResp:
+        def __init__(self, status, headers):
+            self.status_code = status
+            self.headers = headers
+    return body_text, SimpleResp(resp_status, resp_headers)
 
 
 # ============ 直播 API ============
@@ -1080,37 +1248,141 @@ def live_create_relation_api(cache: XueXiTUserCache,
         client.close()
 
 
-# ============ 讨论(BBS) API ============
+# ============ 讨论(BBS) API - 对齐Go XueXiTongBBsApi.go ============
+
+
+_BBS_TOKEN = "4faa8662c59590c6f43ae9fe5b002b42"
+_DES_KEY = "Z(AfY@XS"
+
+
+def _inf_enc_sign(params: dict, order: list) -> str:
+    """移动端inf_enc签名 - 对齐Go InfEncSign"""
+    parts = []
+    for k in order:
+        v = params.get(k)
+        if v is None:
+            continue
+        parts.append(f"{k}={_url_quote(str(v), safe='')}")
+    query = "&".join(parts) + f"&DESKey={_DES_KEY}"
+    return _hashlib.md5(query.encode()).hexdigest()
+
+
+def _param_c_0() -> str:
+    """移动端_c_0参数生成 - 对齐Go ParamFor_c_0_Generete"""
+    return str(_uuid_mod.uuid4()).replace("-", "")
+
 
 def pull_phone_bbs_info_api(cache: XueXiTUserCache,
-                            topic_id: str, course_id: str,
+                            mid: str, job_id: str,
+                            knowledge_id: int, course_id: str,
                             class_id: str,
                             retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """拉取讨论主题信息 - 对应 Go PullPhoneBbsInfo"""
-    url = (f"https://mooc1.chaoxing.com/bbscircle/grouptopic/getTopicDetail"
-           f"?topicId={topic_id}&courseId={course_id}&classId={class_id}")
+    """拉取讨论章节页面HTML - 对齐Go PullPhoneBbsInfoApi
+    返回HTML, 需要从中提取groupId/bbsId/topicId/classId/courseId等"""
+    url = (f"https://mooc1-api.chaoxing.com/mooc-ans/bbscircle/chapter"
+           f"?mtopicid={mid}"
+           f"&jobid={job_id}"
+           f"&isPortal=false"
+           f"&knowledgeid={knowledge_id}"
+           f"&ut=s"
+           f"&clazzId={class_id}"
+           f"&enc"
+           f"&utenc=undefined"
+           f"&courseid={course_id}"
+           f"&isJob=true"
+           f"&isMobile=true")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        return _do_get(client, url, headers=hdrs, retry=retry)
     finally:
         client.close()
 
 
-def bbs_reply_api(cache: XueXiTUserCache,
-                  topic_id: str, course_id: str,
-                  class_id: str, content: str,
-                  retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """发表讨论回复 - 对应 Go BBSReply"""
-    url = "https://mooc1.chaoxing.com/bbscircle/grouptopic/replyTopic"
-    data = {
-        "topicId": topic_id,
-        "courseId": course_id,
-        "classId": class_id,
-        "content": content,
-    }
+def pull_phone_bbs_detail_api(cache: XueXiTUserCache,
+                              topic_id: str,
+                              retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """拉取讨论主题详细信息JSON - 对齐Go PullPhoneBbsDetailApi
+    返回JSON: {"data": {"title": ..., "text_content": ..., "uuid": ...}}"""
+    c_0 = _param_c_0()
+    t = str(int(__import__('time').time() * 1000))
+    puid = cache.cookie_dict.get("UID", "")
+    inf_enc = _inf_enc_sign(
+        {"_c_0_": c_0, "token": _BBS_TOKEN, "_time": t},
+        ["_c_0_", "token", "_time"])
+    url = (f"https://groupyd.chaoxing.com/apis/topic/getTopic"
+           f"?_c_0_={c_0}"
+           f"&token={_BBS_TOKEN}"
+           f"&_time={t}"
+           f"&inf_enc={inf_enc}")
     client = _build_client(cache)
     try:
-        return _do_post_form(client, url, data, retry=retry)
+        hdrs = {
+            "Connection": "Keep-Alive",
+            "Accept-Language": "zh_CN",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "*/*",
+            "Host": "groupyd.chaoxing.com",
+        }
+        body, _resp = client.post_form(
+            url, f"puid={puid}&maxW=1080&topicId={topic_id}",
+            headers={"User-Agent": client._ua, **hdrs}, retry=retry,
+            use_multipart=False)
+        return body, None
+    finally:
+        client.close()
+
+
+def answer_phone_bbs_api(cache: XueXiTUserCache,
+                         class_id: str, topic_uuid: str,
+                         content: str,
+                         retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """手机端回复讨论 - 对齐Go AnswerPhoneBbsApi"""
+    c_0 = _param_c_0()
+    t = str(int(__import__('time').time() * 1000))
+    puid = cache.cookie_dict.get("UID", "")
+    new_uuid = str(_uuid_mod.uuid4())
+    inf_enc = _inf_enc_sign(
+        {"token": _BBS_TOKEN, "_time": t, "_c_0_": c_0,
+         "puid": puid, "uuid": new_uuid,
+         "tag": f"classId{class_id}", "maxW": "1080",
+         "topicUUID": topic_uuid, "anonymous": "0"},
+        ["token", "_time", "_c_0_", "puid", "uuid",
+         "tag", "maxW", "topicUUID", "anonymous"])
+    url = (f"https://groupyd.chaoxing.com/apis/invitation/addReply"
+           f"?token={_BBS_TOKEN}"
+           f"&_time={t}"
+           f"&_c_0_={c_0}"
+           f"&puid={puid}"
+           f"&uuid={new_uuid}"
+           f"&tag=classId{class_id}"
+           f"&maxW=1080"
+           f"&topicUUID={topic_uuid}"
+           f"&anonymous=0"
+           f"&inf_enc={inf_enc}")
+    client = _build_client(cache)
+    try:
+        from urllib.parse import quote as _q
+        payload = f"content={_q(content, safe='')}"
+        hdrs = {
+            "Connection": "Keep-Alive",
+            "Accept-Language": "zh_CN",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "*/*",
+            "Host": "groupyd.chaoxing.com",
+        }
+        body, _resp = client.post_form(
+            url, payload,
+            headers={"User-Agent": client._ua, **hdrs}, retry=retry,
+            use_multipart=False)
+        return body, None
     finally:
         client.close()
 
@@ -1144,11 +1416,11 @@ def slider_captcha_api(cache: XueXiTUserCache,
     url = "https://passport2.chaoxing.com/processVerifyCode?type=slider"
     client = _build_client(cache)
     try:
-        resp = client.session.get(url, verify=False, timeout=30)
-        if resp and resp.status_code == 200:
-            data = safe_json_parse(resp.text)
-            if data:
-                return data, None
+        body, resp = client.get(
+            url, headers={"User-Agent": client._ua}, retry=retry)
+        data = safe_json_parse(body) if body else None
+        if data:
+            return data, None
         return None, Exception(f"获取滑块验证码失败")
     finally:
         client.close()
@@ -1176,12 +1448,25 @@ def pass_slider_api(cache: XueXiTUserCache,
 def pull_work_list_api(cache: XueXiTUserCache,
                        course_id: str, class_id: str,
                        cpi: str, retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """拉取作业列表 - 对应 Go PullWorkListAction"""
-    url = (f"https://mooc1.chaoxing.com/work/getWorkList"
-           f"?courseId={course_id}&classId={class_id}&cpi={cpi}&ut=s")
+    """拉取作业列表 - 对应 Go PullWorkListHtmlApi
+    URL: https://mooc1-api.chaoxing.com/work/task-list
+    """
+    url = (f"https://mooc1-api.chaoxing.com/work/task-list"
+           f"?courseId={course_id}&classId={class_id}&cpi={cpi}")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "accept-language": "zh_CN",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
@@ -1190,13 +1475,27 @@ def enter_work_api(cache: XueXiTUserCache,
                    work_id: str, enc: str,
                    course_id: str, class_id: str,
                    cpi: str, retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """进入作业 - 对应 Go EnterWorkAction"""
-    url = (f"https://mooc1.chaoxing.com/work/enterWork"
-           f"?workId={work_id}&enc={enc}"
-           f"&courseId={course_id}&classId={class_id}&cpi={cpi}&ut=s")
+    """进入作业 - 对应 Go PullWorkEnterInformHtmlApi
+    URL: https://mooc1-api.chaoxing.com/android/mtaskmsgspecial
+    """
+    user_id = cache.cookie_dict.get("_uid", cache.uid)
+    url = (f"https://mooc1-api.chaoxing.com/android/mtaskmsgspecial"
+           f"?taskrefId={work_id}&msgId=0&courseId={course_id}"
+           f"&userId={user_id}&clazzId={class_id}&type=work&enc_task={enc}")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "accept-language": "zh_CN",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
@@ -1204,38 +1503,73 @@ def enter_work_api(cache: XueXiTUserCache,
 def pull_work_question_api(cache: XueXiTUserCache,
                            course_id: str, class_id: str,
                            work_id: str, question_index: int,
-                           cpi: str, ktoken: str = "",
-                           enc: str = "", job_id: str = "",
+                           cpi: str, work_answer_id: str = "",
+                           enc: str = "", msg_id: str = "0",
                            retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取作业题目 - 对应 Go PullWorkQuestionAction"""
-    url = (f"https://mooc1.chaoxing.com/work/doWork"
-           f"?courseId={course_id}&classId={class_id}"
-           f"&workId={work_id}&questionIndex={question_index}"
-           f"&cpi={cpi}&ktoken={ktoken}&enc={enc}"
-           f"&jobId={job_id}&ut=s")
+    """获取作业题目 - 对应 Go PullWorkQuestionApi
+    URL: https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doHomeWork
+    """
+    url = (f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doHomeWork"
+           f"?courseId={course_id}&workId={work_id}&cpi={cpi}"
+           f"&workAnswerId={work_answer_id}&classId={class_id}"
+           f"&oldWorkId&mooc=1&msgId={msg_id}&source=0"
+           f"&checkIntegrity=true&enc={enc}"
+           f"&keyboardDisplayRequiresUserAction=1"
+           f"&index={question_index}")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "accept-language": "zh_CN",
+            "Referer": (f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/task-work"
+                        f"?taskrefId={work_id}&courseId={course_id}&classId={class_id}"
+                        f"&userId={cache.cookie_dict.get('_uid', cache.uid)}"
+                        f"&role=&source=0&enc_task=&cpi={cpi}&vx=0&fromGroup=0"),
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
 
 def submit_work_answer_api(cache: XueXiTUserCache,
-                           answer_data: Dict,
+                           answer_data,
                            is_submit: bool = False,
                            retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """提交作业答案 - 对应 Go SubmitWorkAnswerAction"""
-    url = "https://mooc1.chaoxing.com/work/addStudentWorkNew"
-    if is_submit:
-        answer_data["submit"] = "true"
+    """提交作业答案 - 对应 Go SubmitWorkAnswerApi
+    URL: https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doNormalHomeWorkSubmit
+    answer_data: Dict或List[tuple]，Go中courseId/workRelationId/classId重复添加两次
+    """
+    # Go: SubmitWorkAnswerApi(question, !isSubmit) → tempSave = NOT is_submit
+    # is_submit=True(提交) → tempSave=false; is_submit=False(暂存) → tempSave=true
+    temp_save_str = str(not is_submit).lower()
+    url = f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doNormalHomeWorkSubmit?tempSave={temp_save_str}"
+    # 添加tempSave到form body
+    if isinstance(answer_data, list):
+        answer_data.append(("tempSave", temp_save_str))
+    else:
+        answer_data["tempSave"] = temp_save_str
     client = _build_client(cache)
     try:
         hdrs = {
             "User-Agent": client._ua,
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Origin": "https://mooc1-api.chaoxing.com",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
         }
         body, resp = _do_post_form(client, url, answer_data, headers=hdrs,
-                                   retry=retry)
+                                   retry=retry, use_multipart=False)
+        _extract_cookies(client, cache)
         return body, resp
     finally:
         client.close()
@@ -1246,12 +1580,25 @@ def submit_work_answer_api(cache: XueXiTUserCache,
 def pull_exam_list_api(cache: XueXiTUserCache,
                        course_id: str, class_id: str,
                        cpi: str, retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """拉取考试列表 - 对应 Go PullExamListAction"""
-    url = (f"https://mooc1.chaoxing.com/exam/getExamList"
-           f"?courseId={course_id}&classId={class_id}&cpi={cpi}&ut=s")
-    client = _build_client(cache)
+    """拉取考试列表 - 对应 Go PullExamListHtmlApi
+    URL: https://mooc1-api.chaoxing.com/mooc-ans/exam/phone/task-list
+    """
+    url = (f"https://mooc1-api.chaoxing.com/mooc-ans/exam/phone/task-list"
+           f"?courseId={course_id}&classId={class_id}&cpi={cpi}")
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "accept-language": "zh_CN",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
@@ -1260,51 +1607,292 @@ def enter_exam_api(cache: XueXiTUserCache,
                    exam_id: str, enc: str,
                    course_id: str, class_id: str,
                    cpi: str, retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """进入考试 - 对应 Go EnterExamAction"""
-    url = (f"https://mooc1.chaoxing.com/exam/enterExam"
-           f"?examId={exam_id}&enc={enc}"
-           f"&courseId={course_id}&classId={class_id}&cpi={cpi}&ut=s")
-    client = _build_client(cache)
+    """进入考试 - 对应 Go PullExamEnterInformHtmlApi
+    URL: https://mooc1-api.chaoxing.com/exam-ans/android/mtaskmsgspecial
+    """
+    user_id = cache.cookie_dict.get("_uid", cache.uid)
+    url = (f"https://mooc1-api.chaoxing.com/exam-ans/android/mtaskmsgspecial"
+           f"?taskrefId={exam_id}&msgId=0&courseId={course_id}"
+           f"&userId={user_id}&clazzId={class_id}&type=exam&enc_task={enc}")
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "accept-language": "zh_CN",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def pull_exam_paper_api(cache: XueXiTUserCache,
+                        course_id: str, class_id: str,
+                        exam_id: str, cpi: str,
+                        exam_answer_id: str = "",
+                        imei: str = "", captcha_validate: str = "",
+                        jt: str = "0",
+                        redo: bool = False,
+                        retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """拉取考试试卷页面 - 对应 Go PullExamPaperHtmlApi / PullReDoExamPaperHtmlApi
+    URL: https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start
+    redo=True时对应 Go PullReDoExamPaperHtmlApi，追加&redo=1
+    """
+    if not imei:
+        imei = _IMEI
+    url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+           f"?courseId={course_id}&classId={class_id}"
+           f"&examId={exam_id}&source=0"
+           f"&examAnswerId={exam_answer_id}&cpi={cpi}"
+           f"&keyboardDisplayRequiresUserAction=1"
+           f"&imei={imei}&faceDetectionResult"
+           f"&captchavalidate={captcha_validate}&jt={jt}"
+           f"&_v=0.3868294515418076"
+           f"&cxcid&cxtime&signt&_signcode=3&_signc=0&_signe=3-1&signk")
+    if redo:
+        url += "&redo=1"
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
+    try:
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
 
 def pull_exam_question_api(cache: XueXiTUserCache,
                            course_id: str, class_id: str,
-                           exam_id: str, question_index: int,
-                           cpi: str, ktoken: str = "",
-                           enc: str = "",
+                           t_id: str, answer_id: str,
+                           cpi: str, remain_time_param: str,
+                           enc: str,
+                           relation_answer_last_update_time: str = "",
+                           index: int = 0,
+                           imei: str = "",
                            retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取考试题目 - 对应 Go PullExamQuestionAction"""
-    url = (f"https://mooc1.chaoxing.com/exam/doExam"
-           f"?courseId={course_id}&classId={class_id}"
-           f"&examId={exam_id}&questionIndex={question_index}"
-           f"&cpi={cpi}&ktoken={ktoken}&enc={enc}&ut=s")
-    client = _build_client(cache)
+    """获取考试题目 - 对应 Go PullExamQuestionApi
+    URL: https://mooc1-api.chaoxing.com/exam-ans/exam/test/reVersionTestStartNew
+    """
+    if not imei:
+        imei = _IMEI
+    if not relation_answer_last_update_time:
+        relation_answer_last_update_time = str(int(time.time() * 1000))
+    url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/test/reVersionTestStartNew"
+           f"?keyboardDisplayRequiresUserAction=1"
+           f"&courseId={course_id}&classId={class_id}"
+           f"&source=0&imei={imei}"
+           f"&tId={t_id}&id={answer_id}&p=1"
+           f"&start={index}&cpi={cpi}"
+           f"&isphone=true&monitorStatus=0&monitorOp=-1"
+           f"&remainTimeParam={remain_time_param}"
+           f"&relationAnswerLastUpdateTime={relation_answer_last_update_time}"
+           f"&enc={enc}")
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "User-Agent": client._ua,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Upgrade-Insecure-Requests": "1",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "X-Requested-With": "com.chaoxing.mobile",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
+
+
+def get_exam_signature(uid: str, qid: str, x: int, y: int) -> Dict[str, Any]:
+    """计算考试签名 - 对应 Go GetExamSignature
+    Returns: {"pos": str, "rd": float, "value": str, "_edt": str}
+    """
+    ts = str(int(time.time() * 1000))
+    r1 = random.randint(0, 8)
+    r2 = random.randint(0, 8)
+
+    a = f"{secrets.token_hex(16)}{ts[4:]}{r1}{r2}"
+    if qid:
+        a += qid
+
+    temp = 0
+    for ch in a:
+        temp = ((temp << 5) - temp + ord(ch)) & 0xFFFFFFFFFFFFFFFF
+        # Keep as 64-bit signed
+        if temp >= (1 << 63):
+            temp -= (1 << 64)
+
+    salt = f"{r1}{r2}{(0x7fffffff & temp) % 10}"
+
+    enc_val = uid
+    if qid:
+        enc_val += "_" + qid
+    enc_val += "|" + salt
+
+    enc_val2 = "".join(str(ord(c)) for c in enc_val)
+
+    b = len(enc_val2) // 5
+    c_str = enc_val2[b] + enc_val2[2 * b] + enc_val2[3 * b] + enc_val2[4 * b]
+    c = int(c_str)
+
+    d = len(enc_val) // 2 + 1
+
+    first10 = int(enc_val2[:10])
+    e = (c * first10 + d) % 0x7FFFFFFF
+
+    pos = f"({x}|{y})"
+
+    result = ""
+    for ch in pos:
+        key = int(math.floor(e / 0x7FFFFFFF * 0xFF))
+        v = ord(ch) ^ key
+        result += f"{v:02x}"
+        e = (c * e + d) % 0x7FFFFFFF
+
+    return {
+        "pos": result + secrets.token_hex(4),
+        "rd": random.random(),
+        "value": pos,
+        "_edt": ts + salt,
+    }
 
 
 def submit_exam_answer_api(cache: XueXiTUserCache,
                            answer_data: Dict,
                            is_submit: bool = False,
                            retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """提交考试答案 - 对应 Go SubmitExamAnswerAction"""
-    url = "https://mooc1.chaoxing.com/exam/addStudentExamNew"
-    if is_submit:
-        answer_data["submit"] = "true"
-    client = _build_client(cache)
+    """提交考试答案 - 对应 Go SubmitExamAnswerApi
+    URL: https://mooc1-api.chaoxing.com/exam-ans/exam/test/reVersionSubmitTestNew
+    answer_data must contain: courseId, testPaperId, testUserRelationId,
+    classId, cpi, userId, enc, encRemainTime, encLastUpdateTime,
+    remainTime, enterPageTime, questionId, questionTypeCode,
+    questionTypeStr, score, tid, answerId, remainTimeParam, imei
+    """
+    qid = answer_data.get("questionId", "")
+    uid = answer_data.get("userId", cache.cookie_dict.get("_uid", cache.uid))
+    x = random.randint(0, 99) + 900
+    y = random.randint(0, 899) + 100
+    sig = get_exam_signature(uid, qid, x, y)
+
+    # Go: SubmitExamAnswerApi(question, !isSubmit) → tempSave = NOT is_submit
+    # is_submit=True(提交) → tempSave=false; is_submit=False(暂存) → tempSave=true
+    temp_save_str = str(not is_submit).lower()
+    imei_val = answer_data.get("imei", _IMEI)
+
+    url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/test/reVersionSubmitTestNew"
+           f"?classId={answer_data.get('classId', '')}"
+           f"&courseId={answer_data.get('courseId', '')}"
+           f"&testPaperId={answer_data.get('testPaperId', '')}"
+           f"&testUserRelationId={answer_data.get('testUserRelationId', '')}"
+           f"&cpi={answer_data.get('cpi', '')}"
+           f"&version=1&tempSave={temp_save_str}"
+           f"&pos={sig['pos']}"
+           f"&rd={sig['rd']:.16f}"
+           f"&value={quote(sig['value'])}"
+           f"&qid={qid}"
+           f"&_edt={sig['_edt']}"
+           f"&_csign=1&_signcode=3&_signc=0&_signe=3-1&_signk"
+           f"&_cxcid&_cxtime&_signt")
+
+    # Build form body
+    form = {
+        "courseId": answer_data.get("courseId", ""),
+        "testPaperId": answer_data.get("testPaperId", ""),
+        "testUserRelationId": answer_data.get("testUserRelationId", ""),
+        "classId": answer_data.get("classId", ""),
+        "type": "0",
+        "isphone": "true",
+        "imei": imei_val,
+        "subCount": "",
+        "remainTime": answer_data.get("remainTime", ""),
+        "tempSave": temp_save_str,
+        "timeOver": "false",
+        "encRemainTime": answer_data.get("encRemainTime", ""),
+        "encLastUpdateTime": answer_data.get("encLastUpdateTime", ""),
+        "enc": answer_data.get("enc", ""),
+        "userId": uid,
+        "start": "0",
+        "enterPageTime": answer_data.get("enterPageTime", ""),
+        "randomOptions": "false",
+        "questionId": qid,
+        "monitorforcesubmit": "0",
+        "answeredView": "0",
+        "exitdtime": "0",
+        "paperGroupId": "0",
+    }
+    # Add score+qid
+    score_val = answer_data.get("score", "")
+    if score_val:
+        form[f"score{qid}"] = score_val
+
+    # Add type-specific answer fields
+    qtype_code = answer_data.get("questionTypeCode", "0")
+    qtype_str = answer_data.get("questionTypeStr", "")
+    answer_text = answer_data.get("answer", "")
+    form[f"type{qid}"] = qtype_code
+    form[f"typeName{qid}"] = qtype_str
+
+    if qtype_code == "0":  # 单选
+        form["hidetext"] = ""
+        form[f"answer{qid}"] = answer_text
+    elif qtype_code == "1":  # 多选
+        form["hidetext"] = ""
+        form[f"answers{qid}"] = answer_text
+    elif qtype_code == "3":  # 判断
+        form[f"answer{qid}"] = answer_text
+    elif qtype_code == "2":  # 填空
+        form[f"answerEditor{qid}1"] = answer_text
+        form[f"blankNum{qid}"] = "1,"
+    elif qtype_code in ("4", "6"):  # 简答/论述
+        form[f"answer{qid}"] = answer_text
+
+    # Referer header
+    referer_url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/test/reVersionTestStartNew"
+                   f"?keyboardDisplayRequiresUserAction=1"
+                   f"&courseId={answer_data.get('courseId', '')}"
+                   f"&classId={answer_data.get('classId', '')}"
+                   f"&source=0&imei={imei_val}"
+                   f"&tId={answer_data.get('tid', '')}"
+                   f"&id={answer_data.get('answerId', '')}"
+                   f"&p=1&start=1"
+                   f"&cpi={answer_data.get('cpi', '')}"
+                   f"&isphone=true&monitorStatus=0&monitorOp=-1"
+                   f"&remainTimeParam={answer_data.get('remainTimeParam', '')}"
+                   f"&relationAnswerLastUpdateTime={int(time.time() * 1000)}"
+                   f"&enc={answer_data.get('enc', '')}")
+
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
     try:
         hdrs = {
             "User-Agent": client._ua,
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Origin": "https://mooc1-api.chaoxing.com",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "Referer": referer_url,
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
         }
-        body, resp = _do_post_form(client, url, answer_data, headers=hdrs,
-                                   retry=retry)
+        body, resp = _do_post_form(client, url, form, headers=hdrs,
+                                   retry=retry, use_multipart=False)
+        _extract_cookies(client, cache)
         return body, resp
     finally:
         client.close()
@@ -1316,9 +1904,9 @@ def xxt_ai_api(cache: XueXiTUserCache,
                question: str, course_id: str = "",
                class_id: str = "", cpi: str = "",
                retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """学习通内置 AI 答题 - 对应 Go AnswerXXTAIGet"""
+    """学习通内置 AI 答题 - 对应 Go XueXiTongAIAggregation (JSON POST)"""
     url = "https://mooc1.chaoxing.com/ai/ask"
-    data = {
+    json_data = {
         "question": question,
         "courseId": course_id,
         "classId": class_id,
@@ -1326,7 +1914,7 @@ def xxt_ai_api(cache: XueXiTUserCache,
     }
     client = _build_client(cache)
     try:
-        body, resp = _do_post_form(client, url, data, retry=retry)
+        body, resp = client.post_json(url, json_data, retry=retry)
         return body, resp
     finally:
         client.close()

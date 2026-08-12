@@ -37,6 +37,33 @@ PLATFORM_TYPE = "XUEXITONG"
 _users_lock = threading.Lock()
 _model3_caches: Dict[str, List[XueXiTUserCache]] = {}
 
+# 无限制并发模式下，防止同一作业/考试被多个节点线程重复处理
+# (重复处理会因 enc 失效产生 "enc error")
+_work_processed: set = set()
+_work_processed_guard = threading.Lock()
+
+# 多任务点无限制模式：按账号累计登录次数并实时显示状态
+_account_login_counts: Dict[str, int] = {}
+_account_login_guard = threading.Lock()
+
+
+def _record_node_login(account: str, ok: bool, tag: str = ""):
+    """记录并显示每个账号的登录次数状态（多任务点无限制模式）"""
+    with _account_login_guard:
+        _account_login_counts[account] = _account_login_counts.get(
+            account, 0) + 1
+        n = _account_login_counts[account]
+    if ok:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(account), Default, "] ",
+                  Yellow, f"多任务点登录状态: 该账号累计登录{n}次",
+                  Default, f"({tag}登录成功)" if tag else "(登录成功)")
+    else:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(account), Default, "] ",
+                  Red, f"多任务点登录状态: 该账号累计登录{n}次",
+                  Default, f"({tag}登录失败)" if tag else "(登录失败)")
+
 
 def filter_account(config_data: JSONDataForConfig) -> List[User]:
     return generic_filter_account(config_data, PLATFORM_TYPE)
@@ -88,6 +115,9 @@ def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
 # ============ 刷课 ============
 
 def run_brush_operation(setting: Setting, users: List[User], user_caches: List[Any]):
+    # 解除多个独立账号同时进行的数量限制：所有账号同时并行执行
+    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+              Yellow, f"共{len(user_caches)}个账号同时并行执行(独立账号数量限制已解除)")
     threads = []
     for i, cache in enumerate(user_caches):
         user_idx = i % max(len(users), 1)
@@ -120,35 +150,14 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
               "[", Green, display_account(cache.account), Default, "] ",
               f"多任务点配置: video_model={cc.video_model}, cx_node={cc.cx_node}")
     if cc.video_model == 3:
-        num = cc.cx_node or 3
-        if num == -1:
-            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                      "[", Green, display_account(
-                          cache.account), Default, "] ",
-                      Yellow, "警告：使用多任务点无限制模式")
-        else:
-            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                      "[", Green, display_account(
-                          cache.account), Default, "] ",
-                      Yellow, f"警告：多任务点模式，同时登录{num}次")
+        # 解除账号并发数量限制：mode3 一律强制走无限制模式
+        # (对齐 Go CxNode=-1：不预登录池，每个节点独立 relogin 并发执行)
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(
+                      cache.account), Default, "] ",
+                  Yellow, "多任务点无限制模式(并发数量限制已解除)")
         if cache.account not in _model3_caches:
             _model3_caches[cache.account] = []
-        for i in range(max(num, 1)):
-            if i == 0:
-                _model3_caches[cache.account].append(copy.deepcopy(cache))
-                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                          "[", Green, display_account(
-                              cache.account), Default, "] ",
-                          Green, f"多任务点模式: 登录实例 {i+1}/{num} 就绪")
-            else:
-                c = copy.deepcopy(cache)
-                xxt_api.relogin(c)
-                _model3_caches[cache.account].append(c)
-                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                          "[", Green, display_account(
-                              cache.account), Default, "] ",
-                          Green, f"多任务点模式: 登录实例 {i+1}/{num} 就绪")
-                time.sleep(1)
 
     # Concurrent course execution for model 2/3 (Go uses goroutines)
     if user.courses_custom.video_model == 1:
@@ -432,14 +441,9 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
 
     # === Node iteration: model3 concurrent, others sequential (matching Go) ===
     cc = user.courses_custom
-    if cc.video_model == 3 and cache.account in _model3_caches and _model3_caches[cache.account]:
-        # Model 3: concurrent node execution using model3 cache pool
-        import queue as _queue_mod
-        m3_list = _model3_caches[cache.account]
-        resource_q = _queue_mod.Queue()
-        for i in range(len(m3_list)):
-            resource_q.put(i)
-
+    if cc.video_model == 3:
+        # Model 3: 无限制并发模式 - 解除并发数量限制，每个节点独立 relogin 并发执行
+        # (对齐 Go CxNode=-1 路径，不再使用 cxNode 大小的登录池)
         node_threads = []
         for index, node_id in enumerate(nodes):
             node_str = str(node_id)
@@ -459,43 +463,24 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                                   f"零任务点遍历失败: {err}")
                     continue
 
-            if (cc.cx_node or 3) == -1:
-                # Unlimited mode: relogin for each node
-                def _run_unlimited(idx=index, nid=node_id):
-                    res_cache = copy.deepcopy(cache)
-                    try:
-                        xxt_api.relogin(res_cache)
-                        _node_run(setting, user, res_cache,
-                                  course, nodes, idx, nid, knowledge_map)
-                    except Exception as e:
-                        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                                  "[", Green, display_account(
-                                      cache.account), Default, "] ",
-                                  "[", course.course_name, "] ", BoldRed,
-                                  f"节点{nid}运行异常: {e}")
-                t = threading.Thread(target=_run_unlimited, daemon=True)
-                node_threads.append(t)
-                t.start()
-                time.sleep(1)
-            else:
-                # Queue-based: get a cache slot from pool
-                slot_idx = resource_q.get()
-
-                def _run_slot(si=slot_idx, idx=index, nid=node_id):
-                    try:
-                        _node_run(setting, user,
-                                  m3_list[si], course, nodes, idx, nid, knowledge_map)
-                    except Exception as e:
-                        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                                  "[", Green, display_account(
-                                      cache.account), Default, "] ",
-                                  "[", course.course_name, "] ", BoldRed,
-                                  f"节点{nid}运行异常: {e}")
-                    finally:
-                        resource_q.put(si)
-                t = threading.Thread(target=_run_slot, daemon=True)
-                node_threads.append(t)
-                t.start()
+            # 无限制模式：每个节点独立 relogin 后并发执行（对齐 Go CxNode=-1）
+            def _run_unlimited(idx=index, nid=node_id):
+                res_cache = copy.deepcopy(cache)
+                try:
+                    rerr = xxt_api.relogin(res_cache)
+                    _record_node_login(cache.account, rerr is None, f"节点{nid}")
+                    _node_run(setting, user, res_cache,
+                              course, nodes, idx, nid, knowledge_map)
+                except Exception as e:
+                    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                              "[", Green, display_account(
+                                  cache.account), Default, "] ",
+                              "[", course.course_name, "] ", BoldRed,
+                              f"节点{nid}运行异常: {e}")
+            t = threading.Thread(target=_run_unlimited, daemon=True)
+            node_threads.append(t)
+            t.start()
+            time.sleep(1)
 
         for t in node_threads:
             t.join()
@@ -560,7 +545,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
                       "[", Green, acct, Default, "] ",
                       "[", course.course_name, "] ", DarkGray,
                       f"章节{node_id}卡片拉取失败(status={status})，尝试重新登录...")
-            xxt_api.relogin(cache)
+            rerr = xxt_api.relogin(cache)
+            _record_node_login(cache.account, rerr is None, f"节点{node_id}重登")
             cords_body, _ = xxt_api.fetch_chapter_cords(
                 cache, node_id, course_id_int, retry=5)
             cords_data = safe_json_parse(cords_body)
@@ -1353,7 +1339,8 @@ def _video_submit_with_relogin(cache: XueXiTUserCache, video: PointVideoDto,
     # 500/202/400/403: ReLogin后重试 (完全对齐Go聚合层)
     # Go: 触发403的时候会进行一次重登测试，如果之后还是403那说明是人脸了
     if status_code in (500, 202, 400, 403):
-        xxt_api.relogin(cache)
+        rerr = xxt_api.relogin(cache)
+        _record_node_login(cache.account, rerr is None, "视频提交重登")
         if mode == 1:
             body2, resp2 = xxt_api.video_submit_study_time_pe_api(
                 cache, video, playing_time, isdrag=isdrag, retry=5)
@@ -1656,7 +1643,8 @@ def _audio_submit_with_relogin(cache: XueXiTUserCache, audio: PointVideoDto,
 
     # 500/202/400/403: ReLogin后重试
     if status_code in (500, 202, 400, 403):
-        xxt_api.relogin(cache)
+        rerr = xxt_api.relogin(cache)
+        _record_node_login(cache.account, rerr is None, "音频提交重登")
         if mode == 1:
             body2, resp2 = xxt_api.audio_submit_api(
                 cache, audio, playing_time, isdrag=isdrag, retry=5)
@@ -2122,8 +2110,7 @@ def _execute_bbs(setting: Setting, user: User, cache: XueXiTUserCache,
             body, _ = xxt_api.xxt_ai_api(
                 cache, topic_title,
                 course.course_id, course.key, str(course.cpi))
-            data = safe_json_parse(body) if body else None
-            content = data.get("answer", "同意") if data else "同意"
+            content = body.strip() if body and body.strip() else "同意"
         except Exception:
             content = "同意"
     else:
@@ -2322,9 +2309,10 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
         elif cc.auto_exam == 3:
             try:
                 ai_body, _ = xxt_api.xxt_ai_api(
-                    cache, q_text, course.course_id, course.key, str(course.cpi))
-                ai_data = safe_json_parse(ai_body) if ai_body else None
-                answer = ai_data.get("answer", "") if ai_data else ""
+                    cache, q_text, course.course_id, course.key, str(
+                        course.cpi),
+                    options=opt_texts_for_ai, q_type=q_type)
+                answer = ai_body.strip() if ai_body else ""
             except Exception:
                 answer = ""
         else:
@@ -3076,6 +3064,13 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         enc_task = work.get("enc_task", "")
         msg_id = work.get("msgId", "0")
 
+        # 并发去重：同一作业只处理一次（防止无限制模式下重复提交产生 enc error）
+        _wk = (cache.account, course.course_id, "work", task_ref_id)
+        with _work_processed_guard:
+            if _wk in _work_processed:
+                continue
+            _work_processed.add(_wk)
+
         # 进入作业 - 解析enter page HTML
         enter_body, enter_resp = xxt_api.enter_work_api(
             cache, task_ref_id, enc_task, course.course_id, course.key,
@@ -3184,10 +3179,15 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                     answer = ""
             elif cc.auto_exam == 3:
                 try:
+                    _wt3_map = {'0': 'single_choice', '1': 'multiple_choice',
+                                '2': 'fill', '3': 'judge', '4': 'short',
+                                '5': 'term_explanation', '6': 'essay',
+                                '11': 'matching', '8': 'short'}
                     ai_body, _ = xxt_api.xxt_ai_api(
-                        cache, q_text, course.course_id, course.key, cpi_val)
-                    ai_data = safe_json_parse(ai_body) if ai_body else None
-                    answer = ai_data.get("answer", "") if ai_data else ""
+                        cache, q_text, course.course_id, course.key, cpi_val,
+                        options=q_entity.get('options', []),
+                        q_type=_wt3_map.get(q_type_code, ''))
+                    answer = ai_body.strip() if ai_body else ""
                 except Exception:
                     answer = ""
             if not answer:
@@ -3281,6 +3281,12 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                           "【", course.course_name, "】【", work_name, "】",
                           Green, f"第{qi+1}题回答成功，服务器返回:{submit_str[:200]}")
             else:
+                # enc 失效(该作业可能已被提交，如章测已先行提交)：静默跳过
+                if "enc error" in submit_str:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", work_name, "】",
+                              Green, "该作业已提交(enc已失效)，自动跳过")
+                    break
                 # 诊断日志：显示编码后的请求数据和完整响应
                 from urllib.parse import urlencode as _dbg_encode
                 encoded_dbg = _dbg_encode(submit_data) if isinstance(
@@ -3299,6 +3305,12 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                           "【", course.course_name, "】【", work_name, "】",
                           Yellow, f"[enc诊断] q_entity.enc='{q_enc}' enc_val='{enc_val}' "
                           f"q_entity.encWork='{q_encwork}' used_enc='{q_entity.get('enc', enc_val) or enc_val}'")
+                # enc 失效(作业可能已被提交)：终止本作业后续题目
+                if "enc error" in submit_str:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", work_name, "】",
+                              Yellow, "enc已失效(该作业可能已被提交)，跳过剩余题目")
+                    break
 
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】【", work_name, "】",
@@ -3338,6 +3350,13 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         exam_name = exam.get("name", "")
         enc_task = exam.get("enc_task", "")
         msg_id = exam.get("msgId", "0")
+
+        # 并发去重：同一考试只处理一次
+        _wk = (cache.account, course.course_id, "exam", task_ref_id)
+        with _work_processed_guard:
+            if _wk in _work_processed:
+                continue
+            _work_processed.add(_wk)
 
         # 进入考试 - 对应 Go EnterExamAction
         enter_body, enter_resp = xxt_api.enter_exam_api(
@@ -3507,10 +3526,15 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                     answer = ""
             elif cc.auto_exam == 3:
                 try:
+                    _wt3_map = {'0': 'single_choice', '1': 'multiple_choice',
+                                '2': 'fill', '3': 'judge', '4': 'short',
+                                '5': 'term_explanation', '6': 'essay',
+                                '11': 'matching', '8': 'short'}
                     ai_body, _ = xxt_api.xxt_ai_api(
-                        cache, q_text, course.course_id, course.key, cpi_val)
-                    ai_data = safe_json_parse(ai_body) if ai_body else None
-                    answer = ai_data.get("answer", "") if ai_data else ""
+                        cache, q_text, course.course_id, course.key, cpi_val,
+                        options=q_entity.get('options', []),
+                        q_type=_wt3_map.get(q_type_code, ''))
+                    answer = ai_body.strip() if ai_body else ""
                 except Exception:
                     answer = ""
             if not answer:
@@ -3609,6 +3633,13 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                           "【", course.course_name, "】【", exam_name, "】",
                           Green, f"第{qi+1}题回答成功，服务器返回:{submit_str[:200]}")
             else:
+                # enc 失效(该考试可能已被提交)：静默跳过
+                if "enc error" in submit_str:
+                    log_print(INFO, f"[{platform}]",
+                              "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Green, "该考试已提交(enc已失效)，自动跳过")
+                    break
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",

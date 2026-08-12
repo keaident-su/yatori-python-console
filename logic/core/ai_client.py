@@ -1,18 +1,51 @@
 # -*- coding: utf-8 -*-
 """
-AI client module - supports OpenAI-compatible APIs and custom middleware.
-对齐 Go 的 AIProblemMessage + BuildAiQuestionMessage 实现。
+AI client module - 完全对齐 Go que-core/aiq/AiQuestion.go
+每种 AI 类型硬编码官方端点（url 参数仅 OTHER 类型使用），
+temperature=0.2，7 次重试，JSON 格式校验失败追加纠正消息重试，
+AI 并发信号量容量=2（对齐 Go AiSem）。
 """
 import json as _json
-from typing import List, Optional, Dict, Any
+import threading
+import time
+from typing import List, Optional
 
 import httpx
 
-from utils.log import log_print, INFO, Red, Green, Yellow, BoldRed, Default
+from utils.log import log_print, INFO, BoldRed
 
-_OPENAI_COMPATIBLE_TYPES = {"DEEPSEEK", "OPENAI",
-                            "OPENROUTER", "SILICONFLOW", "ZHIPU"}
+# AI 并发限制（对齐 Go: var AiSem = make(chan struct{}, 2)）
+_AI_SEM = threading.Semaphore(2)
 
+# ============ 各 AI 类型官方端点（对齐 Go AggregationAIApi 各实现） ============
+_AI_ENDPOINTS = {
+    "DEEPSEEK": "https://api.deepseek.com/chat/completions",
+    "TONGYI": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "CHATGLM": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "ZHIPU": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "XINGHUO": "https://spark-api-open.xf-yun.com/v1/chat/completions",
+    "DOUBAO": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    "OPENAI": "https://api.openai.com/v1/responses",
+    "SILICON": "https://api.siliconflow.cn/v1/chat/completions",
+    "SILICONFLOW": "https://api.siliconflow.cn/v1/chat/completions",
+    "METAAI": "https://metaso.cn/api/v1/chat/completions",
+    "OPENROUTER": "https://openrouter.ai/api/v1/chat/completions",
+}
+
+# 默认模型（对齐 Go 各 API 中 model == "" 时的默认值）
+_AI_DEFAULT_MODELS = {
+    "DEEPSEEK": "deepseek-chat",
+    "TONGYI": "qwen-plus-latest",
+    "CHATGLM": "glm-4",
+    "ZHIPU": "glm-4",
+    "XINGHUO": "generalv3.5",
+    "SILICON": "Qwen/Qwen2.5-7B-Instruct",
+    "SILICONFLOW": "Qwen/Qwen2.5-7B-Instruct",
+    "METAAI": "fast",
+}
+
+_RETRY_NUM = 7
+_JSON_FIX_PROMPT = "你刚才生成的回复未严格遵循json格式，我无法正常解析，请你重新生成。"
 
 # ============ AI System Prompts - 完全对齐 Go BuildAiQuestionMessage ============
 
@@ -110,23 +143,19 @@ def _build_question_prompt(q_type: str, question: str,
 
 def _parse_json_array_answer(raw: str) -> str:
     """解析 AI 返回的 JSON 数组格式答案 - 对齐 Go ResponseTurnQuestion
-    Go: json.Unmarshal([]byte(response), &answers) -> question.Answers = answers
-    返回: 逗号分隔的答案内容字符串 (与 Go 的 answers += item 对齐)
+    返回: 逗号分隔的答案内容字符串
     """
     if not raw:
         return ""
     text = raw.strip()
-    # 尝试解析 JSON 数组
     try:
         parsed = _json.loads(text)
         if isinstance(parsed, list) and len(parsed) > 0:
-            # 将所有答案元素用逗号连接 (多选题会有多个元素)
             parts = [str(p).strip() for p in parsed if str(p).strip()]
             if parts:
                 return ','.join(parts)
     except (ValueError, _json.JSONDecodeError):
         pass
-    # 尝试从文本中提取 JSON 数组
     import re
     m = re.search(r'\[.*?\]', text, re.DOTALL)
     if m:
@@ -138,189 +167,208 @@ def _parse_json_array_answer(raw: str) -> str:
                     return ','.join(parts)
         except (ValueError, _json.JSONDecodeError):
             pass
-    # fallback: 返回原始文本
     return text
 
 
+def _is_valid_json_array(content: str) -> bool:
+    try:
+        return isinstance(_json.loads(content), list)
+    except (ValueError, _json.JSONDecodeError):
+        return False
+
+
 class AIClient:
-    """AI client - auto-detects API type."""
+    """AI client - 对齐 Go AggregationAIApi：按 aiType 分发到硬编码官方端点。
+    url 参数仅 OTHER 类型使用。
+    """
 
     def __init__(self, ai_url: str, model: str, api_key: str, ai_type: str):
-        self.ai_url = ai_url.rstrip("/")
-        self.model = model
-        self.api_key = api_key
-        self.ai_type = ai_type.upper()
-
-    def _is_openai_compatible(self) -> bool:
-        return self.ai_type in _OPENAI_COMPATIBLE_TYPES
+        self.config_url = (ai_url or "").strip().rstrip("/")
+        self.api_key = api_key or ""
+        self.ai_type = (ai_type or "").strip().upper()
+        # 端点解析：内置类型用硬编码端点，OTHER 用配置 url
+        if self.ai_type in _AI_ENDPOINTS:
+            self.endpoint = _AI_ENDPOINTS[self.ai_type]
+        else:
+            # OTHER 或未知类型：使用配置的 url（补全 chat/completions 路径）
+            u = self.config_url
+            if u and "/chat/completions" not in u and "/v1" not in u and "/v3" not in u and "/v4" not in u:
+                u = u + "/v1/chat/completions"
+            self.endpoint = u
+        # 模型解析：为空则使用该类型的默认模型（对齐 Go）
+        self.model = (model or "").strip(
+        ) or _AI_DEFAULT_MODELS.get(self.ai_type, "")
 
     def check(self) -> Optional[Exception]:
-        """Check AI availability."""
-        if self._is_openai_compatible():
-            return self._check_via_completion()
-        return self._check_custom()
+        """Check AI availability - 对齐 Go AICheck。"""
+        if not self.ai_type:
+            return Exception("请先填写AIType参数，详细参考官方文档：https://yatori-dev.github.io/yatori-docs/yatori-go-console/docs.html")
+        if not self.api_key:
+            return Exception("无效apiKey，请检查apiKey是否正确填写")
+        if not self.endpoint:
+            return Exception("AI请求地址为空，OTHER类型需要在aiUrl中填写对应地址")
+        # 对齐 Go AICheck：发送测试消息
+        content, err = self._request_chat(
+            [{"role": "user", "content": '请你原模原样输出：["测试成功"]'}],
+            expect_json=False)
+        if err:
+            return err
+        return None
 
     def ask(self, question: str, options: Optional[List[str]] = None,
             q_type: str = '') -> str:
         """Ask AI for an answer.
         :param q_type: question type key (single_choice/multiple_choice/judge/fill/short/essay)
         """
-        if self._is_openai_compatible():
-            return self._ask_openai_compatible(question, options, q_type)
-        return self._ask_custom(question, options)
-
-    # ============ OpenAI Compatible API (DeepSeek, OpenAI, etc.) ============
-
-    def _check_via_completion(self) -> Optional[Exception]:
-        """Verify API by sending a simple completion request."""
-        try:
-            resp = httpx.post(
-                self.ai_url + "/v1/chat/completions",
-                json={
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": "hi"}],
-                    "max_tokens": 5,
-                },
-                headers={
-                    "Authorization": "Bearer " + self.api_key,
-                    "Content-Type": "application/json",
-                },
-                timeout=30,
-            )
-            if resp.status_code == 200:
-                return None
-            if resp.status_code in (401, 403):
-                return Exception("API Key invalid (status=%d)" % resp.status_code)
-            try:
-                data = resp.json()
-            except Exception:
-                data = {}
-            err_msg = data.get("error", {}).get("message", resp.text[:200])
-            return Exception("API check failed (status=%d): %s" % (resp.status_code, err_msg))
-        except Exception as e:
-            return e
-
-    def _ask_openai_compatible(self, question: str,
-                               options: Optional[List[str]] = None,
-                               q_type: str = '') -> str:
-        """Ask via OpenAI-compatible API - 对齐 Go BuildAiQuestionMessage"""
-        try:
-            if q_type:
-                # 使用结构化 prompt (对齐 Go)
-                system_prompt, user_content = _build_question_prompt(
-                    q_type, question, options)
-            else:
-                # 兼容旧调用方式
-                user_content = question
-                if options:
-                    lines = []
-                    for i, opt in enumerate(options):
-                        lines.append("%s. %s" % (chr(65 + i), opt))
-                    opts_text = "\n".join(lines)
-                    user_content = question + "\n\nOptions:\n" + \
-                        opts_text + "\n\nPlease give the answer directly."
-                system_prompt = _SYSTEM_PROMPT_DEFAULT
-
-            resp = httpx.post(
-                self.ai_url + "/v1/chat/completions",
-                json={
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content},
-                    ],
-                    "max_tokens": 4096,
-                    "temperature": 0.1,
-                },
-                headers={
-                    "Authorization": "Bearer " + self.api_key,
-                    "Content-Type": "application/json",
-                },
-                timeout=120,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    message = choices[0].get("message", {})
-                    content = message.get("content", "")
-                    result = content.strip()
-                    # 检测已知错误响应（API可能返回200但内容无效）
-                    _error_markers = [
-                        "insufficient", "balance", "quota",
-                        "rate limit", "余额", "额度",
-                    ]
-                    if result and any(m in result.lower() for m in _error_markers):
-                        log_print(INFO, BoldRed,
-                                  "AI request returned error in 200 response: %s" % result[:100])
-                        return ""
-                    # 当使用结构化 prompt 时，解析 JSON 数组答案
-                    if q_type:
-                        return _parse_json_array_answer(result)
-                    return result
-                return ""
-            else:
-                try:
-                    err_data = resp.json()
-                except Exception:
-                    err_data = {}
-                err_msg = err_data.get("error", {}).get(
-                    "message", resp.text[:200])
-                log_print(INFO, BoldRed,
-                          "AI request failed (status=%d): %s" % (resp.status_code, err_msg))
-                return ""
-        except httpx.TimeoutException:
-            log_print(INFO, BoldRed, "AI request timeout")
-            return ""
-        except Exception as e:
-            log_print(INFO, BoldRed, "AI request error: %s" % str(e))
-            return ""
-
-    # ============ Custom Middleware API (TONGYI, etc.) ============
-
-    def _check_custom(self) -> Optional[Exception]:
-        """Check via custom /check endpoint."""
-        try:
-            resp = httpx.get(
-                self.ai_url + "/check",
-                params={"aiType": self.ai_type, "model": self.model},
-                headers={"Authorization": "Bearer " + self.api_key},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                return None
-            return Exception("AI check failed, status=%d" % resp.status_code)
-        except Exception as e:
-            return e
-
-    def _ask_custom(self, question: str,
-                    options: Optional[List[str]] = None) -> str:
-        """Ask via custom /ask endpoint."""
-        try:
-            payload = {
-                "aiType": self.ai_type,
-                "model": self.model,
-                "question": question,
-            }
+        if q_type:
+            system_prompt, user_content = _build_question_prompt(
+                q_type, question, options)
+        else:
+            user_content = question
             if options:
-                payload["options"] = options
+                lines = []
+                for i, opt in enumerate(options):
+                    lines.append("%s. %s" % (chr(65 + i), opt))
+                user_content = question + "\n\nOptions:\n" + \
+                    "\n".join(lines) + "\n\nPlease give the answer directly."
+            system_prompt = _SYSTEM_PROMPT_DEFAULT
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        content, err = self._request_chat(messages, expect_json=True)
+        if err or not content:
+            if err:
+                log_print(INFO, BoldRed, "AI request error: %s" % str(err))
+            return ""
+        if q_type:
+            return _parse_json_array_answer(content)
+        return content.strip()
+
+    # ============ 核心请求逻辑（对齐 Go 各 ChatReplyApi） ============
+
+    def _request_chat(self, messages: List[dict], expect_json: bool = True,
+                      retry: int = _RETRY_NUM) -> tuple:
+        """发送聊天请求，返回 (content, error)。
+        - 并发信号量限制（对齐 Go AiSem）
+        - 7次重试
+        - expect_json 时校验返回是否为 JSON 数组，失败追加纠正消息重试（对齐 Go）
+        """
+        if not self.endpoint:
+            return "", Exception("AI请求地址为空")
+
+        _AI_SEM.acquire()
+        try:
+            return self._request_chat_inner(list(messages), expect_json, retry)
+        finally:
+            _AI_SEM.release()
+
+    def _request_chat_inner(self, messages: List[dict], expect_json: bool,
+                            retry: int) -> tuple:
+        if retry < 0:
+            return "", Exception("AI重试次数已用完")
+
+        try:
+            if self.ai_type == "OPENAI":
+                # OpenAI Responses API：用 input 字段（对齐 Go OpenAiReplyApi）
+                payload = {
+                    "model": self.model,
+                    "temperature": 0.2,
+                    "input": messages,
+                }
+            elif self.ai_type == "METAAI":
+                # 秘塔AI特殊格式（对齐 Go MetaAIReplyApi）
+                last_user = ""
+                for m in reversed(messages):
+                    if m.get("role") == "user":
+                        last_user = m.get("content", "")
+                        break
+                payload = {
+                    "q": last_user,
+                    "model": self.model or "fast",
+                    "format": "text",
+                    "scope": "online",
+                }
+            else:
+                payload = {
+                    "model": self.model,
+                    "temperature": 0.2,
+                    "messages": messages,
+                }
 
             resp = httpx.post(
-                self.ai_url + "/ask",
+                self.endpoint,
                 json=payload,
                 headers={
                     "Authorization": "Bearer " + self.api_key,
                     "Content-Type": "application/json",
                 },
                 timeout=60,
+                verify=False,
             )
-            if resp.status_code == 200:
+            body = resp.text
+
+            if self.ai_type == "METAAI":
+                try:
+                    data = resp.json()
+                except Exception:
+                    time.sleep(0.1)
+                    return self._request_chat_inner(messages, expect_json, retry - 1)
+                content = ""
+                if isinstance(data, dict):
+                    content = data.get("answer", "") or data.get(
+                        "content", "") or ""
+                if not content:
+                    return "", Exception("AI回复内容未找到，AI返回信息：" + body[:300])
+                if expect_json and not _is_valid_json_array(content):
+                    messages.append({"role": "system", "content": content})
+                    messages.append(
+                        {"role": "user", "content": _JSON_FIX_PROMPT})
+                    return self._request_chat_inner(messages, expect_json, retry - 1)
+                return content, None
+
+            # 通用 OpenAI 兼容解析
+            try:
                 data = resp.json()
-                return data.get("answer", data.get("data", ""))
-            return ""
-        except Exception as e:
-            log_print(INFO, BoldRed, "AI request error: %s" % str(e))
-            return ""
+            except Exception:
+                time.sleep(0.1)
+                return self._request_chat_inner(messages, expect_json, retry - 1)
+
+            # 处理业务异常（对齐 Go: message contains "Request processing has failed"）
+            result_msg = data.get("message", "")
+            if isinstance(result_msg, str) and "Request processing has failed" in result_msg:
+                time.sleep(0.1)
+                return self._request_chat_inner(messages, expect_json, retry - 1)
+
+            # 401/403 鉴权失败直接返回，不重试
+            if resp.status_code in (401, 403):
+                return "", Exception("API Key invalid (status=%d): %s" % (
+                    resp.status_code, body[:200]))
+
+            choices = data.get("choices")
+            if not isinstance(choices, list) or not choices:
+                return "", Exception("AI回复内容未找到，AI返回信息：" + body[:300])
+
+            message = choices[0].get("message", {}) if isinstance(
+                choices[0], dict) else {}
+            content = message.get("content", "")
+            if not isinstance(content, str):
+                return "", Exception("content field missing or not a string in response")
+
+            # JSON 格式检查（对齐 Go：失败追加纠正消息重试）
+            if expect_json and not _is_valid_json_array(content):
+                messages.append({"role": "system", "content": content})
+                messages.append({"role": "user", "content": _JSON_FIX_PROMPT})
+                return self._request_chat_inner(messages, expect_json, retry - 1)
+
+            return content, None
+        except httpx.TimeoutException:
+            time.sleep(0.1)
+            return self._request_chat_inner(messages, expect_json, retry - 1)
+        except httpx.HTTPError:
+            time.sleep(0.1)
+            return self._request_chat_inner(messages, expect_json, retry - 1)
 
 
 # ============ Shortcut Functions ============

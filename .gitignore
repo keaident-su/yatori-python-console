@@ -32,5 +32,9 @@ Thumbs.db
 *.db-shm
 *.db-wal
 
-# Config with secrets (uncomment if needed)
-# config.yaml
+# Config files (contains account info)
+config.yaml
+config/config.yaml
+
+# Assets & Logs
+assets/

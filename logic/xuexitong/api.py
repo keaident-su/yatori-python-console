@@ -3,6 +3,7 @@
 完整重写：AES加密登录、移动端UA、正确的课程/章节/卡片/视频API
 """
 from urllib.parse import quote as _url_quote
+import json as _json
 import uuid as _uuid_mod
 import hashlib as _hashlib
 import secrets
@@ -1900,21 +1901,202 @@ def submit_exam_answer_api(cache: XueXiTUserCache,
 
 # ============ 学习通内置 AI ============
 
+# ============ 学习通内置AI (autoExam=3) - 完全对齐 Go XueXiTongAIApi.go ============
+
+_XXT_AI_PC_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                 "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0")
+_XXT_AI_BOT_ID = "7438777570621653018"
+_XXT_AI_APP_ID = "1192651262850"
+
+# 按课程加锁，防止过于频繁调用（对齐 Go courseLocks/lockByCourse）
+_xxt_ai_course_locks: Dict[str, Any] = {}
+_xxt_ai_locks_guard = __import__("threading").Lock()
+
+
+def _xxt_ai_lock_course(course_id: str):
+    with _xxt_ai_locks_guard:
+        lk = _xxt_ai_course_locks.get(course_id)
+        if lk is None:
+            lk = __import__("threading").Lock()
+            _xxt_ai_course_locks[course_id] = lk
+    lk.acquire()
+    return lk
+
+
+def _xxt_ai_inform_api(cache: XueXiTUserCache, class_id: str,
+                       course_id: str, cpi: str, retry: int = 3) -> str:
+    """拉取学习通AI必要参数页面 - 对齐 Go xxtAiInformApi"""
+    if retry < 0:
+        return ""
+    url = ("https://stat2-ans.chaoxing.com/bot/index?fromWorkbench=true&upload=true"
+           "&clazzid=" + str(class_id) +
+           "&showToolbox=false&bgColorNone=true&app_id=" + _XXT_AI_APP_ID +
+           "&courseid=" + str(course_id) + "&cpi=" + str(cpi) +
+           "&bot_id=" + _XXT_AI_BOT_ID + "&ut=s")
+    headers = {
+        "User-Agent": _XXT_AI_PC_UA,
+        "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,"
+                   "image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"),
+        "Cache-Control": "max-age=0",
+        "sec-ch-ua": '"Microsoft Edge";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+        "Host": "stat2-ans.chaoxing.com",
+        "Connection": "keep-alive",
+        "Cookie": "; ".join(f"{k}={v}" for k, v in list(cache.cookie_dict.items())),
+    }
+    try:
+        resp = _requests_lib.get(url, headers=headers,
+                                 verify=False, timeout=30)
+        return resp.text
+    except Exception:
+        time.sleep(0.1)
+        return _xxt_ai_inform_api(cache, class_id, course_id, cpi, retry - 1)
+
+
+def _xxt_ai_answer_api(cache: XueXiTUserCache, coze_enc: str, user_id: str,
+                       course_id: str, class_id: str, conversation_id: str,
+                       course_name: str, student_name: str, person_id: str,
+                       content: str, retry: int = 5) -> str:
+    """请求学习通AI获取答复（流式） - 对齐 Go xxtAiAnswerApi"""
+    if retry < 0:
+        return ""
+    url = ("https://stat2-ans.chaoxing.com/stat2/bot/talk-v1?cozeEnc=" + coze_enc +
+           "&botId=" + _XXT_AI_BOT_ID + "&userId=" + user_id +
+           "&appId=" + _XXT_AI_APP_ID + "&courseid=" + str(course_id) +
+           "&clazzid=" + str(class_id) + "&ut=s")
+    body = ('[{"role":"user","content":"' + content +
+            '","baseData":{"conversationId":"' + conversation_id +
+            '","userId":"' + user_id + '","appId":"' + _XXT_AI_APP_ID +
+            '","botId":"' + _XXT_AI_BOT_ID +
+            '","custom_variables":{"courseName":"' + course_name +
+            '","studentName":"' + student_name +
+            '","weakKnowledgePoint":"{}"},"shortcut_command":{},"sourceInfo":"",'
+            '"sdkFlag":"false","courseid":"' + str(course_id) +
+            '","clazzid":"' + str(class_id) +
+            '","personid":"' + person_id + '"}}]')
+    headers = {
+        "User-Agent": _XXT_AI_PC_UA,
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-ch-ua": '"Microsoft Edge";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "Origin": "https://stat2-ans.chaoxing.com",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Dest": "empty",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+        "Content-Type": "application/json",
+        "Accept": "*/*",
+        "Host": "stat2-ans.chaoxing.com",
+        "Connection": "keep-alive",
+        "Cookie": "; ".join(f"{k}={v}" for k, v in list(cache.cookie_dict.items())),
+    }
+    try:
+        resp = _requests_lib.post(url, data=body.encode("utf-8"),
+                                  headers=headers, verify=False,
+                                  stream=True, timeout=(30, None))
+        final_answer = ""
+        # 流式按行读取，每段 chunk 以 $_$ 分割，只拼接 type=coreAnswer 的内容
+        for raw_line in resp.iter_lines(decode_unicode=True):
+            if not raw_line:
+                continue
+            line = raw_line.strip()
+            if not line:
+                continue
+            for p in line.split("$_$"):
+                p = p.strip()
+                if (not p or p == "server-heartbeat"
+                        or p.startswith("server-current-chatid")):
+                    continue
+                try:
+                    chunk = _json.loads(p)
+                except Exception:
+                    continue
+                if isinstance(chunk, dict) and chunk.get("type") == "coreAnswer":
+                    final_answer += str(chunk.get("content", ""))
+        resp.close()
+        # 替换非法字符（对齐 Go）
+        final_answer = final_answer.replace("&quot;", '"')
+        final_answer = final_answer.replace("&nbsp;", " ")
+        final_answer = final_answer.replace("&amp;", "&")
+        final_answer = final_answer.replace("&lt;", "<")
+        final_answer = final_answer.replace("&gt;", ">")
+        # json格式检查：非 JSON 数组则追加纠正语重试（对齐 Go）
+        try:
+            parsed = _json.loads(final_answer)
+            if not isinstance(parsed, list):
+                raise ValueError
+        except Exception:
+            content += "\n\n你刚才生成的回复未严格遵循json格式，我无法正常解析，请你重新生成！！！"
+            return _xxt_ai_answer_api(cache, coze_enc, user_id, course_id,
+                                      class_id, conversation_id, course_name,
+                                      student_name, person_id, content, retry - 1)
+        return final_answer
+    except Exception:
+        time.sleep(0.1)
+        return _xxt_ai_answer_api(cache, coze_enc, user_id, course_id,
+                                  class_id, conversation_id, course_name,
+                                  student_name, person_id, content, retry - 1)
+
+
 def xxt_ai_api(cache: XueXiTUserCache,
                question: str, course_id: str = "",
                class_id: str = "", cpi: str = "",
+               options: Optional[List[str]] = None, q_type: str = "",
                retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """学习通内置 AI 答题 - 对应 Go XueXiTongAIAggregation (JSON POST)"""
-    url = "https://mooc1.chaoxing.com/ai/ask"
-    json_data = {
-        "question": question,
-        "courseId": course_id,
-        "classId": class_id,
-        "cpi": cpi,
-    }
-    client = _build_client(cache)
+    """学习通内置 AI 答题 - 对应 Go XueXiTongAIAggregation
+    参数顺序保持兼容: (cache, question, course_id, class_id, cpi)
+    返回: (答案文本, None)
+    """
+    return _xxt_ai_aggregation(cache, question, class_id, course_id, cpi,
+                               options=options, q_type=q_type)
+
+
+def _xxt_ai_aggregation(cache: XueXiTUserCache, question: str,
+                        class_id: str, course_id: str, cpi: str,
+                        options: Optional[List[str]] = None,
+                        q_type: str = "") -> Tuple[str, Optional[Any]]:
+    """学习通AI包装 - 对齐 Go XueXiTongAIAggregation"""
+    lk = _xxt_ai_lock_course(str(course_id))
     try:
-        body, resp = client.post_json(url, json_data, retry=retry)
-        return body, resp
+        # 构建结构化提问（对齐 Go AIProblemMessage 的 system+user 拼接）
+        try:
+            from logic.core.ai_client import _build_question_prompt
+            system_prompt, user_content = _build_question_prompt(
+                q_type, question, options)
+            content = system_prompt + user_content
+        except Exception:
+            content = question
+        # JSON 转义后去前后引号（对齐 Go json.Marshal + trimQuotes）
+        content = _json.dumps(content, ensure_ascii=False)[1:-1]
+
+        inform_html = _xxt_ai_inform_api(cache, class_id, course_id, cpi)
+        if not inform_html:
+            return "", Exception("内置AI参数页拉取失败")
+
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(inform_html, "html.parser")
+
+        def get_val(fid: str) -> str:
+            el = soup.find(id=fid)
+            return el.get("value", "") if el else ""
+
+        m = re.search(r'"studentName"\s*:\s*"([^"]+)"', inform_html)
+        student_name = m.group(1) if m else ""
+
+        answer = _xxt_ai_answer_api(
+            cache, get_val("cozeEnc"), get_val("userId"),
+            get_val("courseId"), get_val("clazzId"),
+            get_val("conversationId"), get_val("courseName"),
+            student_name, get_val("personId"), content)
+        return answer, None
+    except Exception as e:
+        return "", e
     finally:
-        client.close()
+        lk.release()

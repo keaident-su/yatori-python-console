@@ -3,7 +3,7 @@
 AI client module - 完全对齐 Go que-core/aiq/AiQuestion.go
 每种 AI 类型硬编码官方端点（url 参数仅 OTHER 类型使用），
 temperature=0.2，7 次重试，JSON 格式校验失败追加纠正消息重试，
-AI 并发信号量容量=2（对齐 Go AiSem）。
+AI 并发信号量基础容量=2（对齐 Go AiSem），多核优化后随 CPU 核心数动态扩展。
 """
 import json as _json
 import threading
@@ -13,9 +13,10 @@ from typing import List, Optional
 import httpx
 
 from utils.log import log_print, INFO, BoldRed
+from logic.core.parallel import AI_CONCURRENCY
 
-# AI 并发限制（对齐 Go: var AiSem = make(chan struct{}, 2)）
-_AI_SEM = threading.Semaphore(2)
+# AI 并发限制（对齐 Go AiSem 基础上按 CPU 核心数扩展，多核并行优化）
+_AI_SEM = threading.Semaphore(AI_CONCURRENCY)
 
 # ============ 各 AI 类型官方端点（对齐 Go AggregationAIApi 各实现） ============
 _AI_ENDPOINTS = {

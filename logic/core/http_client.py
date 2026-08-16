@@ -12,6 +12,8 @@ from urllib.parse import urlencode
 import httpx
 import uuid
 
+from logic.core.parallel import HTTP_MAX_CONNECTIONS, HTTP_MAX_KEEPALIVE
+
 # httpx >= 0.28.0 将 proxies 参数改为 proxy
 _HTTPX_USE_PROXY = tuple(int(x)
                          for x in httpx.__version__.split(".")[:2]) >= (0, 28)
@@ -57,6 +59,10 @@ class HttpClient:
                 timeout=self.timeout,
                 follow_redirects=True,
                 headers={"User-Agent": DEFAULT_USER_AGENT},
+                # 多核并行优化：按 CPU 核心数放大连接池，避免高并发下连接排队
+                limits=httpx.Limits(
+                    max_connections=HTTP_MAX_CONNECTIONS,
+                    max_keepalive_connections=HTTP_MAX_KEEPALIVE),
             )
             if self.proxy_ip:
                 proxy_url = f"http://{self.proxy_ip}"

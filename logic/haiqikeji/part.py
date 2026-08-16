@@ -16,6 +16,7 @@ from logic.haiqikeji.models import HqkjUserCache, HqkjCourse, HqkjNode
 from logic.haiqikeji import api as hqkj_api
 from logic.platform_common import generic_filter_account, generic_user_block
 from logic.core.models import safe_json_parse, json_get
+from logic.core.parallel import FAST_VIDEO_WORKERS
 from utils.log import (
     log_print, model_print, INFO, Green, Yellow, Red, Blue,
     Purple, Default, BoldRed, BoldGreen
@@ -130,8 +131,8 @@ def _node_list_study(setting: Setting, user: User, cache: HqkjUserCache, course:
         for node in nodes:
             _video_normal_mode(setting, user, cache, course, node)
     elif cc.video_model == 2:
-        # 快速模式：并发提交100%
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        # 快速模式：并发提交100%（多核优化：并发数随CPU核心数动态扩展）
+        with concurrent.futures.ThreadPoolExecutor(max_workers=FAST_VIDEO_WORKERS) as executor:
             futures = []
             for node in nodes:
                 f = executor.submit(_video_fast_mode, setting,

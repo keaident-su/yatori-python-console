@@ -53,6 +53,10 @@ def main():
     from config.config import read_logo
     print(read_logo())
 
+    # 2.5 打印 CPU 拓扑与调度策略（多核/异构自适应，便于跨环境确认生效）
+    from logic.core.cpu_topology import TOPOLOGY_DESC, SCHEDULE_STRATEGY
+    print(f"[CPU拓扑] {TOPOLOGY_DESC} | 调度策略: {SCHEDULE_STRATEGY}")
+
     # 3. 显示公告
     from utils.announcement import show_announcement
     show_announcement()

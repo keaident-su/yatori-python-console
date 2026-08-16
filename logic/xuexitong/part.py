@@ -6,6 +6,7 @@
 Go流程: ChapterFetchCardsAction → parseIframeData → ParsePointDto →
         PageMobileChapterCardAction → AttachmentsDetection → Execute*
 """
+import concurrent.futures as _futures
 import copy
 import json
 import random
@@ -26,6 +27,9 @@ from logic.xuexitong.models import (
 from logic.xuexitong import api as xxt_api
 from logic.platform_common import generic_filter_account, generic_user_block
 from logic.core.models import safe_json_parse, json_get
+from logic.core.parallel import NODE_START_INTERVAL, LOGIN_WORKERS
+from logic.core.cpu_pool import cpu_map
+from logic.core.parse_utils import parse_iframe_data as _parse_iframe_light
 from utils.log import (
     log_print, model_print, INFO, DEBUG,
     Green, Yellow, Red, Blue, Purple, Default, BoldRed, BoldGreen, DarkGray
@@ -95,16 +99,28 @@ def _login_action(cache: XueXiTUserCache) -> Optional[Exception]:
 
 
 def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
-    """登录模块"""
-    user_caches = []
-    for user in users:
-        if user.account_type != PLATFORM_TYPE:
-            continue
-        cache = XueXiTUserCache(account=user.account, password=user.password)
-        err = _login_action(cache)
+    """登录模块（多核优化：多账号并行登录，I/O密集可超配线程）"""
+    targets = [u for u in users if u.account_type == PLATFORM_TYPE]
+    user_caches: List[XueXiTUserCache] = []
+    if not targets:
+        return user_caches
+
+    def _login_one(u: User):
+        cache = XueXiTUserCache(account=u.account, password=u.password)
+        return cache, _login_action(cache)
+
+    workers = max(1, min(len(targets), LOGIN_WORKERS))
+    if workers == 1 or len(targets) == 1:
+        results = [_login_one(u) for u in targets]
+    else:
+        # 并行登录，map 保持原配置顺序，日志输出顺序不变
+        with _futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(_login_one, targets))
+
+    for cache, err in results:
         if err:
             log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                      "[", Green, user.account, Default, "] ", Red, str(err))
+                      "[", Green, cache.account, Default, "] ", Red, str(err))
             continue
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[" + cache.account + "] ", Green, "登录成功")
@@ -480,7 +496,8 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
             t = threading.Thread(target=_run_unlimited, daemon=True)
             node_threads.append(t)
             t.start()
-            time.sleep(1)
+            # 多核优化：启动间隔随 CPU 核心数缩短（保留最小节流防风控）
+            time.sleep(NODE_START_INTERVAL)
 
         for t in node_threads:
             t.join()
@@ -587,16 +604,22 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
                 break
 
     # === Step 2: parseIframeData + 创建 PointDto 列表 ===
-    point_dtos: List[PointDto] = []
+    # 多核优化：将所有卡片的 iframe 解析(CPU密集)批量送入进程池并行执行，
+    # 绕开 GIL 真正吃满多核；进程池不可用时自动降级为内联解析
+    _card_desc_pairs = []
     for card_idx, card in enumerate(cards):
         if not isinstance(card, dict):
             continue
         description = card.get("description", "")
         if not description:
             continue
+        _card_desc_pairs.append((card_idx, card, description))
 
-        # 解析 iframe
-        iframe_list = xxt_api.parse_iframe_data(description)
+    _parsed_iframes = cpu_map(
+        _parse_iframe_light, [d for _, _, d in _card_desc_pairs])
+
+    point_dtos: List[PointDto] = []
+    for (card_idx, card, _desc), iframe_list in zip(_card_desc_pairs, _parsed_iframes):
         if not iframe_list:
             continue
 

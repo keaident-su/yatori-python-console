@@ -790,50 +790,9 @@ def video_submit_study_time_pe_api(cache: XueXiTUserCache,
 
 # ============ iframe 解析 ============
 
-def parse_iframe_data(html_string: str) -> List[Dict]:
-    """解析卡片 description HTML 中的 iframe 标签
-    对应 Go 的 parseIframeData()
-    返回: [{"data": {...}, "other": {"module": "...", ...}, "has_data": True}, ...]
-    """
-    import json as _json
-    results = []
-    if not html_string:
-        return results
-
-    # 匹配 iframe 标签及其属性
-    iframe_pattern = re.compile(
-        r'<iframe\s+([^>]*)>', re.IGNORECASE | re.DOTALL)
-    # 匹配单个属性: key="value" 或 key='value'
-    attr_pattern = re.compile(
-        r'(\w+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')',
-        re.IGNORECASE)
-
-    for iframe_match in iframe_pattern.finditer(html_string):
-        attrs_str = iframe_match.group(1)
-        iframe_attrs = {"data": {}, "other": {}, "has_data": False}
-
-        for attr_match in attr_pattern.finditer(attrs_str):
-            key = attr_match.group(1).lower()
-            value = attr_match.group(2) if attr_match.group(
-                2) is not None else attr_match.group(3)
-            if value is None:
-                value = ""
-
-            if key == "data" and value.strip():
-                iframe_attrs["has_data"] = True
-                # 清理: 替换 &quot; 为 "，移除多余空白
-                cleaned = value.replace("&quot;", '"')
-                cleaned = re.sub(r'\s+', '', cleaned)
-                try:
-                    iframe_attrs["data"] = _json.loads(cleaned)
-                except Exception:
-                    pass
-            else:
-                iframe_attrs["other"][key] = value
-
-        results.append(iframe_attrs)
-
-    return results
+# 实现已移至轻量模块 logic/core/parse_utils.py（供进程池子进程调用，
+# 避免 Windows spawn 时子进程加载本模块的重依赖），此处保持兼容导出
+from logic.core.parse_utils import parse_iframe_data  # noqa: E402,F401
 
 
 # ============ 重登录 ============

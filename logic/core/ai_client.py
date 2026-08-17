@@ -266,8 +266,11 @@ class AIClient:
             _AI_SEM.release()
 
     def _request_chat_inner(self, messages: List[dict], expect_json: bool,
-                            retry: int) -> tuple:
+                            retry: int, last_err: str = "") -> tuple:
         if retry < 0:
+            if last_err:
+                return "", Exception(
+                    "AI重试次数已用完，最后错误: " + last_err[:300])
             return "", Exception("AI重试次数已用完")
 
         try:
@@ -313,9 +316,10 @@ class AIClient:
             if self.ai_type == "METAAI":
                 try:
                     data = resp.json()
-                except Exception:
+                except Exception as e:
                     time.sleep(0.1)
-                    return self._request_chat_inner(messages, expect_json, retry - 1)
+                    return self._request_chat_inner(
+                        messages, expect_json, retry - 1, f"响应非JSON: {e}")
                 content = ""
                 if isinstance(data, dict):
                     content = data.get("answer", "") or data.get(
@@ -326,26 +330,38 @@ class AIClient:
                     messages.append({"role": "system", "content": content})
                     messages.append(
                         {"role": "user", "content": _JSON_FIX_PROMPT})
-                    return self._request_chat_inner(messages, expect_json, retry - 1)
+                    return self._request_chat_inner(
+                        messages, expect_json, retry - 1,
+                        f"回复非JSON数组: {content[:150]}")
                 return content, None
 
             # 通用 OpenAI 兼容解析
             try:
                 data = resp.json()
-            except Exception:
+            except Exception as e:
                 time.sleep(0.1)
-                return self._request_chat_inner(messages, expect_json, retry - 1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1, f"响应非JSON: {e}")
 
             # 处理业务异常（对齐 Go: message contains "Request processing has failed"）
             result_msg = data.get("message", "")
             if isinstance(result_msg, str) and "Request processing has failed" in result_msg:
                 time.sleep(0.1)
-                return self._request_chat_inner(messages, expect_json, retry - 1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1, f"服务异常: {result_msg[:150]}")
 
             # 401/403 鉴权失败直接返回，不重试
             if resp.status_code in (401, 403):
                 return "", Exception("API Key invalid (status=%d): %s" % (
                     resp.status_code, body[:200]))
+
+            # 非2xx业务错误(如模型不存在/限流)：带上服务器消息重试
+            if resp.status_code >= 400:
+                err_detail = (body or "")[:200]
+                time.sleep(0.1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1,
+                    f"HTTP {resp.status_code}: {err_detail}")
 
             choices = data.get("choices")
             if not isinstance(choices, list) or not choices:
@@ -361,15 +377,19 @@ class AIClient:
             if expect_json and not _is_valid_json_array(content):
                 messages.append({"role": "system", "content": content})
                 messages.append({"role": "user", "content": _JSON_FIX_PROMPT})
-                return self._request_chat_inner(messages, expect_json, retry - 1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1,
+                    f"回复非JSON数组: {content[:150]}")
 
             return content, None
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as e:
             time.sleep(0.1)
-            return self._request_chat_inner(messages, expect_json, retry - 1)
-        except httpx.HTTPError:
+            return self._request_chat_inner(
+                messages, expect_json, retry - 1, f"请求超时: {e}")
+        except httpx.HTTPError as e:
             time.sleep(0.1)
-            return self._request_chat_inner(messages, expect_json, retry - 1)
+            return self._request_chat_inner(
+                messages, expect_json, retry - 1, f"网络错误: {e}")
 
 
 # ============ Shortcut Functions ============

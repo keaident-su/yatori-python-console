@@ -25,6 +25,7 @@ from logic.xuexitong.models import (
     PointHyperlinkDto, PointBBsDto, PointLiveDto, PointDto
 )
 from logic.xuexitong import api as xxt_api
+from logic.xuexitong import captcha as xxt_captcha
 from logic.platform_common import generic_filter_account, generic_user_block
 from logic.core.models import safe_json_parse, json_get
 from logic.core.parallel import NODE_START_INTERVAL, LOGIN_WORKERS
@@ -76,7 +77,9 @@ def filter_account(config_data: JSONDataForConfig) -> List[User]:
 # ============ 登录 ============
 
 def _login_action(cache: XueXiTUserCache) -> Optional[Exception]:
-    """登录动作 - 对应 Go 的 XueXiTLoginAction / XueXiTCookieLoginAction"""
+    """登录动作 - 对应 Go 的 XueXiTLoginAction / XueXiTCookieLoginAction
+    登录失败时(常见于频繁登录触发的临时风控)等待后重试一次
+    """
     if len(cache.password) >= 50:
         cache.is_cookie_login = True
         cache.cookie_str = cache.password
@@ -86,16 +89,31 @@ def _login_action(cache: XueXiTUserCache) -> Optional[Exception]:
             cache.uid = uid
         return None
 
-    body, _ = xxt_api.login_api(cache, retry=8)
-    if not body:
-        return Exception("登录响应为空")
-    data = safe_json_parse(body)
-    if data and data.get("status") is True:
-        cache.uid = cache.cookie_dict.get(
-            "UID", cache.cookie_dict.get("_uid", ""))
-        return None
-    msg = data.get("msg2", data.get("msg1", "未知错误")) if data else "解析失败"
-    return Exception(f"登录失败: {msg}")
+    def _do_login():
+        body, _ = xxt_api.login_api(cache, retry=8)
+        if not body:
+            return None, "登录响应为空"
+        data = safe_json_parse(body)
+        if data and data.get("status") is True:
+            cache.uid = cache.cookie_dict.get(
+                "UID", cache.cookie_dict.get("_uid", ""))
+            return None, ""
+        msg = data.get("msg2", data.get("msg1", "")) if data else ""
+        return body, (msg or f"未知错误(原始响应:{body[:200]})")
+
+    body, err_msg = _do_login()
+    if err_msg and ("未知错误" in err_msg or "频繁" in err_msg
+                    or "验证码" in err_msg):
+        # 临时风控/异常响应: 等待后重试一次(风控通常短时解除)
+        import time as _t
+        _t.sleep(20)
+        body, err_msg2 = _do_login()
+        if not err_msg2:
+            return None
+        return Exception(f"登录失败(重试后仍失败): {err_msg2}")
+    if err_msg:
+        return Exception(f"登录失败: {err_msg}")
+    return None
 
 
 def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
@@ -330,12 +348,15 @@ def _course_study(setting: Setting, user: User, cache: XueXiTUserCache,
                   "[", Green, display_account(cache.account), Default, "] ",
                   "[", course.course_name, "] ", Blue, "该课程还未开课，已自动跳过")
         return
-    if course.job_rate >= 100 or course.state == 1:
+    # 对齐Go courseStudy: 任务点完成度仅门控章节学习，作业和考试始终执行
+    # (否则课程任务点100%后考试将永远不被处理，导致多考试课程只完成一门)
+    if course.job_rate < 100 and course.state != 1:
+        _chapter_study(setting, user, cache, course)
+    else:
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[", Green, display_account(cache.account), Default, "] ",
-                  "[", course.course_name, "] ", Blue, "该课程已完成或已结束，已跳过")
-        return
-    _chapter_study(setting, user, cache, course)
+                  "[", course.course_name, "] ", Blue,
+                  "该课程任务点已完成或课程已结束，跳过章节学习(继续处理作业/考试)")
     # 写课程的作业和考试
     _write_course_work_and_exam(setting, user, cache, course)
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
@@ -461,11 +482,15 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
         # Model 3: 无限制并发模式 - 解除并发数量限制，每个节点独立 relogin 并发执行
         # (对齐 Go CxNode=-1 路径，不再使用 cxNode 大小的登录池)
         node_threads = []
+        progress_lock = threading.Lock()
+        progress_state = {"done": 0}
         for index, node_id in enumerate(nodes):
             node_str = str(node_id)
             if node_str in finished_map:
                 total, finished = finished_map[node_str]
                 if total >= 0 and total == finished:
+                    with progress_lock:
+                        progress_state["done"] += 1
                     continue
                 if total == 0 and finished == 0:
                     err = xxt_api.enter_chapter_forward_call_api(
@@ -477,6 +502,8 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                                       cache.account), Default, "] ",
                                   "[", course.course_name, "] ", BoldRed,
                                   f"零任务点遍历失败: {err}")
+                    with progress_lock:
+                        progress_state["done"] += 1
                     continue
 
             # 无限制模式：每个节点独立 relogin 后并发执行（对齐 Go CxNode=-1）
@@ -493,6 +520,16 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                                   cache.account), Default, "] ",
                               "[", course.course_name, "] ", BoldRed,
                               f"节点{nid}运行异常: {e}")
+                finally:
+                    # 实时显示任务点进度
+                    with progress_lock:
+                        progress_state["done"] += 1
+                        done = progress_state["done"]
+                    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                              "[", Green, display_account(
+                                  cache.account), Default, "] ",
+                              "[", course.course_name, "] ",
+                              Yellow, f"任务点进度: {done}/{len(nodes)}")
             t = threading.Thread(target=_run_unlimited, daemon=True)
             node_threads.append(t)
             t.start()
@@ -508,6 +545,11 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
             if node_str in finished_map:
                 total, finished = finished_map[node_str]
                 if total >= 0 and total == finished:
+                    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                              "[", Green, display_account(
+                                  cache.account), Default, "] ",
+                              "[", course.course_name, "] ",
+                              Yellow, f"任务点进度: {index+1}/{len(nodes)}")
                     continue
                 if total == 0 and finished == 0:
                     err = xxt_api.enter_chapter_forward_call_api(
@@ -523,6 +565,12 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
             # If node is NOT in finished_map, still run it (Go does this)
             _node_run(setting, user, cache, course, nodes,
                       index, node_id, knowledge_map)
+            # 实时显示任务点进度
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      "[", course.course_name, "] ",
+                      Yellow, f"任务点进度: {index+1}/{len(nodes)}")
 
 
 # ============ 节点运行 (核心重写 - 完全对齐Go) ============
@@ -1860,21 +1908,60 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
 
 def _execute_document(cache: XueXiTUserCache, course: XueXiTCourse,
                       ddto: PointDocumentDto):
-    """执行文档学习 - 对应 Go ExecuteDocument"""
+    """执行文档学习 - 对应 Go ExecuteDocument
+    按类型分派: insertbook→book上报, insertreadv2→readv2上报,
+    其余(document/insertdoc)→document上报
+    """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
 
-    if not ddto.object_id:
+    if not ddto.job_id:
         return
 
-    body, _ = xxt_api.document_submit_api(
-        cache, ddto.object_id, str(ddto.knowledge_id), cache.uid, retry=5)
+    try:
+        if ddto.type == "insertbook":
+            body, resp = xxt_api.document_book_report_api(
+                cache, ddto.job_id, str(ddto.knowledge_id),
+                ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+        elif ddto.type == "insertreadv2":
+            body, resp = xxt_api.document_readv2_report_api(
+                cache, ddto.job_id, str(ddto.knowledge_id),
+                ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+        else:
+            body, resp = xxt_api.document_read_report_api(
+                cache, ddto.job_id, str(ddto.knowledge_id),
+                ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+    except Exception as e:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  "【", ddto.title, "】 >>> ",
+                  BoldRed, f"文档提交异常: {e}")
+        return
+
+    # 对齐Go: 触发500时重新登录后重试一次
+    if resp is not None and resp.status_code == 500:
+        xxt_api.relogin(cache)
+        try:
+            if ddto.type == "insertbook":
+                body, resp = xxt_api.document_book_report_api(
+                    cache, ddto.job_id, str(ddto.knowledge_id),
+                    ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+            elif ddto.type == "insertreadv2":
+                body, resp = xxt_api.document_readv2_report_api(
+                    cache, ddto.job_id, str(ddto.knowledge_id),
+                    ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+            else:
+                body, resp = xxt_api.document_read_report_api(
+                    cache, ddto.job_id, str(ddto.knowledge_id),
+                    ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+        except Exception:
+            pass
+
     resp_data = safe_json_parse(body) if body else None
 
-    # Document submit may return {"status": true} or {"download": "...", "filename": "..."}
-    if resp_data and (resp_data.get("status") is True or
-                      "download" in resp_data or
-                      "filename" in resp_data):
+    # 对齐Go: 仅status为布尔true视为完成
+    if resp_data and resp_data.get("status") is True:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】",
@@ -3116,6 +3203,21 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         answer_id = _html_input_get(enter_body, "testUserRelationId")
         cpi_val = _html_input_get(enter_body, "cpi") or str(course.cpi)
 
+        # 滑块验证 - 对应 Go EnterWorkAction：存在captchaCaptchaId则过滑块
+        # (Go作业流程拉题不传validate，过滑块用于建立服务器端会话)
+        captcha_id_val = _html_input_get(enter_body, "captchaCaptchaId")
+        if captcha_id_val:
+            referer_url = str(enter_resp.url) if enter_resp is not None else ""
+            try:
+                xxt_captcha.pass_cx_slider_captcha(
+                    cache, captcha_id_val, referer_url, attempts=5,
+                    log_tag=f"[{platform}][{acct}]【{course.course_name}】【{work_name}】 ")
+            except Exception as e:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Red, f"作业滑块验证码处理失败: {e}")
+                continue
+
         # extractParams from HTML
         cpi_match = re.search(r'cpi=(\d+)', enter_body)
         aid_match = re.search(r'workAnswerId=(\d+)', enter_body)
@@ -3175,8 +3277,18 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 continue
 
             q_entity = _html_work_question_turn_entity(q_body)
-            q_text = q_entity.get("questionContent", q_body[:500])
+            q_text_raw = q_entity.get("questionContent", "")
             q_type_code = q_entity.get("questionTypeCode", "0")
+            qid = q_entity.get("questionId", "")
+
+            # 无可作答题目(批阅视图/上传类作业/无效授权等)：
+            # 快速跳过，不调用AI、不提交空enc
+            if not qid and not q_text_raw:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Yellow, "该作业无可作答题目(批阅/上传/无效授权)，自动跳过")
+                break
+            q_text = q_text_raw or q_body[:500]
 
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】【", work_name, "】",
@@ -3291,11 +3403,11 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 cache, submit_data, is_submit=is_submit, retry=3)
             submit_status = submit_resp.status_code if submit_resp else 0
             submit_str = submit_body or ""
-            # 响应验证
+            # 响应验证 - 兼容布尔true与字符串"success"两种成功标识
             submit_ok = False
             try:
                 sj = safe_json_parse(submit_str)
-                if sj and sj.get("status") is True:
+                if sj and sj.get("status") in (True, "success"):
                     submit_ok = True
             except Exception:
                 pass
@@ -3310,30 +3422,9 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                               "【", course.course_name, "】【", work_name, "】",
                               Green, "该作业已提交(enc已失效)，自动跳过")
                     break
-                # 诊断日志：显示编码后的请求数据和完整响应
-                from urllib.parse import urlencode as _dbg_encode
-                encoded_dbg = _dbg_encode(submit_data) if isinstance(
-                    submit_data, list) else str(submit_data)
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", work_name, "】",
                           Red, f"第{qi+1}题提交失败(status={submit_status})，服务器返回:{submit_str[:300]}")
-                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】【", work_name, "】",
-                          Yellow, f"[诊断] questionId={qid} type={q_type_code} is_submit={is_submit} "
-                          f"data_len={len(encoded_dbg)} data_snippet={encoded_dbg[:400]}")
-                # 额外的enc诊断
-                q_enc = q_entity.get("enc", "")
-                q_encwork = q_entity.get("encWork", "")
-                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】【", work_name, "】",
-                          Yellow, f"[enc诊断] q_entity.enc='{q_enc}' enc_val='{enc_val}' "
-                          f"q_entity.encWork='{q_encwork}' used_enc='{q_entity.get('enc', enc_val) or enc_val}'")
-                # enc 失效(作业可能已被提交)：终止本作业后续题目
-                if "enc error" in submit_str:
-                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                              "【", course.course_name, "】【", work_name, "】",
-                              Yellow, "enc已失效(该作业可能已被提交)，跳过剩余题目")
-                    break
 
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】【", work_name, "】",
@@ -3366,8 +3457,10 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         if not isinstance(exam, dict):
             continue
         status = exam.get("status", "")
-        if status not in ("待做", "待重考", "待重做"):
+        # 待做/待重考/待重做直接作答; 已完成需检查分数(<60且可重考则自动重做)
+        if status not in ("待做", "待重考", "待重做", "已完成"):
             continue
+        is_finished_exam = (status == "已完成")
 
         task_ref_id = exam.get("taskrefId", "")
         exam_name = exam.get("name", "")
@@ -3416,47 +3509,165 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             except Exception:
                 pass
 
-        # 检查重考
-        is_re_exam = "bnt_retake\">重考</a>" in enter_body
-        if is_re_exam:
-            re_exam_match = re.search(
-                r'class=["\']bnt_retake["\'][^>]*data=["\']([^"\']+)["\']', enter_body)
-            if re_exam_match:
-                re_exam_url = re_exam_match.group(1)
-                if not re_exam_url.startswith("http"):
-                    re_exam_url = "https://mooc1-api.chaoxing.com" + re_exam_url
-                try:
-                    _client = xxt_api._build_client(
-                        cache, custom_ua=xxt_api.XXTEXAMUA)
-                    re_body, _ = _client.get(re_exam_url, retry=3)
-                    _client.close()
-                    if re_body:
-                        enter_body = re_body
-                except Exception:
-                    pass
+        # 检查重考 - 对齐 Go EnterExamAction 的 bnt_retake 处理
+        # 支持重考且还有重考机会(已重考<允许重考)且分数<60时才自动重做
+        # 已完成考试: 从入口页解析成绩(本次成绩/最终成绩)，<60分且可重考→自动重做
+        is_re_exam = False
+        re_exam_url = ""
+        retake_match = re.search(
+            r'本次考试允许重考[\s\S]*?<span[^>]*>(\d+)</span>次[\s\S]*?已重考[\s\S]*?<span[^>]*>(\d+)</span>次',
+            enter_body)
+        retake_allow = int(retake_match.group(1)) if retake_match else 0
+        retake_used = int(retake_match.group(2)) if retake_match else 0
+        # 分数解析(入口页"本次成绩/最终成绩"结构: <b>数字</b>分)
+        score_val = None
+        score_match = re.search(
+            r'(?:本次成绩|最终成绩|考试成绩|得分)[\s\S]{0,200}?<b[^>]*>\s*(\d+(?:\.\d+)?)\s*</b>[\s\S]{0,10}?分',
+            enter_body)
+        if score_match:
+            try:
+                score_val = float(score_match.group(1))
+            except (ValueError, TypeError):
+                score_val = None
 
-        # 提取题目数量
-        qt_match = re.search(r'共包含\s*(\d+)\s*道题目', enter_body)
-        question_total = int(qt_match.group(1)) if qt_match else 0
-
-        # 提取hidden fields
-        exam_relation_id = _html_input_get(enter_body, "testPaperId")
-        answer_id = _html_input_get(enter_body, "testUserRelationId")
+        if is_finished_exam:
+            # 已完成考试: 仅分数<60且可重考时自动重做
+            if score_val is None:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, "考试已完成(入口页未展示成绩，无法判断是否达标)，跳过")
+                continue
+            if score_val >= 60:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, f"考试已通过(成绩{score_val}分≥60)，无需重考")
+                continue
+            # 分数<60
+            if retake_match and retake_used >= retake_allow:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow,
+                          f"考试未达标({score_val}分<60)但重考机会已用完(允许{retake_allow}次已重考{retake_used}次)，跳过")
+                continue
+            is_re_exam = True
+            # 重考按钮URL: 新版用href=(且在class前面)，旧版用data=，均兼容
+            _retake_tag = re.search(
+                r'<a\b[^>]*class=["\']bnt_retake["\'][^>]*>', enter_body)
+            if _retake_tag:
+                _attr = re.search(
+                    r'(?:href|data)=["\']([^"\']+)["\']', _retake_tag.group(0))
+                if _attr:
+                    re_exam_url = _attr.group(1)
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow,
+                      f"考试未达标({score_val}分<60)且允许重考{retake_allow}次已重考{retake_used}次，自动重考...")
+        elif retake_match:
+            # 待做/待重考/待重做考试
+            if score_val is not None and score_val >= 60:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green,
+                          f"考试分数{score_val}分(≥60)且允许重考{retake_allow}次已重考{retake_used}次，无需重考")
+            elif retake_used < retake_allow:
+                is_re_exam = True
+                # 重考按钮URL: 新版用href=(且在class前面)，旧版用data=，均兼容
+                _retake_tag = re.search(
+                    r'<a\b[^>]*class=["\']bnt_retake["\'][^>]*>', enter_body)
+                if _retake_tag:
+                    _attr = re.search(
+                        r'(?:href|data)=["\']([^"\']+)["\']', _retake_tag.group(0))
+                    if _attr:
+                        re_exam_url = _attr.group(1)
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow,
+                          f"考试未达标(分数{score_val if score_val is not None else '未知'})且允许重考{retake_allow}次已重考{retake_used}次，自动重考...")
+            else:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow,
+                          f"考试重考机会已用完(允许{retake_allow}次已重考{retake_used}次)，跳过重考")
+        # 提取hidden fields (来自完成页)
+        # 注意: 已完成考试的入口页字段名为examRelationId/answerId，
+        # 待做/重做页为testPaperId/testUserRelationId，均兼容
+        exam_relation_id = (_html_input_get(enter_body, "testPaperId")
+                            or _html_input_get(enter_body, "examRelationId"))
+        answer_id = (_html_input_get(enter_body, "testUserRelationId")
+                     or _html_input_get(enter_body, "answerId"))
         cpi_val = _html_input_get(enter_body, "cpi") or str(course.cpi)
 
-        # 如果是重考，先调用重考接口
+        # 如果是重考: 对齐官方页面JS顺序 restartOp → 重新进入考试
+        # restartOp成功服务器会将考试重置为待做状态，重新进入拿到重做后的入口页
         if is_re_exam and exam_relation_id and answer_id:
             try:
                 _client = xxt_api._build_client(
                     cache, custom_ua=xxt_api.XXTEXAMUA)
-                _client.get(
+                re_resp_body, _ = _client.get(
                     f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/restartOp"
                     f"?examId={exam_relation_id}&examAnswerId={answer_id}"
                     f"&courseId={course.course_id}&classId={course.key}&source=0&code=",
                     retry=3)
                 _client.close()
-            except Exception:
-                pass
+                re_data = safe_json_parse(re_resp_body or "")
+                if re_data and re_data.get("status") is True:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Green, "重考请求成功，考试已重置")
+                    # 重新进入考试，获取重做后的入口页(含题目数/滑块参数)
+                    _new_body, _new_resp = xxt_api.enter_exam_api(
+                        cache, task_ref_id, enc_task, course.course_id,
+                        course.key, str(course.cpi), retry=3)
+                    if _new_body:
+                        enter_body = _new_body
+                        enter_resp = _new_resp
+                        # 重新提取重做后的hidden fields
+                        exam_relation_id = (_html_input_get(
+                            enter_body, "testPaperId")
+                            or _html_input_get(enter_body, "examRelationId")
+                            or exam_relation_id)
+                        answer_id = (_html_input_get(
+                            enter_body, "testUserRelationId")
+                            or _html_input_get(enter_body, "answerId")
+                            or answer_id)
+                        cpi_val = _html_input_get(
+                            enter_body, "cpi") or cpi_val
+                else:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Red, f"重考请求失败，服务器返回:{str(re_resp_body or '')[:200]}")
+            except Exception as e:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"重考请求异常: {e}")
+
+        # 提取题目数量
+        qt_match = re.search(r'共包含\s*(\d+)\s*道题目', enter_body)
+        question_total = int(qt_match.group(1)) if qt_match else 0
+
+        # 检测仅限手机APP作答/需客户端签名的考试(服务器侧硬限制,
+        # 纯HTTP程序无法过原生签名，Go原版同样无法处理)
+        if "只能在手机学习通APP参加" in enter_body:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow, "该考试仅限手机学习通APP作答，已跳过")
+            continue
+
+        # 滑块验证 - 对应 Go EnterExamAction：存在captchaCaptchaId则过滑块，
+        # 拿到的validate传入拉试卷接口的captchavalidate参数（否则拉题被拒→提交报无权限）
+        captcha_id_val = _html_input_get(enter_body, "captchaCaptchaId")
+        captcha_validate = ""
+        if captcha_id_val:
+            referer_url = str(enter_resp.url) if enter_resp is not None else ""
+            try:
+                captcha_validate = xxt_captcha.pass_cx_slider_captcha(
+                    cache, captcha_id_val, referer_url, attempts=5,
+                    log_tag=f"[{platform}][{acct}]【{course.course_name}】【{exam_name}】 ")
+            except Exception as e:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"考试滑块验证码处理失败: {e}")
+                continue
 
         # 拉取考试试卷 - 对应 Go PullExamPaperHtmlApi / PullReDoExamPaperHtmlApi
         api_imei = xxt_api._IMEI
@@ -3464,7 +3675,8 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             cache, course.course_id, course.key,
             exam_relation_id, cpi_val,
             exam_answer_id=answer_id,
-            imei=api_imei, redo=is_redo_exam, retry=3)
+            imei=api_imei, captcha_validate=captcha_validate,
+            redo=is_redo_exam, retry=3)
         if not paper_body:
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】【", exam_name, "】",
@@ -3483,7 +3695,8 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 cache, course.course_id, course.key,
                 exam_relation_id, cpi_val,
                 exam_answer_id=answer_id,
-                imei=api_imei, redo=is_redo_exam, retry=3)
+                imei=api_imei, captcha_validate=captcha_validate,
+                redo=is_redo_exam, retry=3)
             if not paper_body or "访问异常" in paper_body:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
@@ -3500,6 +3713,87 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         test_paper_id = paper_entity.get("testPaperId", exam_relation_id)
         test_user_relation_id = paper_entity.get(
             "testUserRelationId", answer_id)
+
+        # 检测需客户端签名的考试(返回开始页isStartPage=1且无enc字段):
+        # 需APP客户端签名(CLIENT_FORM_SIGN)才能进入答题页。
+        # 签名算法已还原(exam_sign.py, RSA PKCS1v15+APK内嵌私钥)，
+        # 设备特征码需在手机学习通APP内打开
+        # https://doc.micono.eu.org/tools/device 获取后填入配置deviceFlag
+        if "isStartPage" in paper_body and not enc_val:
+            sign_ok = False
+            try:
+                device_flag = (getattr(cc, "device_flag", "") or "").strip()
+                if not device_flag:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Yellow, "该考试需手机APP客户端签名且未配置设备特征码(deviceFlag)，已跳过。"
+                                      "获取方法: 手机学习通APP内打开 https://doc.micono.eu.org/tools/device 复制特征码")
+                else:
+                    import html as _html_mod
+                    from urllib.parse import quote as _quote
+                    from logic.xuexitong import exam_sign
+
+                    # 解析开始页的 signConfig 与 faceDetection
+                    sign_config = {}
+                    sc_match = re.search(
+                        r'id=["\']signConfig["\'][^>]*value=["\']([^"\']*)["\']',
+                        paper_body)
+                    if sc_match:
+                        try:
+                            sign_config = safe_json_parse(
+                                _html_mod.unescape(sc_match.group(1))) or {}
+                        except Exception:
+                            sign_config = {}
+                    fd_match = re.search(
+                        r'id=["\']faceDetection["\'][^>]*value=["\']([^"\']*)["\']',
+                        paper_body)
+                    fd_val = fd_match.group(1) if fd_match else "0"
+
+                    sig = exam_sign.compute_start_exam_sign(
+                        test_user_relation_id, course.key,
+                        device_flag=device_flag,
+                        sign_config=sign_config or None)
+
+                    # 模拟开始页JS跳转: phone/start + 签名参数
+                    jump_url = (
+                        f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+                        f"?courseId={course.course_id}&classId={course.key}"
+                        f"&examId={test_paper_id}&source=0"
+                        f"&examAnswerId={test_user_relation_id}"
+                        f"&faceDetection=1&keyboardDisplayRequiresUserAction=1"
+                        f"&code=&imei={api_imei}&faceDetection={fd_val}&facekey=&sdlkey=&faceDetectionResult="
+                        f"&captchavalidate={captcha_validate}&jt=0&_v={time.time()}"
+                        f"&cxcid={_quote(sig['cxcid'])}&cxtime={sig['cxtime']}&signt={sig['signt']}"
+                        f"&_signcode={sig['_signcode']}&_signc={sig['_signc']}&_signe={sig['_signe']}"
+                        f"&signk={_quote(sig['signk'])}")
+                    _client = xxt_api._build_client(
+                        cache, custom_ua=xxt_api.XXTEXAMUA)
+                    try:
+                        sign_body, _ = _client.get(jump_url, retry=2)
+                    finally:
+                        _client.close()
+                    if sign_body and 'id="enc"' in sign_body:
+                        paper_body = sign_body
+                        paper_entity = _html_exam_question_turn_entity(
+                            paper_body)
+                        enc_val = paper_entity.get("enc", "")
+                        sign_ok = bool(enc_val)
+                        if sign_ok:
+                            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                      "【", course.course_name, "】【", exam_name, "】",
+                                      Green, "客户端签名验证通过，已进入考试答题页")
+            except Exception as e:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"客户端签名流程异常: {e}")
+            if not sign_ok:
+                # 恢复UA，避免影响后续其他考试的请求
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow, "该考试需手机APP客户端签名，签名未通过，已跳过")
+                continue
+
         if not question_total:
             question_total = 1
 
@@ -3508,13 +3802,18 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                   Yellow, f"正在考试中(共{question_total}题)...")
 
         # 逐题回答
+        exam_skipped = False
         for qi in range(question_total):
             # 拉取题目 - 使用 reVersionTestStartNew URL
+            # 对齐 Go: relationAnswerLastUpdateTime 传试卷中的 encLastUpdateTime
+            # (而非当前时间戳)，为空时回退到当前时间戳
+            last_update_param = enc_last_update_time or str(
+                int(time.time() * 1000))
             q_body, _ = xxt_api.pull_exam_question_api(
                 cache, course.course_id, course.key,
                 test_paper_id, test_user_relation_id,
                 cpi_val, enc_remain_time,
-                enc_val, str(int(time.time() * 1000)),
+                enc_val, last_update_param,
                 index=qi, retry=3)
             if not q_body:
                 continue
@@ -3524,6 +3823,14 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             q_type_code = q_entity.get("questionTypeCode", "0")
             q_type_str = q_entity.get("questionTypeStr", "")
             qid = q_entity.get("questionId", "")
+            # 拉题返回异常页(无questionId,如"无权限访问"信息提示页):
+            # 首题就异常说明该考试入口验证未通过(缺滑块validate)，直接跳过
+            if not qid:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"第{qi+1}题拉取异常(无questionId)，跳过该考试")
+                exam_skipped = True
+                break
 
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】【", exam_name, "】",
@@ -3636,17 +3943,46 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 submit_str = submit_body or ""
 
             if "考试时间已用完" in submit_str:
+                # 作答时间耗尽: 对齐官方"作答时间耗尽，试卷已提交"行为
+                # 若开启自动交卷，则正式交卷(tempSave=false)完成考试，
+                # 否则视为跳过(下次运行将继续尝试)
+                if cc.exam_auto_submit in (1, 2):
+                    try:
+                        fin_body, _ = xxt_api.submit_exam_answer_api(
+                            cache, submit_data, is_submit=True, retry=3)
+                        # 交卷后恢复UA - 对齐 Go SubmitExamAnswerAction
+                        xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
+                        fin_str = fin_body or ""
+                        fin_ok = False
+                        fj = safe_json_parse(fin_str)
+                        if fj and fj.get("status") in (True, "success"):
+                            fin_ok = True
+                        if fin_ok:
+                            log_print(INFO, f"[{platform}]",
+                                      "[", Green, acct, Default, "] ",
+                                      "【", course.course_name, "】【", exam_name, "】",
+                                      Green, f"作答时间耗尽，已自动交卷，服务器返回:{fin_str[:200]}")
+                            break
+                        log_print(INFO, f"[{platform}]",
+                                  "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", exam_name, "】",
+                                  Red, f"作答时间耗尽，交卷失败，服务器返回:{fin_str[:300]}")
+                        exam_skipped = True
+                        break
+                    except Exception:
+                        pass
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Red, "考试时间已用完，已自动跳过")
+                exam_skipped = True
                 break
 
-            # 响应验证
+            # 响应验证 - 兼容布尔true与字符串"success"两种成功标识
             exam_submit_ok = False
             try:
                 ej = safe_json_parse(submit_str)
-                if ej and ej.get("status") is True:
+                if ej and ej.get("status") in (True, "success"):
                     exam_submit_ok = True
             except Exception:
                 pass
@@ -3662,17 +3998,20 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                               "[", Green, acct, Default, "] ",
                               "【", course.course_name, "】【", exam_name, "】",
                               Green, "该考试已提交(enc已失效)，自动跳过")
+                    exam_skipped = True
                     break
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Red, f"第{qi+1}题提交失败(status={submit_status})，服务器返回:{submit_str[:300]}")
-                log_print(INFO, f"[{platform}]",
-                          "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】【", exam_name, "】",
-                          Yellow, f"[诊断] questionId={qid} type={q_type_code} is_submit={is_submit}")
 
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】【", exam_name, "】",
-                  Green, "考试已完成")
+        if exam_skipped:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow, "考试未完成(已跳过，下次运行将继续尝试)")
+        else:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Green, "考试已完成")

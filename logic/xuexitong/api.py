@@ -13,7 +13,7 @@ import time
 import math
 import random
 from typing import Tuple, Optional, Any, Dict, List
-from urllib.parse import urlencode, quote
+from urllib.parse import urlencode, quote, quote_plus
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad as aes_pad
@@ -531,15 +531,97 @@ def audio_submit_api(cache: XueXiTUserCache,
 
 # ============ 文档/外链/讨论 ============
 
-def document_submit_api(cache: XueXiTUserCache, object_id: str,
-                        knowledge_id: str, uid: str,
-                        retry: int = 8) -> Tuple[str, Optional[Any]]:
-    """文档任务点提交"""
-    url = (f"https://mooc1.chaoxing.com/ananas/status/{object_id}"
-           f"?k={knowledge_id}&_dc={uid}")
+def document_read_report_api(cache: XueXiTUserCache, job_id: str,
+                             knowledge_id: str, course_id: str,
+                             class_id: str, jtoken: str,
+                             retry: int = 8) -> Tuple[str, Optional[Any]]:
+    """文档任务点完成上报 - 对应 Go DocumentDtoReadingReport
+    URL: https://mooc1.chaoxing.com/ananas/job/document
+         ?jobid=...&knowledgeid=...&courseid=...&clazzid=...&jtoken=...&_dc=...
+    注意: 旧实现调用 ananas/status/{objectid} 只返回status:true但不会被服务器
+    计为任务点完成，导致课程进度卡住。此处完全对齐 Go。
+    """
+    dc = str(int(time.time() * 1000))
+    url = (f"https://mooc1.chaoxing.com/ananas/job/document"
+           f"?jobid={job_id}"
+           f"&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}"
+           f"&clazzid={class_id}"
+           f"&jtoken={jtoken}"
+           f"&_dc={dc}")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        hdrs = {
+            "Accept": "*/*",
+            "Host": "mooc1.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = _do_get(client, url, headers=hdrs, retry=retry)
+        if resp is not None:
+            _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def document_book_report_api(cache: XueXiTUserCache, job_id: str,
+                             knowledge_id: str, course_id: str,
+                             class_id: str, jtoken: str,
+                             retry: int = 8) -> Tuple[str, Optional[Any]]:
+    """图书类型文档任务点上报 - 对应 Go DocumentDtoReadingBookReport
+    URL: https://mooc1.chaoxing.com/ananas/job?jobid=...&...
+    """
+    dc = str(int(time.time() * 1000))
+    url = (f"https://mooc1.chaoxing.com/ananas/job"
+           f"?jobid={job_id}"
+           f"&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}"
+           f"&clazzid={class_id}"
+           f"&jtoken={jtoken}"
+           f"&_dc={dc}")
+    client = _build_client(cache)
+    try:
+        hdrs = {
+            "Accept": "*/*",
+            "Host": "mooc1.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = _do_get(client, url, headers=hdrs, retry=retry)
+        if resp is not None:
+            _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def document_readv2_report_api(cache: XueXiTUserCache, job_id: str,
+                               knowledge_id: str, course_id: str,
+                               class_id: str, jtoken: str,
+                               retry: int = 8) -> Tuple[str, Optional[Any]]:
+    """readv2类型文档任务点上报 - 对应 Go ReadV2PointPeReport
+    URL: https://mooc1-api.chaoxing.com/ananas/job/readv2?jobid=...&...
+    """
+    dc = str(int(time.time() * 1000))
+    url = (f"https://mooc1-api.chaoxing.com/ananas/job/readv2"
+           f"?jobid={job_id}"
+           f"&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}"
+           f"&clazzid={class_id}"
+           f"&jtoken={jtoken}"
+           f"&checkMicroTopic=true&microTopicId=0&_dc={dc}")
+    client = _build_client(cache)
+    try:
+        hdrs = {
+            "Accept": "*/*",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = _do_get(client, url, headers=hdrs, retry=retry)
+        if resp is not None:
+            _extract_cookies(client, cache)
+        return body, resp
     finally:
         client.close()
 
@@ -1590,6 +1672,181 @@ def enter_exam_api(cache: XueXiTUserCache,
         return body, resp
     finally:
         client.close()
+
+
+# ============ cx_captcha 滑块验证码 (对应 Go api/xuexitong/XueXiTongVerCodeApi.go 268-470行) ============
+
+# Go PassSliderApi 专用固定UA (Android MI 5X，与 GetUA("mobile") 不同，不可替换)
+_CX_CAPTCHA_SLIDER_UA = (
+    "Mozilla/5.0 (Linux; Android 8.1.0; MI 5X Build/OPM1.171019.019; wv) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/71.0.3578.99 "
+    "Mobile Safari/537.36 (schild:ce5175d20950c8ee955fb03246f762da) (device:MI 5X) "
+    "Language/zh_CN com.chaoxing.mobile/ChaoXingStudy_3_6.7.2_android_phone_10936_311 "
+    "(@Kalimdor)_76c82452584d47e39ab79aa54ea86554"
+)
+
+_CX_CAPTCHA_HDRS = {
+    "Accept-Language": "zh-CN,en-US;q=0.9",
+    "X-Requested-With": "com.chaoxing.mobile",
+    "Accept": "*/*",
+    "Connection": "keep-alive",
+    # 注意: 不可手动设置Host头 — 图片实际位于captcha-b.chaoxing.com等CDN主机，
+    # httpx会按URL自动设置正确的Host，手动覆盖会导致CDN 404
+}
+
+# tls_client: 模拟Chrome TLS指纹。超星check/verification/result接口已启用
+# TLS指纹风控 — httpx/requests的OpenSSL指纹会被拒(verification error[r])，
+# 必须用浏览器指纹才能通过。未安装时回退httpx(会被风控拒绝)。
+try:
+    import tls_client as _tls_client_mod
+    _HAS_TLS_CLIENT = True
+except ImportError:
+    _tls_client_mod = None
+    _HAS_TLS_CLIENT = False
+
+
+def _tls_spoof_get(url: str, headers: Dict, proxy_ip: str = "",
+                   timeout: float = 30.0, retry: int = 3) -> str:
+    """TLS指纹伪装的GET请求(仅用于超星滑块check接口)
+    优先tls_client(chrome指纹)，不可用时回退httpx裸请求
+    """
+    last_err = "未知错误"
+    for _ in range(max(0, retry) + 1):
+        try:
+            if _HAS_TLS_CLIENT:
+                # 注意: 部分tls_client版本不支持timeout_seconds参数，
+                # 探针验证的成功写法仅传client_identifier与
+                # random_tls_extension_order，此处用try/except兼容
+                try:
+                    sess = _tls_client_mod.Session(
+                        client_identifier="chrome_120",
+                        random_tls_extension_order=False,
+                        timeout_seconds=int(timeout))
+                except TypeError:
+                    sess = _tls_client_mod.Session(
+                        client_identifier="chrome_120",
+                        random_tls_extension_order=False)
+                if proxy_ip:
+                    sess.proxies = {"http": f"http://{proxy_ip}",
+                                    "https": f"http://{proxy_ip}"}
+                resp = sess.get(url, headers=headers)
+                return resp.text
+            # 回退: httpx裸请求(无cookie)，会被TLS风控拒绝，仅作兼容保底
+            client = HttpClient(proxy_ip=proxy_ip or None,
+                                verify_ssl=False, timeout=timeout)
+            try:
+                body, _ = client.get(url, headers=headers, retry=0)
+                return body
+            finally:
+                client.close()
+        except Exception as e:
+            last_err = str(e)
+            time.sleep(0.3)
+    raise RuntimeError(f"滑块校验请求失败: {last_err}")
+
+
+def cx_captcha_conf_api(cache: XueXiTUserCache, captcha_id: str,
+                        retry: int = 3) -> str:
+    """获取滑块验证码配置(服务器时间t) - 对应 Go XueXiTSliderVerificationCodeApi
+    返回形如: cx_captcha_function({"t":1764584640340,"captchaId":"..."})
+    """
+    url = ("https://captcha.chaoxing.com/captcha/get/conf"
+           f"?callback=cx_captcha_function&captchaId={captcha_id}"
+           f"&_={int(time.time() * 1000)}")
+    client = _build_client(cache)
+    try:
+        hdrs = dict(_CX_CAPTCHA_HDRS)
+        hdrs["User-Agent"] = client._ua
+        body, _ = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body
+    finally:
+        client.close()
+
+
+def cx_captcha_img_api(cache: XueXiTUserCache, captcha_id: str,
+                       server_time: str, referer: str,
+                       iv: str = "", retry: int = 3) -> str:
+    """获取滑块验证码图片信息(token/背景图/裁剪图) - 对应 Go XueXiTSliderVerificationImgApi
+    captchaKey = md5(serverTime + uuid)
+    token = md5(serverTime + captchaId + "slide" + captchaKey) + ":" + (serverTime + 300000)
+    iv: 动态值 md5(captchaId+"slide"+当前毫秒+uuid)，服务器记录后要求check时一致
+    """
+    captcha_key = hashlib.md5(
+        (server_time + str(_uuid_mod.uuid4())).encode()).hexdigest()
+    md5hex = hashlib.md5(
+        (server_time + captcha_id + "slide" + captcha_key).encode()).hexdigest()
+    token = f"{md5hex}:{int(server_time) + 300000}"
+    url = ("https://captcha.chaoxing.com/captcha/get/verification/image"
+           f"?callback=cx_captcha_function&captchaId={captcha_id}"
+           f"&type=slide&version=1.1.20&captchaKey={captcha_key}"
+           f"&token={token}&referer={quote_plus(referer, safe='')}")
+    if iv:
+        url += f"&iv={iv}&_={int(time.time() * 1000)}"
+    client = _build_client(cache)
+    try:
+        hdrs = dict(_CX_CAPTCHA_HDRS)
+        hdrs["User-Agent"] = client._ua
+        # 浏览器请求image接口时自带来源页Referer头
+        hdrs["Referer"] = referer
+        body, _ = client.get(url, headers=hdrs, retry=retry)
+        _extract_cookies(client, cache)
+        return body
+    finally:
+        client.close()
+
+
+def pull_cx_slider_img_api(cache: XueXiTUserCache, img_url: str,
+                           retry: int = 5) -> bytes:
+    """下载验证码图片字节(禁止重定向) - 对应 Go PullSliderImgApi"""
+    client = _build_client(cache)
+    try:
+        hdrs = dict(_CX_CAPTCHA_HDRS)
+        hdrs["User-Agent"] = client._ua
+        last_err = None
+        for _ in range(max(0, retry) + 1):
+            try:
+                resp = client._get_client().get(
+                    img_url, headers=hdrs, follow_redirects=False)
+                if resp.status_code == 200:
+                    return resp.content
+                last_err = f"HTTP 状态码异常: {resp.status_code}"
+            except Exception as e:
+                last_err = str(e)
+            time.sleep(0.15)
+        raise RuntimeError(f"验证码图片下载失败: {last_err}")
+    finally:
+        client.close()
+
+
+def pass_cx_slider_api(cache: XueXiTUserCache, captcha_id: str,
+                       token: str, x_point: int,
+                       iv: str = "", referer: str = "",
+                       retry: int = 3) -> str:
+    """提交滑块偏移量校验 - 对应 Go PassSliderApi (runEnv=10 web)
+    注意: t/_ 参数与Go保持一致；iv必须与image接口传入的同一iv一致
+    (官方前端JS: iv=md5(captchaId+"slide"+当前毫秒+uuid)，image与check复用)，
+    服务器已强制校验iv一致性，写死旧值会报 verification error
+    """
+    text_click = '[{"x":' + str(int(x_point)) + '}]'
+    if not iv:
+        iv = "cdd9bfb9e7805d0d2d5f1ad4498f70e1"
+    url = ("https://captcha.chaoxing.com/captcha/check/verification/result"
+           f"?callback=cx_captcha_function&captchaId={captcha_id}"
+           f"&type=slide&token={token}"
+           f"&textClickArr={quote_plus(text_click, safe='')}"
+           f"&coordinate={quote_plus('[]', safe='')}"
+           "&runEnv=10&version=1.1.20&t=a"
+           f"&iv={iv}&_={int(time.time() * 1000)}")
+    # 对齐Go PassSliderApi: 该请求不携带任何cookie(仅代理+UA)。
+    # 另外check接口启TLS指纹风控，必须用tls_client伪装Chrome指纹
+    proxy = cache.proxy_ip if cache.ip_proxy_sw else None
+    hdrs = dict(_CX_CAPTCHA_HDRS)
+    hdrs["User-Agent"] = _CX_CAPTCHA_SLIDER_UA
+    if referer:
+        # 浏览器发起check时会自动携带来源页Referer
+        hdrs["Referer"] = referer
+    return _tls_spoof_get(url, hdrs, proxy_ip=proxy or "", retry=retry)
 
 
 def pull_exam_paper_api(cache: XueXiTUserCache,

@@ -80,6 +80,7 @@ class CoursesCustom:
     video_model: int = 1                    # 观看视频模式
     auto_exam: int = 0                      # 是否自动考试
     exam_auto_submit: int = 0               # 是否自动提交试卷
+    device_flag: str = ""                   # 设备特征码(学习通APP内获取, 用于考试客户端签名)
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)

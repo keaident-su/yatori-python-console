@@ -47,6 +47,10 @@ _model3_caches: Dict[str, List[XueXiTUserCache]] = {}
 _work_processed: set = set()
 _work_processed_guard = threading.Lock()
 
+# 全局考试串行锁: 多个课程/账号的考试必须一个一个按顺序处理，
+# 同一时间只能有一个考试在答题/交卷
+_exam_serial_lock = threading.Lock()
+
 # 多任务点无限制模式：按账号累计登录次数并实时显示状态
 _account_login_counts: Dict[str, int] = {}
 _account_login_guard = threading.Lock()
@@ -72,6 +76,191 @@ def _record_node_login(account: str, ok: bool, tag: str = ""):
 
 def filter_account(config_data: JSONDataForConfig) -> List[User]:
     return generic_filter_account(config_data, PLATFORM_TYPE)
+
+
+# ============ 设备特征码 ============
+
+_DEVICE_FLAG_AES_KEY = "QrCbNY@MuK1X8HGw"
+
+
+def _generate_device_flag() -> str:
+    """动态生成设备特征码 - 对齐学习通APP逆向算法
+    Base64(AES-128-ECB-PKCS5(随机UUID, key="QrCbNY@MuK1X8HGw"))
+    """
+    import base64 as _b64
+    import uuid as _uuid
+    raw = str(_uuid.uuid4()).encode("utf-8")
+    try:
+        from Crypto.Cipher import AES
+        from Crypto.Util.Padding import pad
+        cipher = AES.new(_DEVICE_FLAG_AES_KEY.encode("utf-8"), AES.MODE_ECB)
+        return _b64.b64encode(
+            cipher.encrypt(pad(raw, AES.block_size))).decode()
+    except ImportError:
+        return _b64.b64encode(raw).decode()
+
+
+# ============ AI答案匹配 ============
+
+def _strip_option_prefix(opt: str) -> str:
+    """去除选项的字母前缀(如"C三相笼式异步电机"→"三相笼式异步电机")"""
+    opt = (opt or "").strip()
+    m = re.match(r'^[A-Za-zＡ-Ｚ][\.、．:：\s]*', opt)
+    return opt[m.end():].strip() if m else opt
+
+
+# 判断题同义词(对/错)
+_JUDGE_SYNONYMS = {
+    "对": ("对", "正确", "√", "true", "True", "TRUE"),
+    "错": ("错", "错误", "×", "false", "False", "FALSE"),
+}
+
+
+def _normalize_ai_answer_candidates(answer: str) -> List[str]:
+    """把AI答案转为候选文本列表
+    兼容: JSON数组(["内容"] / [{"name":"内容"}])、逗号/顿号分隔文本、纯文本
+    """
+    if not answer:
+        return []
+    text = (answer or "").strip()
+    # JSON数组解析(兼容内置AI直接返回的 [{"name":"..."}] 原始串)
+    try:
+        m = re.search(r'\[.*?\]', text, re.DOTALL)
+        json_part = m.group() if m else text
+        parsed = json.loads(json_part)
+        if isinstance(parsed, list):
+            cands = []
+            for p in parsed:
+                if isinstance(p, dict):
+                    for k in ("name", "value", "text", "content",
+                              "answer", "option", "title", "key"):
+                        v = p.get(k)
+                        if isinstance(v, str) and v.strip():
+                            cands.append(v.strip())
+                            break
+                    else:
+                        for v in p.values():
+                            if isinstance(v, str) and v.strip():
+                                cands.append(v.strip())
+                                break
+                elif isinstance(p, str) and p.strip():
+                    cands.append(p.strip())
+                elif isinstance(p, (int, float)):
+                    cands.append(str(p))
+            if cands:
+                return cands
+    except (ValueError, TypeError):
+        pass
+    # 纯文本: 按常见分隔符切分
+    cands = []
+    for frag in re.split(r'[,，;；、|]', text):
+        frag = frag.strip().strip('"\'[]{} ')
+        if frag and frag not in cands:
+            cands.append(frag)
+    # 连续字母答案(如"AC")拆成单字母候选
+    expanded = []
+    for c in cands:
+        if re.fullmatch(r'[A-Ha-h]{2,}', c):
+            for ch in c:
+                if ch not in expanded:
+                    expanded.append(ch.upper())
+        elif c not in expanded:
+            expanded.append(c)
+    cands = expanded
+    return cands or [text.strip().strip('"\'[]{} ')]
+
+
+def _extract_plain_letter(answer: str) -> str:
+    """从答案中提取纯选项字母(兜底): C / C.xxx / 选项C / 答案:C / 选C"""
+    if not answer:
+        return ""
+    clean = (answer or "").strip().strip('"\'[]{} ')
+    if re.fullmatch(r'[A-Ha-h]', clean):
+        return clean.upper()
+    m = re.match(r'^\s*([A-Ha-h])\s*[.、．:：]', clean)
+    if m:
+        return m.group(1).upper()
+    m = re.search(r'(?:选项|答案|选)\s*[:：]?\s*([A-Ha-h])', clean)
+    if m:
+        return m.group(1).upper()
+    return ""
+
+
+def _normalize_judge_answer(answer: str) -> str:
+    """把判断题答案文本归一化为 true/false - 对齐 Go AnswerFixedPattern"""
+    judge_answer = (answer or "").strip()
+    judge_answer = (judge_answer.replace("对", "正确").replace("√", "正确")
+                    .replace("×", "错误").replace("true", "正确")
+                    .replace("false", "错误"))
+    if judge_answer == "正确" or "正确" in judge_answer or "对" in judge_answer:
+        return "true"
+    if judge_answer == "错误" or "错误" in judge_answer or "错" in judge_answer:
+        return "false"
+    return "true"  # 默认
+
+
+def _match_answer_to_options(answer: str, options: List[str],
+                             multi: bool = False) -> str:
+    """把AI答案匹配到选项字母 - 对齐 Go SimilarityArraySelect
+    选项元素可能带字母前缀(如"C三相笼式异步电机")，匹配时忽略前缀。
+    支持: 单字母答案(直接按字母匹配)、判断题同义词(正确/对→A，错误/错→B)、
+    JSON数组答案([{"name":"..."}] / ["内容"])。
+    多选题返回多个字母拼接(如"AC")，单选返回单个字母；
+    精确匹配失败时用相似度(阈值0.5)兜底取最高分选项。
+    """
+    if not answer or not options:
+        return ""
+    candidates = _normalize_ai_answer_candidates(answer)
+    if not candidates:
+        return ""
+    matched = []
+    for i, opt in enumerate(options):
+        opt_clean = _strip_option_prefix(opt)
+        if not opt_clean:
+            continue
+        # 选项字母优先取自带前缀(如"C三相笼式异步电机"→C)，否则按序号
+        lm = re.match(r'^([A-Za-z])', (opt or '').strip())
+        letter = lm.group(1).upper() if lm else chr(65 + i)
+        for cand in candidates:
+            if not cand:
+                continue
+            hit = False
+            if len(cand) == 1 and cand.isascii() and cand.isalpha():
+                # 单字母答案(仅ASCII字母): 直接按字母匹配
+                hit = (cand.upper() == letter)
+            else:
+                hit = (cand in opt_clean or opt_clean in cand)
+                # 判断题同义词: 对/正确/√ 与 错/错误/×
+                if not hit:
+                    for judge_key, syns in _JUDGE_SYNONYMS.items():
+                        if judge_key not in opt_clean and opt_clean not in judge_key:
+                            continue
+                        if cand in syns:
+                            hit = True
+                            break
+            if hit:
+                if letter not in matched:
+                    matched.append(letter)
+                break
+    if matched:
+        return "".join(matched) if multi else matched[0]
+    # 相似度兜底(阈值0.5): 对齐 Go SimilarityArraySelect 择优思想
+    best_letter, best_score = "", 0.0
+    for i, opt in enumerate(options):
+        opt_clean = _strip_option_prefix(opt)
+        if not opt_clean:
+            continue
+        lm = re.match(r'^([A-Za-z])', (opt or '').strip())
+        letter = lm.group(1).upper() if lm else chr(65 + i)
+        for cand in candidates:
+            score = _similarity(cand, opt_clean)
+            if score < 0.5 and len(cand) > 2 and (
+                    cand in opt_clean or opt_clean in cand):
+                score = max(score, 0.6)
+            if score > best_score:
+                best_score = score
+                best_letter = letter
+    return best_letter if best_score >= 0.5 else ""
 
 
 # ============ 登录 ============
@@ -125,6 +314,23 @@ def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
 
     def _login_one(u: User):
         cache = XueXiTUserCache(account=u.account, password=u.password)
+        # 设备特征码: 配置了deviceFlag就用配置的，否则每次登录前动态生成
+        # (每个账号对应的当前设备特征码打印到日志)
+        cc_cfg = u.courses_custom
+        cfg_flag = (getattr(cc_cfg, "device_flag", "") or "").strip()
+        if cfg_flag:
+            cache.device_flag = cfg_flag
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      Purple, f"设备特征码(来自配置): {cache.device_flag}")
+        else:
+            cache.device_flag = _generate_device_flag()
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      Yellow, f"未配置deviceFlag(缺乏设备特征码，可能会无法完成某些课程的考试)，"
+                      f"已动态生成: {cache.device_flag}")
         return cache, _login_action(cache)
 
     workers = max(1, min(len(targets), LOGIN_WORKERS))
@@ -3036,9 +3242,11 @@ def _write_course_work_and_exam(setting: Setting, user: User,
     if (cc.cx_work_sw or 0) == 1:
         _work_action(setting, user, cache, course)
 
-    # 考试
+    # 考试 - 全局串行: 无论账号以何种模式运作，
+    # 考试必须一个一个按顺序处理，不能同时处理多个考试
     if (cc.cx_exam_sw or 0) == 1:
-        _exam_action(setting, user, cache, course)
+        with _exam_serial_lock:
+            _exam_action(setting, user, cache, course)
 
 
 def _html_input_get(html: str, elem_id: str) -> str:
@@ -3110,27 +3318,111 @@ def _html_work_question_turn_entity(html: str) -> Dict:
     return q
 
 
+def _extract_exam_question_text(tit) -> str:
+    """对齐 Go extractQuestion: 跳过 h3 与 span[aria-label=题干]，拼接文本节点"""
+    parts = []
+
+    def _walk(node):
+        for child in getattr(node, "children", []) or []:
+            name = getattr(child, "name", None)
+            if name is None:  # 文本节点
+                text = str(child).strip()
+                if text:
+                    parts.append(text)
+                continue
+            if name == "h3":
+                continue
+            if name == "span" and (child.get("aria-label") or "") == "题干":
+                continue
+            _walk(child)
+
+    _walk(tit)
+    return "".join(parts).strip()
+
+
 def _html_exam_question_turn_entity(html: str) -> Dict:
-    """解析考试题目HTML提取元数据 - 对应 Go HtmlQuestionTurnEntity"""
+    """解析考试题目HTML提取元数据 - 对应 Go HtmlQuestionTurnEntity
+    选项解析对齐 Go singleTurn/multipleTurn/trueOrFalseTurn:
+    - 单选: div.singleChoice[name=X] 内 .answerInfo(含<cc>标签)文本
+    - 多选: div.mulChoice[name=X](兼容multiChoice) 同上
+    - 判断: .answerList 内 .No(字母)+.answerInfo(文本)
+    """
     q = {}
     qid = _html_input_get(html, "questionId")
     q["questionId"] = qid
     q["questionTypeCode"] = _html_input_name_get(html, f"type{qid}")
     q["questionTypeStr"] = _html_input_name_get(html, f"typeName{qid}")
-    # Extract question content from div.tit
-    tit_match = re.search(
-        r'class=["\']tit["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL)
-    if tit_match:
-        q["questionContent"] = re.sub(
-            r'<[^>]+>', '', tit_match.group(1)).strip()
-    # Extract options from .singleChoice
-    options = {}
-    for opt_m in re.finditer(r'<div[^>]*class=["\'][^"\']*singleChoice[^"\']*["\'][^>]*name=["\']([A-Z])["\'][^>]*>.*?class=["\'][^"\']*answerInfo[^"\']*cc[^"\']*["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL):
-        letter = opt_m.group(1)
-        text = opt_m.group(2).strip()
-        options[letter] = letter + re.sub(r'<[^>]+>', '', text).strip()
-    q["options"] = [options.get(l, "")
-                    for l in "ABCDEFGHIJKLMN" if options.get(l, "")]
+
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+    except Exception:
+        soup = None
+
+    if soup is not None:
+        # 题目内容 - 对齐 Go: .tit 且跳过 h3/题干标记
+        tit = soup.find(class_="tit")
+        if tit:
+            content = _extract_exam_question_text(tit)
+            if content:
+                q["questionContent"] = content
+
+        # 选项解析
+        qtype_code = q.get("questionTypeCode", "")
+        options = {}
+        if qtype_code in ("0", "1"):
+            # 单选用singleChoice，多选用mulChoice(旧版兼容multiChoice)
+            cls_list = ["singleChoice"] if qtype_code == "0" else [
+                "mulChoice", "multiChoice"]
+            for cls_name in cls_list:
+                for opt_div in soup.find_all(
+                        "div", class_=lambda c: c and cls_name in c.split()):
+                    letter = (opt_div.get("name") or "").strip().upper()
+                    if not letter:
+                        continue
+                    info = opt_div.find(class_="answerInfo")
+                    text = (info.get_text(" ", strip=True) if info
+                            else opt_div.get_text(" ", strip=True))
+                    text = re.sub(r"\s+", "", text)
+                    if text and letter not in options:
+                        options[letter] = letter + text
+        elif qtype_code == "3":
+            # 判断题 - 对齐 Go trueOrFalseTurn
+            for al in soup.find_all(
+                    "div", class_=lambda c: c and "answerList" in c.split()):
+                no_el = al.find(class_="No")
+                info_el = al.find(class_="answerInfo")
+                if no_el is not None and info_el is not None:
+                    letter = no_el.get_text(strip=True)
+                    text = info_el.get_text(strip=True)
+                    if text:
+                        if not letter:
+                            letter = chr(65 + len(options))
+                        options[letter] = letter + text
+                    continue
+                # 兼容: 单个answerList内包含多个选项块(li/子div)
+                for sub in al.find_all(["li", "div"]):
+                    sub_no = sub.find(class_="No")
+                    sub_info = sub.find(class_="answerInfo")
+                    if sub_no is not None and sub_info is not None:
+                        letter = sub_no.get_text(strip=True)
+                        text = sub_info.get_text(strip=True)
+                        if text:
+                            if not letter:
+                                letter = chr(65 + len(options))
+                            options[letter] = letter + text
+        elif qtype_code in ("2", "4", "5", "6"):
+            # 填空/简答/名词解释/论述 - 对齐 Go: .completionList .grayTit
+            for cl in soup.find_all(
+                    "div", class_=lambda c: c and "completionList" in c.split()):
+                gray = cl.find(class_="grayTit")
+                if gray:
+                    t = gray.get_text(strip=True)
+                    if t:
+                        options[t] = t
+        q["options"] = [options.get(l, "")
+                        for l in "ABCDEFGHIJKLMN" if options.get(l, "")]
+        if not q["options"] and qtype_code in ("2", "4", "5", "6"):
+            q["options"] = [v for v in options.values() if v]
 
     for field_id in ["courseId", "testPaperId", "testUserRelationId", "classId",
                      "type", "isphone", "imei", "subCount", "remainTime",
@@ -3330,15 +3622,33 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                     "true" if q_type_code == "3" else "答案")
 
             # 判断答案格式 - 对齐Go的SimilarityArraySelect逻辑
+            # 忽略选项字母前缀匹配内容，AI返回对象数组/文本/字母均兼容
             options = q_entity.get("options", [])
-            if q_type_code in ("0", "1") and options:
+            if q_type_code in ("0", "1"):
                 # 匹配答案到选项字母
-                answer_letter = "A"
-                for i, opt in enumerate(options):
-                    if answer and opt and (answer in opt or opt in answer):
-                        answer_letter = chr(65 + i)
-                        break
-                answer = answer_letter
+                answer_letter = ""
+                if options:
+                    answer_letter = _match_answer_to_options(
+                        answer, options, multi=(q_type_code == "1"))
+                if not answer_letter:
+                    answer_letter = _extract_plain_letter(answer)
+                answer = answer_letter or ("A" if q_type_code == "0" else "A")
+            elif q_type_code == "3":
+                # 判断题: 先匹配选项(A.对 B.错)，失败时文本判断
+                judge_letter = _match_answer_to_options(
+                    answer, options) if options else ""
+                if judge_letter == "A":
+                    judge_answer = "true"
+                elif judge_letter == "B":
+                    judge_answer = "false"
+                else:
+                    judge_answer = _normalize_judge_answer(answer)
+                answer = judge_answer
+            elif options and answer and q_type_code not in ("2", "4", "5", "6"):
+                # 其他带选项的题型: 也尝试匹配字母
+                answer_letter = _match_answer_to_options(answer, options)
+                if answer_letter:
+                    answer = answer_letter
 
             # 构建提交数据 - 对齐Go SubmitWorkAnswerApi (用list of tuples支持重复字段)
             # 关键: Go PullWorkQuestionAction 中 AnswerId/WordId 从 enter page 设置作为后备值
@@ -3717,12 +4027,11 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         # 检测需客户端签名的考试(返回开始页isStartPage=1且无enc字段):
         # 需APP客户端签名(CLIENT_FORM_SIGN)才能进入答题页。
         # 签名算法已还原(exam_sign.py, RSA PKCS1v15+APK内嵌私钥)，
-        # 设备特征码需在手机学习通APP内打开
-        # https://doc.micono.eu.org/tools/device 获取后填入配置deviceFlag
+        # 设备特征码登录时已确定(cache.device_flag: 配置的deviceFlag或动态生成)
         if "isStartPage" in paper_body and not enc_val:
             sign_ok = False
             try:
-                device_flag = (getattr(cc, "device_flag", "") or "").strip()
+                device_flag = (getattr(cache, "device_flag", "") or "").strip()
                 if not device_flag:
                     log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                               "【", course.course_name, "】【", exam_name, "】",
@@ -3796,6 +4105,9 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
 
         if not question_total:
             question_total = 1
+
+        # 记录成功进入考试的时间戳(用于开考限时交卷的计算起点)
+        exam_start_time = time.time()
 
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】【", exam_name, "】",
@@ -3871,27 +4183,33 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 answer = "A" if q_type_code in ("0", "1") else (
                     "true" if q_type_code == "3" else "答案")
 
-            # 匹配答案到选项
+            # 匹配答案到选项 - 对齐Go的SimilarityArraySelect逻辑
+            # 忽略选项字母前缀匹配内容，AI返回对象数组/文本/字母均兼容
             options = q_entity.get("options", [])
-            if q_type_code in ("0", "1") and options:
-                answer_letter = "A"
-                for i, opt in enumerate(options):
-                    if answer and opt and (answer in opt or opt in answer):
-                        answer_letter = chr(65 + i)
-                        break
-                answer = answer_letter
+            if q_type_code in ("0", "1"):
+                answer_letter = ""
+                if options:
+                    answer_letter = _match_answer_to_options(
+                        answer, options, multi=(q_type_code == "1"))
+                if not answer_letter:
+                    # 选项解析失败或未匹配: 尝试从答案直接提取字母
+                    answer_letter = _extract_plain_letter(answer)
+                answer = answer_letter or ("A" if q_type_code == "0" else "A")
             elif q_type_code == "3":  # 判断题 - 对齐Go: SimilarityArraySelect→A→"true", else→"false"
-                judge_answer = answer
-                if judge_answer not in ("true", "false"):
-                    judge_answer = judge_answer.replace(
-                        "对", "正确").replace("√", "正确").replace("×", "错误")
-                    if judge_answer == "正确" or "正确" in judge_answer or "对" in judge_answer:
-                        judge_answer = "true"
-                    elif judge_answer == "错误" or "错误" in judge_answer or "错" in judge_answer:
-                        judge_answer = "false"
-                    else:
-                        judge_answer = "true"  # 默认
+                judge_letter = _match_answer_to_options(
+                    answer, options) if options else ""
+                if judge_letter == "A":
+                    judge_answer = "true"
+                elif judge_letter == "B":
+                    judge_answer = "false"
+                else:
+                    judge_answer = _normalize_judge_answer(answer)
                 answer = judge_answer
+            elif options and answer and q_type_code not in ("2", "4", "5", "6"):
+                # 其他带选项的题型(如阅读理解/完形填空等): 也尝试匹配字母
+                answer_letter = _match_answer_to_options(answer, options)
+                if answer_letter:
+                    answer = answer_letter
 
             # 构建提交数据 - 对齐Go SubmitExamAnswerApi
             is_last = (qi + 1 == question_total)
@@ -3927,20 +4245,46 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
             submit_status = submit_resp.status_code if submit_resp else 0
             submit_str = submit_body or ""
-            # 处理限制提交时间的考试
+            # 处理限制提交时间的考试 - 从成功进入考试那一刻开始计算，
+            # 在开考N分钟+30秒后自动交卷；若仍报不允许提交，则每1分钟重试一次直到成功
             time_match = re.search(
                 r'考试(\d+)分钟内不允许提交考试', submit_str)
             if time_match:
                 min_time = int(time_match.group(1))
+                wait_until = exam_start_time + min_time * 60 + 30
+                wait_secs = wait_until - time.time()
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
-                          Green, f"检测到考试限制开考{min_time}分钟内不允许提交，已自动延时...")
-                time.sleep(min_time * 60)
+                          Green, f"检测到考试限制开考{min_time}分钟内不允许提交，将在开考{min_time}分30秒后自动交卷...")
+                if wait_secs > 0:
+                    time.sleep(wait_secs)
+                # 循环尝试交卷，每1分钟重试一次直到成功
                 submit_body, submit_resp = xxt_api.submit_exam_answer_api(
                     cache, submit_data, is_submit=is_submit, retry=3)
-                submit_status = submit_resp.status_code if submit_resp else 0
                 submit_str = submit_body or ""
+                while True:
+                    _ok = False
+                    try:
+                        _j = safe_json_parse(submit_str)
+                        if _j and _j.get("status") in (True, "success"):
+                            _ok = True
+                    except Exception:
+                        pass
+                    if _ok:
+                        break
+                    if "不允许提交" in submit_str:
+                        log_print(INFO, f"[{platform}]",
+                                  "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", exam_name, "】",
+                                  Yellow, "仍在开考限制时间内，1分钟后重试交卷...")
+                        time.sleep(60)
+                        submit_body, submit_resp = xxt_api.submit_exam_answer_api(
+                            cache, submit_data, is_submit=is_submit, retry=3)
+                        submit_str = submit_body or ""
+                        continue
+                    break
+                submit_status = submit_resp.status_code if submit_resp else 0
 
             if "考试时间已用完" in submit_str:
                 # 作答时间耗尽: 对齐官方"作答时间耗尽，试卷已提交"行为

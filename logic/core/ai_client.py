@@ -6,9 +6,10 @@ temperature=0.2，7 次重试，JSON 格式校验失败追加纠正消息重试�
 AI 并发信号量基础容量=2（对齐 Go AiSem），多核优化后随 CPU 核心数动态扩展。
 """
 import json as _json
+import re
 import threading
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import httpx
 
@@ -142,33 +143,56 @@ def _build_question_prompt(q_type: str, question: str,
     return system_prompt, user_content
 
 
+def _extract_answer_value(p: Any) -> str:
+    """从AI返回的JSON数组元素中提取字符串值
+    兼容两种格式: ["内容"] 与 [{"name":"内容"}] 等对象数组
+    """
+    if isinstance(p, str):
+        return p.strip()
+    if isinstance(p, dict):
+        # 优先提取常见内容字段
+        for k in ("name", "value", "text", "content", "answer",
+                  "option", "title", "key"):
+            v = p.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+            if isinstance(v, (int, float)):
+                return str(v)
+        # 兜底: 取第一个非空字符串值
+        for v in p.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return ""
+    if isinstance(p, (int, float)):
+        return str(p)
+    return str(p).strip()
+
+
 def _parse_json_array_answer(raw: str) -> str:
     """解析 AI 返回的 JSON 数组格式答案 - 对齐 Go ResponseTurnQuestion
     返回: 逗号分隔的答案内容字符串
+    兼容: ["内容"]、[{"name":"内容"}]、代码块包裹的JSON、纯文本
     """
     if not raw:
         return ""
     text = raw.strip()
+    # 处理代码块包裹的JSON(```json ... ```)
+    m = re.search(r'\[.*?\]', text, re.DOTALL)
+    json_part = m.group() if m else text
     try:
-        parsed = _json.loads(text)
+        parsed = _json.loads(json_part)
         if isinstance(parsed, list) and len(parsed) > 0:
-            parts = [str(p).strip() for p in parsed if str(p).strip()]
+            parts = [_extract_answer_value(p) for p in parsed]
+            parts = [p for p in parts if p]
             if parts:
                 return ','.join(parts)
+            # JSON数组但元素全为空(如[""]): 返回空串由调用方兜底
+            return ""
     except (ValueError, _json.JSONDecodeError):
         pass
-    import re
-    m = re.search(r'\[.*?\]', text, re.DOTALL)
-    if m:
-        try:
-            parsed = _json.loads(m.group())
-            if isinstance(parsed, list) and len(parsed) > 0:
-                parts = [str(p).strip() for p in parsed if str(p).strip()]
-                if parts:
-                    return ','.join(parts)
-        except (ValueError, _json.JSONDecodeError):
-            pass
-    return text
+    # 非JSON数组: 去除JSON外壳符号后返回原文
+    cleaned = re.sub(r'^[\[\]{}"\']+|[\[\]{}"\']+$', '', text).strip()
+    return cleaned if cleaned else ""
 
 
 def _is_valid_json_array(content: str) -> bool:
@@ -243,9 +267,9 @@ class AIClient:
             if err:
                 log_print(INFO, BoldRed, "AI request error: %s" % str(err))
             return ""
-        if q_type:
-            return _parse_json_array_answer(content)
-        return content.strip()
+        # 统一解析: 无论题型，内容是JSON数组时提取元素值
+        # (兼容 ["内容"] 与 [{"name":"内容"}] 对象数组；非JSON返回原文)
+        return _parse_json_array_answer(content)
 
     # ============ 核心请求逻辑（对齐 Go 各 ChatReplyApi） ============
 

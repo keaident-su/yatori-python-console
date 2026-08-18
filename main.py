@@ -41,7 +41,7 @@ def init_console():
 
     # 确保必要目录存在
     os.makedirs("./assets/sound", exist_ok=True)
-    os.makedirs("./assets/log", exist_ok=True)
+    os.makedirs("./logs", exist_ok=True)
 
 
 def main():

@@ -60,7 +60,7 @@ def lunch():
         level=string_to_log_level(bs.log_level),
         log_file_sw=(bs.log_out_file_sw == 1),
         color_log=(bs.color_log == 1),
-        log_dir="./assets/log"
+        log_dir="./logs"
     )
 
     # 4. 配置文件检查

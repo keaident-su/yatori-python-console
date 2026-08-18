@@ -248,6 +248,16 @@ def _default_value(config: JSONDataForConfig):
         cc.auto_exam = _safe_int(cc.auto_exam, 0)
         cc.exam_auto_submit = _safe_int(cc.exam_auto_submit, 0)
 
+        # 设备特征码检查: 学习通账号未配置deviceFlag时提示
+        # (deviceFlag仅在 accountType=XUEXITONG 时生效)
+        if (user.account_type or "").upper() == "XUEXITONG":
+            flag = (getattr(cc, "device_flag", "") or "").strip()
+            if not flag:
+                from utils.log import log_print, INFO, Yellow, Default
+                log_print(INFO, "[学习通]", "[", Yellow,
+                          user.account or "", Default, "] ",
+                          Yellow, "未配置deviceFlag(缺乏设备特征码，可能会无法完成某些课程的考试)，登录时将自动生成")
+
 
 def _parse_user_list(users_data: list) -> List[User]:
     """解析用户列表"""

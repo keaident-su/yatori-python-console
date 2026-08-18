@@ -19,6 +19,7 @@ class XueXiTUserCache(UserCacheBase):
     name: str = ""
     fid: str = ""
     vc3: str = ""
+    device_flag: str = ""  # 设备特征码(考试客户端签名用)
 
 
 @dataclass

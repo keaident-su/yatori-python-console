@@ -902,15 +902,61 @@ def relogin(cache: XueXiTUserCache) -> Optional[Exception]:
     return Exception("重登录失败")
 
 
-# ============ 人脸识别 API ============
+# ============ 人脸识别 API - 完全对齐 Go XueXiTongFaceApi.go ============
 
-def get_face_qr_code_api3(cache: XueXiTUserCache, course_id: str,
-                          class_id: str, cpi: str, knowledge_id: str,
+def _html_input_value_get(html: str, elem_id: str) -> str:
+    """从HTML中提取指定id的input的value - 对齐 Go goquery doc.Find(#id).Attr("value")"""
+    if not html:
+        return ""
+    m = re.search(r'id=["\']' + re.escape(elem_id) +
+                  r'["\'][^>]*value=["\']([^"\']*)["\']', html, re.IGNORECASE)
+    if not m:
+        m = re.search(r'value=["\']([^"\']*)["\'][^>]*id=["\']' +
+                      re.escape(elem_id) + r'["\']', html, re.IGNORECASE)
+    return m.group(1) if m else ""
+
+
+def get_history_face_img(cache: XueXiTUserCache,
+                         retry: int = 3) -> Tuple[Optional[bytes], Optional[Exception]]:
+    """获取历史人脸图片 - 对齐 Go GetHistoryFaceImg
+    URL: https://passport2-api.chaoxing.com/api/getUserFaceid
+         ?enc=md5(uid+"uWwjeEKsri")&token=4faa8662c59590c6f43ae9fe5b002b42&_time=...
+    响应 result==1 时从 data.http 下载历史人脸图片
+    返回: (图片bytes, 错误)
+    """
+    uid = cache.uid or cache.cookie_dict.get(
+        "UID", cache.cookie_dict.get("_uid", ""))
+    if not uid:
+        return None, Exception("未获取到uid，无法拉取历史人脸")
+    enc = _hashlib.md5((uid + "uWwjeEKsri").encode("utf-8")).hexdigest()
+    url = (f"https://passport2-api.chaoxing.com/api/getUserFaceid"
+           f"?enc={enc}&token=4faa8662c59590c6f43ae9fe5b002b42"
+           f"&_time={int(time.time())}")
+    client = _build_client(cache)
+    try:
+        body, _ = _do_get(client, url, retry=retry)
+        data = safe_json_parse(body) if body else None
+        if not data or str(data.get("result")) != "1":
+            return None, Exception("没有历史人脸")
+        d = data.get("data")
+        face_url = d.get("http", "") if isinstance(d, dict) else ""
+        if not face_url:
+            return None, Exception("没有历史人脸")
+        img_bytes, _ = client.get_image(face_url, retry=3)
+        if not img_bytes:
+            return None, Exception("历史人脸图片下载失败")
+        return img_bytes, None
+    finally:
+        client.close()
+
+
+def get_face_upload_token(cache: XueXiTUserCache,
                           retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取人脸QR码 - 对应 Go GetFaceQrCodeApi3"""
-    url = (f"https://mobilelearn.chaoxing.com/faceIdentify/getFaceQrCode"
-           f"?courseId={course_id}&classId={class_id}&cpi={cpi}"
-           f"&knowledgeId={knowledge_id}")
+    """获取人脸上传token - 对齐 Go GetFaceUpLoadToken
+    URL: https://pan-yz.chaoxing.com/api/token/uservalid
+    返回原始响应体(调用方解析 _token)
+    """
+    url = "https://pan-yz.chaoxing.com/api/token/uservalid"
     client = _build_client(cache)
     try:
         return _do_get(client, url, retry=retry)
@@ -918,13 +964,41 @@ def get_face_qr_code_api3(cache: XueXiTUserCache, course_id: str,
         client.close()
 
 
-def get_face_upload_token(cache: XueXiTUserCache,
-                          retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取人脸上传token - 对应 Go GetFaceUpLoadToken"""
-    url = "https://pan-yz.chaoxing.com/token/upload"
+def get_face_qr_code_api3(cache: XueXiTUserCache, course_id: str,
+                          class_id: str, knowledge_id: str,
+                          cpi: str = "", enc: str = "", job_id: str = "",
+                          object_id: str = "", retry: int = 3
+                          ) -> Tuple[str, str]:
+    """获取人脸QR必要数据 - 对齐 Go GetFaceQrCodeApi3(两步)
+    ① mooc-ans/mycourse/studentstudy 解析 uuid/qrcEnc(视频取videouuid/videoqrcEnc)
+    ② mooc-ans/qr/produce 用 uuid+qrcEnc 换 newUuid/newEnc
+    返回: (new_uuid, new_enc)
+    """
+    url1 = (f"https://mooc1.chaoxing.com/mooc-ans/mycourse/studentstudy"
+            f"?chapterId={knowledge_id}&courseId={course_id}"
+            f"&clazzid={class_id}&enc={enc}")
     client = _build_client(cache)
     try:
-        return _do_get(client, url, retry=retry)
+        body1, _ = _do_get(client, url1, retry=retry)
+        if not body1:
+            return "", ""
+        uuid_val = _html_input_value_get(body1, "uuid")
+        qrc_enc = _html_input_value_get(body1, "qrcEnc")
+        if not uuid_val:
+            uuid_val = _html_input_value_get(body1, "videouuid")
+        if not qrc_enc:
+            qrc_enc = _html_input_value_get(body1, "videoqrcEnc")
+        if not uuid_val or not qrc_enc:
+            return "", ""
+        url2 = (f"https://mooc1.chaoxing.com/mooc-ans/qr/produce"
+                f"?uuid={uuid_val}&enc={qrc_enc}&clazzid={class_id}"
+                f"&videojobid={job_id}&chaptervideoobjectid={object_id}"
+                f"&videoCollectTime=0")
+        body2, _ = _do_get(client, url2, retry=retry)
+        data = safe_json_parse(body2) if body2 else None
+        if not data or data.get("status") is not True:
+            return "", ""
+        return str(data.get("newUuid", "")), str(data.get("newEnc", ""))
     finally:
         client.close()
 
@@ -932,13 +1006,21 @@ def get_face_upload_token(cache: XueXiTUserCache,
 def upload_face_image_api(cache: XueXiTUserCache, token: str,
                           image_data: bytes,
                           retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """上传人脸图片 - 对应 Go UploadFaceImageApi"""
-    url = f"https://pan-yz.chaoxing.com/upload?token={token}&puid={cache.uid}"
+    """上传人脸图片 - 对齐 Go UploadFaceImageApi
+    POST https://pan-yz.chaoxing.com/upload
+    multipart字段: uploadtype=face, _token=token, puid=uid, file={时间戳}.jpg
+    响应 result==true 时由调用方取 objectId
+    """
+    uid = cache.uid or cache.cookie_dict.get(
+        "UID", cache.cookie_dict.get("_uid", ""))
+    url = "https://pan-yz.chaoxing.com/upload"
     client = _build_client(cache)
     try:
         hdrs = {"User-Agent": client._ua}
-        files = {"file": ("face.jpg", image_data, "image/jpeg")}
-        body, resp = client.request("POST", url, data={}, headers=hdrs,
+        data = {"uploadtype": "face", "_token": token, "puid": uid}
+        files = {"file": (
+            f"{int(time.time() * 1000)}.jpg", image_data, "image/jpeg")}
+        body, resp = client.request("POST", url, data=data, headers=hdrs,
                                     files=files, retry=retry,
                                     use_multipart=True)
         return body, resp
@@ -946,53 +1028,202 @@ def upload_face_image_api(cache: XueXiTUserCache, token: str,
         client.close()
 
 
-def pass_face_qr_plan_phone_new_api(cache: XueXiTUserCache,
-                                    qr_object_id: str,
-                                    uuid: str,
+def pass_face_qr_plan_phone_new_api(cache: XueXiTUserCache, class_id: str,
+                                    course_id: str, knowledge_id: str,
+                                    cpi: str, object_id: str,
                                     retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """手机端人脸验证 - 对应 Go PassFaceQrPlanPhoneNewApi"""
-    url = (f"https://mobilelearn.chaoxing.com/faceIdentify/passFaceQrPlanPhoneNew"
-           f"?qrObjectId={qr_object_id}&uuid={uuid}")
-    client = _build_client(cache)
-    try:
-        return _do_get(client, url, retry=retry)
-    finally:
-        client.close()
-
-
-def get_course_face_qr_state_api(cache: XueXiTUserCache,
-                                 qr_object_id: str,
-                                 retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取人脸状态 - 对应 Go GetCourseFaceQrStateApi"""
-    url = (f"https://mobilelearn.chaoxing.com/faceIdentify/getCourseFaceQrState"
-           f"?qrObjectId={qr_object_id}")
-    client = _build_client(cache)
-    try:
-        return _do_get(client, url, retry=retry)
-    finally:
-        client.close()
-
-
-def get_history_face_img(cache: XueXiTUserCache,
-                         retry: int = 3) -> Tuple[str, Optional[bytes]]:
-    """获取历史人脸图片 - 对应 Go GetHistoryFaceImg
-    从学习通服务器拉取最近一次人脸识别的图片数据
+    """手机端过人脸(新接口) - 对齐 Go PassFaceQrPlanPhoneNewApi
+    GET https://mooc1-api.chaoxing.com/mooc-ans/facephoto/clientfacecheckstatus
     """
-    url = "https://passport2.chaoxing.com/getFaceInfoByUid"
+    url = (f"https://mooc1-api.chaoxing.com/mooc-ans/facephoto/clientfacecheckstatus"
+           f"?courseId={course_id}&clazzId={class_id}&cpi={cpi}"
+           f"&chapterId={knowledge_id}&objectId={object_id}"
+           f"&liveDetectionStatus=1&signt=&signk=&cxtime=&cxcid=&type=1")
     client = _build_client(cache)
     try:
-        body, resp = _do_get(client, url, retry=retry)
-        data = safe_json_parse(body) if body else None
-        if data and data.get("status") is True:
-            face_url = data.get("result", {}).get("faceUrl", "")
-            if face_url:
-                # 下载人脸图片
-                img_bytes, img_resp = client.get_image(face_url, retry=3)
-                if img_bytes:
-                    return body, img_bytes
-        return body, None
+        return _do_get(client, url, retry=retry)
     finally:
         client.close()
+
+
+def pass_face_qr_plan_phone_old_api(cache: XueXiTUserCache, class_id: str,
+                                    course_id: str, knowledge_id: str,
+                                    object_id: str,
+                                    retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """手机端过人脸(老接口) - 对齐 Go PassFaceQrPlanPhoneOldApi
+    POST https://mooc1-api.chaoxing.com/mooc-ans/knowledge/uploadInfo
+    """
+    url = "https://mooc1-api.chaoxing.com/mooc-ans/knowledge/uploadInfo"
+    data = {
+        "clazzId": class_id,
+        "courseId": course_id,
+        "knowledgeId": knowledge_id,
+        "uuid": "",
+        "qrcEnc": "",
+        "objectId": object_id,
+    }
+    client = _build_client(cache)
+    try:
+        return _do_post_form(client, url, data, retry=retry)
+    finally:
+        client.close()
+
+
+def get_course_face_qr_plan3_api(cache: XueXiTUserCache, class_id: str,
+                                 course_id: str, uuid: str, qrc_enc: str,
+                                 cpi: str, object_id: str,
+                                 retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """PC端过人脸 - 对齐 Go GetCourseFaceQrPlan3Api
+    POST https://mooc1-api.chaoxing.com/qr/updateqrstatus?uuid2=..&clazzId2=..
+    """
+    url = (f"https://mooc1-api.chaoxing.com/qr/updateqrstatus"
+           f"?uuid2={uuid}&clazzId2={class_id}")
+    payload = (f"clazzId={class_id}&courseId={course_id}&uuid={uuid}"
+               f"&qrcEnc={qrc_enc}&cpi={cpi}&liveDetectionStatus=0"
+               f"&signt=&signk=&cxtime=&cxcid=&knowledgeid=0"
+               f"&objectId={object_id}&videojobid=&videoCollectTime=0"
+               f"&chaptervideoobjectid=")
+    client = _build_client(cache)
+    try:
+        return _do_post_form(client, url, payload, retry=retry)
+    finally:
+        client.close()
+
+
+def get_course_face_qr_state_api(cache: XueXiTUserCache, uuid: str, enc: str,
+                                 class_id: str, course_id: str, cpi: str,
+                                 mid: str = "", object_id: str = "",
+                                 random_capture_time: str = "",
+                                 knowledge_id: str = "",
+                                 retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """获取人脸状态 - 对齐 Go GetCourseFaceQrStateApi
+    GET https://mooc1.chaoxing.com/mooc-ans/qr/getqrstatus
+    """
+    url = (f"https://mooc1.chaoxing.com/mooc-ans/qr/getqrstatus"
+           f"?uuid={uuid}&enc={enc}&clazzid={class_id}&courseid={course_id}"
+           f"&cpi={cpi}&collectionTime=0&mid={mid}&videoObjectId={object_id}"
+           f"&videoRandomCollectTime={random_capture_time}"
+           f"&chapterId={knowledge_id}")
+    client = _build_client(cache)
+    try:
+        return _do_get(client, url, retry=retry)
+    finally:
+        client.close()
+
+
+def _face_image_rgb_disturb(image_data: bytes) -> bytes:
+    """人脸图片RGB LSB像素扰动 - 对齐 Go utils.ImageRGBDisturb
+    每个像素RGB的最低bit随机化，避免服务器识别出与历史照片完全一致
+    """
+    import io as _io
+    from PIL import Image
+    img = Image.open(_io.BytesIO(image_data)).convert("RGB")
+    # 构建256项随机LSB查找表(对齐 Go 逐像素 r8=(r8&0xFE)|rand(0,1))
+    table = [(i & 0xFE) | random.randint(0, 1) for i in range(256)]
+    out = img.point(table * 3)  # RGB三通道共用一张表
+    buf = _io.BytesIO()
+    out.save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+def _face_load_image(cache: XueXiTUserCache):
+    """拉取人脸图片: 本地缓存优先(./assets/faces/{account}.jpg)，否则拉历史人脸 - 对齐 Go PassFacePhoneAction"""
+    import os as _os
+    local_path = f"./assets/faces/{cache.account}.jpg"
+    if _os.path.exists(local_path):
+        try:
+            with open(local_path, "rb") as f:
+                return f.read(), None
+        except Exception:
+            pass
+    return get_history_face_img(cache)
+
+
+def pass_face_phone_action(cache: XueXiTUserCache, course_id: str,
+                           class_id: str, cpi: str,
+                           knowledge_id: str) -> Optional[Exception]:
+    """手机端过人脸 - 对齐 Go PassFacePhoneAction + XueXiTongCardAction 重试/回退
+    流程: 历史人脸(或本地图片) → RGB扰动 → 上传token → 上传人脸 →
+          clientfacecheckstatus 验证
+    失败("用户图片信息出错")最多重试8次; 仍失败回退老接口 uploadInfo
+    """
+
+    def _one_try() -> Optional[Exception]:
+        face_img, err = _face_load_image(cache)
+        if err:
+            return err
+        disturb_img = _face_image_rgb_disturb(face_img)
+
+        token_body, _ = get_face_upload_token(cache)
+        token_data = safe_json_parse(token_body) if token_body else None
+        token = token_data.get("_token", "") if token_data else ""
+        if not token:
+            return Exception("获取上传token失败")
+
+        time.sleep(1)  # 对齐 Go: 隔一下
+        upload_body, _ = upload_face_image_api(cache, token, disturb_img)
+        upload_data = safe_json_parse(upload_body) if upload_body else None
+        if not upload_data or upload_data.get("result") is not True:
+            return Exception("上传人脸失败")
+        object_id = str(upload_data.get("objectId", ""))
+        if not object_id:
+            return Exception("ObjectId为空")
+
+        time.sleep(2)  # 对齐 Go: 隔一下
+        plan_body, _ = pass_face_qr_plan_phone_new_api(
+            cache, class_id, course_id, knowledge_id, cpi, object_id)
+        plan_str = plan_body or ""
+        if "活体检测不通过" in plan_str:
+            return Exception("活体检测不通过")
+        if "用户图片信息出错" in plan_str:
+            return Exception("用户图片信息出错")
+        pass_data = safe_json_parse(plan_str)
+        msg = pass_data.get("msg") if pass_data else None
+        if msg is not None and msg not in ("通过", "识别通过"):
+            return Exception(f"人脸验证失败: {plan_str[:200]}")
+        return None
+
+    err = _one_try()
+    # "用户图片信息出错" 重试机制 - 对齐 Go for i <= 8
+    for _ in range(8):
+        if err and "用户图片信息出错" in str(err):
+            time.sleep(1)
+            err = _one_try()
+        else:
+            break
+    # 新接口彻底失败 → 回退老接口 uploadInfo - 对齐 Go PassFacePhoneOldAction
+    if err and "用户图片信息出错" in str(err):
+        # 老接口需要先上传拿到objectId(与Go一致: 重新拉图上传)
+        try:
+            face_img, err2 = _face_load_image(cache)
+            if err2:
+                return err2
+            disturb_img = _face_image_rgb_disturb(face_img)
+            token_body, _ = get_face_upload_token(cache)
+            token_data = safe_json_parse(token_body) if token_body else None
+            token = token_data.get("_token", "") if token_data else ""
+            if not token:
+                return Exception("获取上传token失败")
+            upload_body, _ = upload_face_image_api(cache, token, disturb_img)
+            upload_data = safe_json_parse(upload_body) if upload_body else None
+            if not upload_data or upload_data.get("result") is not True:
+                return Exception("上传人脸失败")
+            object_id = str(upload_data.get("objectId", ""))
+            if not object_id:
+                return Exception("ObjectId为空")
+            old_body, _ = pass_face_qr_plan_phone_old_api(
+                cache, class_id, course_id, knowledge_id, object_id)
+            old_str = old_body or ""
+            if "活体检测不通过" in old_str:
+                return Exception("活体检测不通过")
+            old_data = safe_json_parse(old_str)
+            msg = old_data.get("msg") if old_data else None
+            if msg is not None and msg not in ("通过", "识别通过"):
+                return Exception(f"老接口人脸验证失败: {old_str[:200]}")
+            err = None
+        except Exception as e:
+            return Exception(f"老接口人脸验证异常: {e}")
+    return err
 
 
 def pass_face_pc_action(cache: XueXiTUserCache,
@@ -1000,56 +1231,58 @@ def pass_face_pc_action(cache: XueXiTUserCache,
                         knowledge_id: str, enc: str, job_id: str,
                         object_id: str, mid: str,
                         random_capture_time: str) -> Optional[Exception]:
-    """PC端人脸绕过流程 - 对应 Go PassFacePCAction
-    流程: GetHistoryFaceImg → GetFaceQrCode → UploadFace → PassFaceQrPlanPhoneNew → GetState
+    """PC端人脸绕过流程 - 对应 Go PassFacePCAction(视频403触发)
+    流程: GetHistoryFaceImg → GetFaceQrCodeApi3(两步) → GetFaceUpLoadToken →
+          UploadFaceImage → GetCourseFaceQrPlan3(updateqrstatus) →
+          GetCourseFaceQrState(getqrstatus)
     """
-    import json as _json
+    # 1. 获取历史人脸 + RGB扰动
+    face_img, err = get_history_face_img(cache)
+    if err:
+        return err
+    disturb_img = _face_image_rgb_disturb(face_img)
 
-    # 1. 获取历史人脸
-    _, img_data = get_history_face_img(cache)
-    if img_data is None:
-        return Exception("没有历史人脸数据")
-
-    # 2. 获取QR码
-    qr_body, _ = get_face_qr_code_api3(
-        cache, course_id, class_id, cpi, knowledge_id)
-    qr_data = safe_json_parse(qr_body) if qr_body else None
-    if not qr_data:
-        return Exception("获取人脸QR码失败")
-
-    qr_object_id = qr_data.get("qrObjectId", "")
-    uuid = qr_data.get("uuid", "")
-    if not qr_object_id or not uuid:
-        return Exception("QR码数据不完整")
+    # 2. 获取人脸QR必要数据(uuid/qrcEnc) - 两步
+    uuid_val, qrc_enc = get_face_qr_code_api3(
+        cache, course_id, class_id, knowledge_id, cpi=cpi,
+        enc=enc, job_id=job_id, object_id=object_id)
+    if not uuid_val or not qrc_enc:
+        return Exception("uuid或qrEnc为空")
 
     # 3. 获取上传token
     token_body, _ = get_face_upload_token(cache)
     token_data = safe_json_parse(token_body) if token_body else None
-    token = token_data.get("token", "") if token_data else ""
+    token = token_data.get("_token", "") if token_data else ""
     if not token:
         return Exception("获取上传token失败")
 
     # 4. 上传人脸图片
-    upload_body, _ = upload_face_image_api(cache, token, img_data)
+    upload_body, _ = upload_face_image_api(cache, token, disturb_img)
     upload_data = safe_json_parse(upload_body) if upload_body else None
-    if not upload_data or upload_data.get("result") != "success":
-        return Exception("上传人脸图片失败")
+    if not upload_data or upload_data.get("result") is not True:
+        return Exception("上传人脸失败")
+    new_object_id = str(upload_data.get("objectId", ""))
+    if not new_object_id:
+        return Exception("ObjectId为空")
 
-    # 5. 提交人脸验证
-    pass_body, _ = pass_face_qr_plan_phone_new_api(
-        cache, qr_object_id, uuid)
-    pass_data = safe_json_parse(pass_body) if pass_body else None
-    if not pass_data or pass_data.get("status") != 1:
-        return Exception(f"人脸验证失败: {pass_body}")
+    # 5. 过人脸(PC端 updateqrstatus)
+    plan_body, _ = get_course_face_qr_plan3_api(
+        cache, class_id, course_id, uuid_val, qrc_enc, cpi, new_object_id)
+    plan_data = safe_json_parse(plan_body) if plan_body else None
+    msg = plan_data.get("msg") if plan_data else None
+    if msg is not None and msg != "通过":
+        return Exception(f"人脸验证失败: {(plan_body or '')[:200]}")
 
     # 6. 检查状态
-    time.sleep(2)
-    state_body, _ = get_course_face_qr_state_api(cache, qr_object_id)
+    state_body, _ = get_course_face_qr_state_api(
+        cache, uuid_val, qrc_enc, class_id, course_id, cpi,
+        mid=mid, object_id=job_id, random_capture_time=random_capture_time,
+        knowledge_id=knowledge_id)
     state_data = safe_json_parse(state_body) if state_body else None
     if state_data and state_data.get("status") == 2:
         return None  # 人脸验证成功
 
-    return None  # 假设成功
+    return None  # 状态未知时也视为成功(对齐Go: 状态接口仅记录)
 
 
 # ============ 验证码 API ============

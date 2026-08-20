@@ -38,3 +38,6 @@ config/config.yaml
 
 # Assets & Logs
 assets/
+
+# 无关项目目录
+*quesbank*/

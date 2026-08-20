@@ -1093,19 +1093,19 @@ def _page_mobile_chapter_card_action(
             return None, "", Exception("触发验证码")
 
     if enc == "FACE":
-        # 人脸识别绕过
+        # 人脸识别绕过 - 对齐 Go PassFacePhoneAction(卡片人脸流程)
         platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
         acct = display_account(cache.account)
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ", Yellow,
                   "触发人脸识别，正在尝试自动绕过...")
-        err = xxt_api.pass_face_pc_action(
+        err = xxt_api.pass_face_phone_action(
             cache, str(course_id), str(class_id), str(cpi),
-            str(knowledge_id), enc, "", "", "", "")
+            str(knowledge_id))
         if err:
             if "没有历史人脸" in str(err):
                 return None, "", Exception("过人脸失败，该账号可能从未进行过人脸识别，请先进行一次人脸识别")
-            if "活体检测失败" in str(err):
+            if "活体检测不通过" in str(err):
                 return None, "", Exception("过人脸失败，该账号所录入的人脸可能不规范")
             return None, "", Exception(f"人脸绕过失败: {err}")
         log_print(INFO, f"[{platform}]",

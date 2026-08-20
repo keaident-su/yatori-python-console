@@ -918,10 +918,11 @@ def _html_input_value_get(html: str, elem_id: str) -> str:
 
 def get_history_face_img(cache: XueXiTUserCache,
                          retry: int = 3) -> Tuple[Optional[bytes], Optional[Exception]]:
-    """获取历史人脸图片 - 对齐 Go GetHistoryFaceImg
+    """获取历史人脸图片 - 对齐新版APP api/getUserFaceid
     URL: https://passport2-api.chaoxing.com/api/getUserFaceid
          ?enc=md5(uid+"uWwjeEKsri")&token=4faa8662c59590c6f43ae9fe5b002b42&_time=...
-    响应 result==1 时从 data.http 下载历史人脸图片
+    响应 {"result":1,"data":{"http":"历史照片URL","objectid":"历史基准id"}}
+    result==1 时从 data.http 下载历史人脸图片
     返回: (图片bytes, 错误)
     """
     uid = cache.uid or cache.cookie_dict.get(
@@ -946,6 +947,23 @@ def get_history_face_img(cache: XueXiTUserCache,
         if not img_bytes:
             return None, Exception("历史人脸图片下载失败")
         return img_bytes, None
+    finally:
+        client.close()
+
+
+def change_faceid_api(cache: XueXiTUserCache, object_id: str,
+                      retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """更换服务器基准FaceId - 对齐新版APP api/changefaceid
+    GET https://passport2-api.chaoxing.com/api/changefaceid?objectid={上传照片的objectId}
+    上传照片后调用此接口，将人脸比对基准换成刚上传的照片
+    (新版APP过人脸的核心: 先换基准再比对，绕过历史基准照片)
+    响应 {"result":1,"errorMsg":""} 即成功
+    """
+    url = (f"https://passport2-api.chaoxing.com/api/changefaceid"
+           f"?objectid={object_id}")
+    client = _build_client(cache)
+    try:
+        return _do_get(client, url, retry=retry)
     finally:
         client.close()
 
@@ -1169,7 +1187,15 @@ def pass_face_phone_action(cache: XueXiTUserCache, course_id: str,
         if not object_id:
             return Exception("ObjectId为空")
 
-        time.sleep(2)  # 对齐 Go: 隔一下
+        time.sleep(1)
+        # 更换基准FaceId为新上传的照片 - 对齐新版APP api/changefaceid
+        # (先换基准再比对，绕过历史基准照片限制)
+        change_body, _ = change_faceid_api(cache, object_id)
+        change_data = safe_json_parse(change_body) if change_body else None
+        if not change_data or str(change_data.get("result")) != "1":
+            return Exception(f"更换基准FaceId失败: {(change_body or '')[:200]}")
+
+        time.sleep(1)  # 对齐 Go: 隔一下
         plan_body, _ = pass_face_qr_plan_phone_new_api(
             cache, class_id, course_id, knowledge_id, cpi, object_id)
         plan_str = plan_body or ""
@@ -1211,6 +1237,11 @@ def pass_face_phone_action(cache: XueXiTUserCache, course_id: str,
             object_id = str(upload_data.get("objectId", ""))
             if not object_id:
                 return Exception("ObjectId为空")
+            # 更换基准FaceId - 对齐新版APP api/changefaceid
+            change_body, _ = change_faceid_api(cache, object_id)
+            change_data = safe_json_parse(change_body) if change_body else None
+            if not change_data or str(change_data.get("result")) != "1":
+                return Exception(f"更换基准FaceId失败: {(change_body or '')[:200]}")
             old_body, _ = pass_face_qr_plan_phone_old_api(
                 cache, class_id, course_id, knowledge_id, object_id)
             old_str = old_body or ""
@@ -1232,12 +1263,12 @@ def pass_face_pc_action(cache: XueXiTUserCache,
                         object_id: str, mid: str,
                         random_capture_time: str) -> Optional[Exception]:
     """PC端人脸绕过流程 - 对应 Go PassFacePCAction(视频403触发)
-    流程: GetHistoryFaceImg → GetFaceQrCodeApi3(两步) → GetFaceUpLoadToken →
-          UploadFaceImage → GetCourseFaceQrPlan3(updateqrstatus) →
+    流程: 历史人脸(本地优先) → GetFaceQrCodeApi3(两步) → GetFaceUpLoadToken →
+          UploadFaceImage → changefaceid换基准 → GetCourseFaceQrPlan3(updateqrstatus) →
           GetCourseFaceQrState(getqrstatus)
     """
-    # 1. 获取历史人脸 + RGB扰动
-    face_img, err = get_history_face_img(cache)
+    # 1. 获取历史人脸(本地照片优先) + RGB扰动
+    face_img, err = _face_load_image(cache)
     if err:
         return err
     disturb_img = _face_image_rgb_disturb(face_img)
@@ -1264,6 +1295,12 @@ def pass_face_pc_action(cache: XueXiTUserCache,
     new_object_id = str(upload_data.get("objectId", ""))
     if not new_object_id:
         return Exception("ObjectId为空")
+
+    # 更换基准FaceId为新上传的照片 - 对齐新版APP api/changefaceid
+    change_body, _ = change_faceid_api(cache, new_object_id)
+    change_data = safe_json_parse(change_body) if change_body else None
+    if not change_data or str(change_data.get("result")) != "1":
+        return Exception(f"更换基准FaceId失败: {(change_body or '')[:200]}")
 
     # 5. 过人脸(PC端 updateqrstatus)
     plan_body, _ = get_course_face_qr_plan3_api(

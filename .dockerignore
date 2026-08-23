@@ -1,0 +1,23 @@
+# 排除用户配置（含账号信息，由运行时挂载）
+config.yaml
+config/config.yaml
+
+# 排除本地数据库与日志
+*.db
+*.db-shm
+*.db-wal
+logs/
+assets/log/
+assets/sound/
+assets/faces/
+
+# 排除无关内容
+.git
+.gitignore
+.github
+.idea
+.vscode
+__pycache__/
+*.py[cod]
+yatori-go-quesbank-main/
+README.md

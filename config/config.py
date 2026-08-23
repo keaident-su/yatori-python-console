@@ -76,6 +76,7 @@ class CoursesCustom:
     cx_chapter_test_sw: Optional[int] = 1   # 学习通章测开关
     cx_work_sw: Optional[int] = 1           # 学习通作业开关
     cx_exam_sw: Optional[int] = 1           # 学习通考试开关
+    cx_exam_sw_again: Optional[int] = 0     # 学习通强制重考开关(1=支持重考的考试不管分数都必须重考, 0=仅分数<60时重考)
     shuffle_sw: int = 0                     # 是否打乱顺序
     video_model: int = 1                    # 观看视频模式
     auto_exam: int = 0                      # 是否自动考试
@@ -243,6 +244,8 @@ def _default_value(config: JSONDataForConfig):
             cc.cx_work_sw, 1) if cc.cx_work_sw is not None else 1
         cc.cx_exam_sw = _safe_int(
             cc.cx_exam_sw, 1) if cc.cx_exam_sw is not None else 1
+        cc.cx_exam_sw_again = _safe_int(
+            cc.cx_exam_sw_again, 0) if cc.cx_exam_sw_again is not None else 0
         cc.shuffle_sw = _safe_int(cc.shuffle_sw, 0)
         cc.video_model = _safe_int(cc.video_model, 1)
         cc.auto_exam = _safe_int(cc.auto_exam, 0)

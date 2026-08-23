@@ -214,11 +214,22 @@ docker run -d --name yatori \
 
 ### 镜像标签
 
-| 标签         | 说明                       |
-|--------------|----------------------------|
-| latest       | 最新版本                   |
-| v2.6.2-Beta.10 | 版本号（自动从 logo.txt 解析） |
-| &lt;commit-sha&gt; | 提交哈希，用于回滚         |
+镜像支持多处理器架构（linux/amd64 + linux/arm64），分为**统一标签**和**按架构分版本标签**两类：
+
+| 标签类型 | 标签示例 | 说明 |
+|----------|----------|------|
+| 统一标签（推荐） | `latest` / `v2.6.2-Beta11` | 多架构 manifest，`docker pull` 自动选择适配当前处理器的版本 |
+| amd64 专属 | `latest-amd64` / `v2.6.2-Beta11-amd64` | 强制拉取 x86_64/Intel/AMD 处理器版本 |
+| arm64 专属 | `latest-arm64` / `v2.6.2-Beta11-arm64` | 强制拉取 ARM64/Apple Silicon/树莓派版本 |
+| 提交哈希 | `sha-&lt;commit&gt;` / `sha-&lt;commit&gt;-amd64` / `sha-&lt;commit&gt;-arm64` | 用于回滚到指定提交 |
+
+```bash
+# 自动选择架构（推荐）
+docker pull ghcr.io/keaident-su/yatori-python-console:latest
+
+# 强制指定处理器架构
+docker pull ghcr.io/keaident-su/yatori-python-console:v2.6.2-Beta11-arm64
+```
 
 ## 🎯 功能/特性
 

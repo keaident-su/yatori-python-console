@@ -17,7 +17,7 @@ from utils.log import log_print, INFO
 
 def create_app() -> FastAPI:
     """创建并配置 FastAPI 应用"""
-    app = FastAPI(title="Yatori Console API", version="2.6.2")
+    app = FastAPI(title="Yatori Console API", version="2.6.2-Beta11")
 
     # CORS 中间件 - 对应 Go 的 Cors()
     app.add_middleware(

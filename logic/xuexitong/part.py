@@ -9,6 +9,7 @@ Go流程: ChapterFetchCardsAction → parseIframeData → ParsePointDto →
 import concurrent.futures as _futures
 import copy
 import json
+import queue as _queue_mod
 import random
 import re
 import threading
@@ -41,6 +42,11 @@ PLATFORM_TYPE = "XUEXITONG"
 
 _users_lock = threading.Lock()
 _model3_caches: Dict[str, List[XueXiTUserCache]] = {}
+
+# 多任务点登录池队列(账号级, 跨课程共享): 存放可用session索引，
+# 对齐 Go chapterStudy 中 queue := make(chan int, len(model3Caches)) 的行为
+_model3_pool_queues: Dict[str, Any] = {}
+_model3_pool_queues_guard = threading.Lock()
 
 # 无限制并发模式下，防止同一作业/考试被多个节点线程重复处理
 # (重复处理会因 enc 失效产生 "enc error")
@@ -390,14 +396,47 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
               "[", Green, display_account(cache.account), Default, "] ",
               f"多任务点配置: video_model={cc.video_model}, cx_node={cc.cx_node}")
     if cc.video_model == 3:
-        # 解除账号并发数量限制：mode3 一律强制走无限制模式
-        # (对齐 Go CxNode=-1：不预登录池，每个节点独立 relogin 并发执行)
-        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                  "[", Green, display_account(
-                      cache.account), Default, "] ",
-                  Yellow, "多任务点无限制模式(并发数量限制已解除)")
+        # 对齐 Go UserBlock: videoModel=3 时建立多任务点登录池
+        # cxNode>0 → 预登录cxNode次形成池(同时任务点数量)
+        # cxNode==-1 → 无限制模式(不预登录, 每个节点独立relogin)
+        # cxNode==0/未配置 → 默认3次(对齐Go num:=3)
+        node_num = 3
+        if cc.cx_node is not None and cc.cx_node != 0:
+            node_num = cc.cx_node
         if cache.account not in _model3_caches:
             _model3_caches[cache.account] = []
+        if node_num < 0:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      Yellow, "警告，当前账号使用的是多任务点无限制模式，该账号将会同时登录非常多的次数，这将会小概率性封号(一般封十几分钟)或封IP，单个账号使用基本没有事，多个账号请酌情使用")
+        else:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      Yellow, f"警告，当前账号使用的是多任务点模式，该账号将会同时登录{node_num}次，这将会小概率性封号(一般封十几分钟)或封IP，单个账号使用基本没有事，多个账号请酌情使用")
+            # 预登录池: 登录node_num个独立session副本 - 对齐 Go for i := 0; i < num; i++
+            pool = _model3_caches[cache.account]
+            pool.clear()  # 防止同一次运行内重复累积
+            for i in range(node_num):
+                pool_cache = copy.deepcopy(cache)
+                rerr = xxt_api.relogin(pool_cache)
+                _record_node_login(cache.account, rerr is None, "登录池")
+                pool.append(pool_cache)
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          "当前多任务点账户队列累计", Yellow,
+                          f"{i+1}/{node_num}")
+                time.sleep(1)  # 隔一下，避免登录太快
+        # 初始化登录池队列(账号级, 跨课程共享): 放入所有session索引
+        with _model3_pool_queues_guard:
+            if cache.account not in _model3_pool_queues:
+                _model3_pool_queues[cache.account] = _queue_mod.Queue()
+        if node_num >= 0:
+            q = _model3_pool_queues[cache.account]
+            for i in range(len(_model3_caches[cache.account])):
+                q.put(i)
 
     # Concurrent course execution for model 2/3 (Go uses goroutines)
     if user.courses_custom.video_model == 1:
@@ -685,8 +724,16 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
     # === Node iteration: model3 concurrent, others sequential (matching Go) ===
     cc = user.courses_custom
     if cc.video_model == 3:
-        # Model 3: 无限制并发模式 - 解除并发数量限制，每个节点独立 relogin 并发执行
-        # (对齐 Go CxNode=-1 路径，不再使用 cxNode 大小的登录池)
+        # Model 3 多任务点模式 - 对齐 Go chapterStudy:
+        # cxNode==-1 → 无限制模式(每个节点独立 relogin 并发执行)
+        # cxNode>=0(含0/未配置) → 登录池模式(从预登录池阻塞取session,
+        #                          同时最多cxNode个节点并发)
+        unlimited = (cc.cx_node is not None and cc.cx_node < 0)
+        pool = None
+        pool_q = None
+        if not unlimited:
+            pool = _model3_caches.get(cache.account, [])
+            pool_q = _model3_pool_queues.get(cache.account)
         node_threads = []
         progress_lock = threading.Lock()
         progress_state = {"done": 0}
@@ -712,13 +759,9 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                         progress_state["done"] += 1
                     continue
 
-            # 无限制模式：每个节点独立 relogin 后并发执行（对齐 Go CxNode=-1）
-            def _run_unlimited(idx=index, nid=node_id):
-                res_cache = copy.deepcopy(cache)
+            def _run_node_session(sess_cache, idx, nid, si=None):
                 try:
-                    rerr = xxt_api.relogin(res_cache)
-                    _record_node_login(cache.account, rerr is None, f"节点{nid}")
-                    _node_run(setting, user, res_cache,
+                    _node_run(setting, user, sess_cache,
                               course, nodes, idx, nid, knowledge_map)
                 except Exception as e:
                     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
@@ -727,6 +770,9 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                               "[", course.course_name, "] ", BoldRed,
                               f"节点{nid}运行异常: {e}")
                 finally:
+                    # 用完放回池队列 - 对齐 Go defer queue <- idx
+                    if si is not None and pool_q is not None:
+                        pool_q.put(si)
                     # 实时显示任务点进度
                     with progress_lock:
                         progress_state["done"] += 1
@@ -736,11 +782,41 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                                   cache.account), Default, "] ",
                               "[", course.course_name, "] ",
                               Yellow, f"任务点进度: {done}/{len(nodes)}")
-            t = threading.Thread(target=_run_unlimited, daemon=True)
-            node_threads.append(t)
-            t.start()
-            # 多核优化：启动间隔随 CPU 核心数缩短（保留最小节流防风控）
-            time.sleep(NODE_START_INTERVAL)
+
+            if unlimited:
+                # 无限制模式：每个节点独立 relogin 后并发执行（对齐 Go CxNode=-1）
+                def _run_unlimited(idx=index, nid=node_id):
+                    res_cache = copy.deepcopy(cache)
+                    rerr = xxt_api.relogin(res_cache)
+                    _record_node_login(cache.account, rerr is None, f"节点{nid}")
+                    _run_node_session(res_cache, idx, nid)
+                t = threading.Thread(target=_run_unlimited, daemon=True)
+                node_threads.append(t)
+                t.start()
+                # 多核优化：启动间隔随 CPU 核心数缩短（保留最小节流防风控）
+                time.sleep(NODE_START_INTERVAL)
+            else:
+                # 登录池模式：阻塞等待空闲session - 对齐 Go idx := <-queue
+                # (池为空时队列未初始化, 回退为该节点独立relogin)
+                if pool_q is None or not pool:
+                    def _run_fallback(idx=index, nid=node_id):
+                        res_cache = copy.deepcopy(cache)
+                        rerr = xxt_api.relogin(res_cache)
+                        _record_node_login(cache.account, rerr is None,
+                                           f"节点{nid}")
+                        _run_node_session(res_cache, idx, nid)
+                    t = threading.Thread(target=_run_fallback, daemon=True)
+                    node_threads.append(t)
+                    t.start()
+                    time.sleep(NODE_START_INTERVAL)
+                    continue
+                sess_idx = pool_q.get()  # 阻塞直到有空闲session
+
+                def _run_pool(idx=index, nid=node_id, si=sess_idx):
+                    _run_node_session(pool[si], idx, nid, si)
+                t = threading.Thread(target=_run_pool, daemon=True)
+                node_threads.append(t)
+                t.start()
 
         for t in node_threads:
             t.join()
@@ -897,6 +973,47 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     if not point_dtos:
         return
 
+    # === Step 2.5: 对齐 Go ChapterFetchCardsAction - cords2 补全视频参数 ===
+    # Go在iframe解析后对每个视频再调FetchChapterCords2, 用attachments里的
+    # jobid匹配并覆盖 OtherInfo/JobID/PlayTime(长视频分段时iframe的jobid
+    # 与卡片attachment的jobid不一致, 会导致误判为非任务点而跳过)
+    _cords2_cache: Dict[int, Optional[Dict]] = {}
+    for _pt in point_dtos:
+        if not _pt.video.is_set:
+            continue
+        vd = _pt.video
+        kid = vd.knowledge_id
+        if kid not in _cords2_cache:
+            try:
+                c2_body, _ = xxt_api.fetch_chapter_cords2(
+                    cache, str(class_id_int), str(course_id_int),
+                    str(kid), str(cpi_int), retry=3)
+                _cords2_cache[kid] = xxt_api.parse_marg_json(
+                    c2_body or "") or {}
+            except Exception:
+                _cords2_cache[kid] = {}
+        c2 = _cords2_cache.get(kid) or {}
+        atts = c2.get("attachments", [])
+        if not isinstance(atts, list):
+            continue
+        for att in atts:
+            if not isinstance(att, dict):
+                continue
+            res_jobid = _extract_jobid(att)
+            if not res_jobid or res_jobid != vd.job_id:
+                continue
+            other_info = att.get("otherInfo", "")
+            if isinstance(other_info, str) and len(other_info) > 80:
+                vd.other_info = other_info
+                top_jobid = att.get("jobid")
+                if isinstance(top_jobid, str):
+                    vd.job_id = top_jobid
+                elif isinstance(top_jobid, (int, float)):
+                    vd.job_id = str(int(top_jobid))
+            play_time = att.get("playTime")
+            if isinstance(play_time, (int, float)):
+                vd.play_time = int(play_time) // 1000
+
     # 创建 KnowledgeItem 用于日志输出
     ki_data = (knowledge_map or {}).get(node_id, {})
     knowledge_item = KnowledgeItem(
@@ -938,13 +1055,9 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
 
             _attachments_detection_video(vdto, card)
 
-            if not vdto.is_job:
-                log_print(INFO, f"[{platform}]",
-                          "[", Green, acct, Default, "] ",
-                          "[", course.course_name, "] ", Blue,
-                          "该视频/音频非任务点或已完成，已自动跳过")
-                continue
-
+            # 对齐Go: 不因 is_job 提前跳过视频，交给 _execute_video 内的
+            # VideoDtoFetchAction(ananas/status) 判断是否可播放
+            # (长视频分段时卡片attachment匹配不到会误判为非任务点)
             vdto.enc = enc
             if vdto.is_passed and not vdto.is_job:
                 continue
@@ -1643,12 +1756,21 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
 
     # VideoDtoFetchAction
     if not _video_dto_fetch_action(cache, video):
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", k_label, "】",
-                  "【", video.title, "】 >>> ",
-                  Red, "视频任务点解析失败，已自动跳过")
+        if video.attachment is not None and not video.is_job:
+            # attachment明确标记为非任务点(或已完成)
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title or f"任务点{video.knowledge_id}", "】 >>> ",
+                      Blue, "该视频/音频非任务点或已完成，已自动跳过")
+        else:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title or f"任务点{video.knowledge_id}", "】 >>> ",
+                      Red, "视频任务点解析失败，已自动跳过")
         return
 
     # 初始播放时间处理
@@ -1942,12 +2064,21 @@ def _execute_audio(setting: Setting, user: User, cache: XueXiTUserCache,
     ) if knowledge_item.label else knowledge_item.name
 
     if not _video_dto_fetch_action(cache, audio):
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  "【", k_label, "】",
-                  "【", audio.title, "】 >>> ",
-                  Red, "音频任务点解析失败，已自动跳过")
+        if audio.attachment is not None and not audio.is_job:
+            # attachment明确标记为非任务点(或已完成)
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title or f"任务点{audio.knowledge_id}", "】 >>> ",
+                      Blue, "该视频/音频非任务点或已完成，已自动跳过")
+        else:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", audio.title or f"任务点{audio.knowledge_id}", "】 >>> ",
+                      Red, "音频任务点解析失败，已自动跳过")
         return
 
     playing_time = audio.play_time
@@ -2559,11 +2690,30 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                   BoldRed, f"章测题目页面获取失败 (status={resp.status_code if resp else 'N/A'})")
         return
 
-    if "已截止" in body or "不能作答" in body:
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  Yellow, "该试卷已到截止时间，已自动跳过")
+    # 章测已截止/已批阅(只读视图, 无作答控件): 跳过
+    # 区分已批阅(学生已交/老师已批改, 正常完成)与未批阅(超时未做)
+    reviewed = "已批阅" in body
+    expired = "已截止" in body or "不能作答" in body
+    if reviewed or expired:
+        k_label = (f"{knowledge.label} {knowledge.name}".strip()
+                   if knowledge.label else knowledge.name)
+        title_m = re.search(
+            r'chapter-title[^>]*>([^<]+)<', body)
+        zc_title = title_m.group(1).strip() if title_m else ""
+        if reviewed:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", zc_title or "章测", "】 ",
+                      Green, "该章测已批阅(已完成)，无需作答，已自动跳过")
+        else:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", zc_title or "章测", "】 ",
+                      Yellow, "该章测已过截止时间且未批阅，无法作答，已自动跳过")
         return
 
     # 解析题目并提取元数据
@@ -3763,6 +3913,14 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
     if not exam_list:
         return
 
+    # 考试优先级排序: 待做(含限时进入的补考)最紧迫优先处理，
+    # 避免被前面的长考试/交卷延时耽误而错过限时进入窗口
+    _status_priority = {"待做": 0, "待重考": 1, "待重做": 2, "已完成": 3}
+    exam_list = sorted(
+        exam_list,
+        key=lambda e: _status_priority.get(e.get("status", ""), 9)
+        if isinstance(e, dict) else 9)
+
     for exam in exam_list:
         if not isinstance(exam, dict):
             continue
@@ -3794,6 +3952,25 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       Red, "进入考试失败")
             continue
 
+        # 检测限时进入考试的超时提示页(服务器规则: 开始后N分钟内必须进入，
+        # 超时后服务器返回"不允许参加考试"提示页，拉题必然无questionId)
+        if "不允许参加考试" in enter_body or "不允许参加该考试" in enter_body:
+            tl_m = re.search(
+                r'限时进入[：:][^<]{0,60}?(\d+)\s*分钟[^<]{0,30}不允许参加',
+                enter_body)
+            tl_str = f"(开始{tl_m.group(1)}分钟内必须进入)" if tl_m else ""
+            begin_m = re.search(
+                r'开始时间[：:][^<]*?<span[^>]*>([^<]+)</span>', enter_body)
+            end_m = re.search(
+                r'截止时间[：:][^<]*?<span[^>]*>([^<]+)</span>', enter_body)
+            time_str = ""
+            if begin_m and end_m:
+                time_str = f"(开始{begin_m.group(1).strip()} 截止{end_m.group(1).strip()})"
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow, f"该考试已超过限时进入时间{tl_str}{time_str}，服务器不允许参加，已跳过")
+            continue
+
         # 处理"待重做" - 对应 Go PullExamEnterInformHtmlApi 中的逻辑
         # 如果enter_body含"待重做"，需要拉取重做版本的试卷(url+&redo=1)
         is_redo_exam = "待重做" in enter_body
@@ -3822,6 +3999,8 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         # 检查重考 - 对齐 Go EnterExamAction 的 bnt_retake 处理
         # 支持重考且还有重考机会(已重考<允许重考)且分数<60时才自动重做
         # 已完成考试: 从入口页解析成绩(本次成绩/最终成绩)，<60分且可重考→自动重做
+        # cxExamSwAgain=1: 只要支持重考(还有重考机会)不管分数一律强制重考
+        force_re_exam = ((cc.cx_exam_sw_again or 0) == 1)
         is_re_exam = False
         re_exam_url = ""
         retake_match = re.search(
@@ -3839,8 +4018,23 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 score_val = float(score_match.group(1))
             except (ValueError, TypeError):
                 score_val = None
+        # 重考按钮URL: 新版用href=(且在class前面)，旧版用data=，均兼容
+        _retake_tag = re.search(
+            r'<a\b[^>]*class=["\']bnt_retake["\'][^>]*>', enter_body)
+        if _retake_tag:
+            _attr = re.search(
+                r'(?:href|data)=["\']([^"\']+)["\']', _retake_tag.group(0))
+            if _attr:
+                re_exam_url = _attr.group(1)
 
-        if is_finished_exam:
+        if force_re_exam and retake_match and retake_used < retake_allow:
+            # cxExamSwAgain=1: 支持重考且还有机会→不管分数一律强制重考
+            is_re_exam = True
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow,
+                      f"cxExamSwAgain=1: 考试支持重考(允许{retake_allow}次已重考{retake_used}次)，强制重考...")
+        elif is_finished_exam:
             # 已完成考试: 仅分数<60且可重考时自动重做
             if score_val is None:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
@@ -3860,14 +4054,6 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                           f"考试未达标({score_val}分<60)但重考机会已用完(允许{retake_allow}次已重考{retake_used}次)，跳过")
                 continue
             is_re_exam = True
-            # 重考按钮URL: 新版用href=(且在class前面)，旧版用data=，均兼容
-            _retake_tag = re.search(
-                r'<a\b[^>]*class=["\']bnt_retake["\'][^>]*>', enter_body)
-            if _retake_tag:
-                _attr = re.search(
-                    r'(?:href|data)=["\']([^"\']+)["\']', _retake_tag.group(0))
-                if _attr:
-                    re_exam_url = _attr.group(1)
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】【", exam_name, "】",
                       Yellow,
@@ -3881,14 +4067,6 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                           f"考试分数{score_val}分(≥60)且允许重考{retake_allow}次已重考{retake_used}次，无需重考")
             elif retake_used < retake_allow:
                 is_re_exam = True
-                # 重考按钮URL: 新版用href=(且在class前面)，旧版用data=，均兼容
-                _retake_tag = re.search(
-                    r'<a\b[^>]*class=["\']bnt_retake["\'][^>]*>', enter_body)
-                if _retake_tag:
-                    _attr = re.search(
-                        r'(?:href|data)=["\']([^"\']+)["\']', _retake_tag.group(0))
-                    if _attr:
-                        re_exam_url = _attr.group(1)
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Yellow,

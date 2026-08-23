@@ -79,6 +79,7 @@ users:                            # 账号列表，支持多账号
       cxChapterTestSw: 1          # 【学习通】章测开关：0关闭 / 1开启
       cxWorkSw: 1                 # 【学习通】作业开关：0关闭 / 1开启
       cxExamSw: 1                 # 【学习通】考试开关：0关闭 / 1开启
+      cxExamSwAgain: 0            # 【学习通】强制重考开关：1=支持重考的考试不管分数一律重考 / 0=仅分数<60时重考
       deviceFlag: ''              # 【学习通】设备特征码（见下方说明）
       excludeCourses: []          # 排除课程（按名称过滤）
       includeCourses: []          # 只刷指定课程（按名称过滤，空=全部）
@@ -103,6 +104,9 @@ users:                            # 账号列表，支持多账号
 | 0  | 不考试         | 跳过考试任务                               |
 | 1  | AI 考试        | 调用 AI 大模型自动答题，需配置 `aiSetting` |
 | 2  | 外部题库对接   | 对接外部题库接口，需配置 `apiQueSetting`   |
+
+> [!TIP]
+> 学习通考试刷完后，若支持重考：`cxExamSwAgain: 0`（默认）仅在分数低于 60 分时重考；`cxExamSwAgain: 1` 则只要还有重考机会，不管分数一律强制重考。
 
 ### 4. AI 类型对照表（aiType）
 
@@ -176,6 +180,36 @@ users:
         - '形势与政策'
         - '古代汉语'
 ```
+
+## 🐳 Docker 部署
+
+项目已支持容器化部署，GitHub Actions 自动构建多架构镜像（linux/amd64 + linux/arm64）并推送到 GitHub Container Registry（GHCR）。
+
+### 拉取镜像
+
+```bash
+docker pull ghcr.io/keaident-su/yatori-python-console:latest
+```
+
+### 运行（挂载本地 config.yaml）
+
+```bash
+docker run -d --name yatori \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  -v $(pwd)/logs:/app/logs \
+  ghcr.io/keaident-su/yatori-python-console:latest
+```
+
+> [!IMPORTANT]
+> `config.yaml` 不会打进镜像（避免泄露账号信息），运行时必须通过 `-v` 挂载本地配置文件。
+
+### 镜像标签
+
+| 标签         | 说明                       |
+|--------------|----------------------------|
+| latest       | 最新版本                   |
+| v2.6.2-Beta.10 | 版本号（自动从 logo.txt 解析） |
+| &lt;commit-sha&gt; | 提交哈希，用于回滚         |
 
 ## 🎯 功能/特性
 

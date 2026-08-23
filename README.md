@@ -146,12 +146,22 @@ users:                            # 账号列表，支持多账号
 
 ### 7. 学习通人脸识别说明
 
-学习通刷课时触发人脸识别，程序会尝试自动绕过（历史人脸/QR码方案）：
+学习通刷课时触发人脸识别，程序会自动尝试绕过（手机端卡片人脸/PC端视频人脸两套流程）：
 
-- **历史人脸**：自动拉取该账号在平台录入过的历史人脸图片进行验证
-- **本地人脸缓存**：可手动将本人清晰正脸照片放到 `assets/faces/{账号}.jpg`，程序优先使用本地图片（比历史人脸成功率更高）
-- **QR码方案**：新/老接口自动切换，二维码方案验证通过后自动继续刷课
+**自动绕过流程：**
+
+1. **人脸图片获取**：优先读取本地 `assets/faces/{账号}.jpg`，不存在则自动拉取该账号的历史人脸图片
+2. **RGB 扰动处理**：对图片做像素扰动（防平台检测）
+3. **上传人脸**：获取上传 token 后上传图片，拿到 objectId
+4. **更换基准 FaceId**：调用 `api/changefaceid` 将基准 FaceId 换成新上传的照片（对齐新版 APP，绕过历史基准照片限制）
+5. **新接口验证**：QR码方案验证通过则继续刷课；"用户图片信息出错"自动重试 8 次
+6. **老接口回退**：新接口彻底失败时自动回退老接口 `uploadInfo` 验证
+
+**使用建议：**
+
+- **本地人脸缓存**：可手动将本人清晰正脸照片放到 `assets/faces/{账号}.jpg`，程序优先使用本地图片（成功率更高）
 - **失败处理**：若账号从未录入过人脸（提示"没有历史人脸"），需先在手机学习通 APP 完成一次人脸识别录入
+- **PC端视频人脸**：视频 403 触发时走 PC 端流程（updateqrstatus/getqrstatus 轮询验证）
 
 ### 8. 启动方式
 
@@ -192,7 +202,9 @@ users:
 
 ## 🐳 Docker 部署
 
-项目已支持容器化部署，GitHub Actions 自动构建多架构镜像（linux/amd64 + linux/arm64）并推送到 GitHub Container Registry（GHCR）。
+项目已支持容器化部署，GitHub Actions 自动构建**多处理器架构**镜像（linux/amd64 + linux/arm64）并推送到 GitHub Container Registry（GHCR）。
+
+> 多架构镜像采用 manifest 自动分发：`docker pull` 时会根据当前机器的处理器自动拉取对应架构版本（Intel/AMD x86_64 自动获取 amd64 版，ARM64/Apple Silicon/树莓派自动获取 arm64 版）。
 
 ### 拉取镜像
 
@@ -214,21 +226,15 @@ docker run -d --name yatori \
 
 ### 镜像标签
 
-镜像支持多处理器架构（linux/amd64 + linux/arm64），分为**统一标签**和**按架构分版本标签**两类：
-
-| 标签类型 | 标签示例 | 说明 |
-|----------|----------|------|
-| 统一标签（推荐） | `latest` / `v2.6.2-Beta11` | 多架构 manifest，`docker pull` 自动选择适配当前处理器的版本 |
-| amd64 专属 | `latest-amd64` / `v2.6.2-Beta11-amd64` | 强制拉取 x86_64/Intel/AMD 处理器版本 |
-| arm64 专属 | `latest-arm64` / `v2.6.2-Beta11-arm64` | 强制拉取 ARM64/Apple Silicon/树莓派版本 |
-| 提交哈希 | `sha-&lt;commit&gt;` / `sha-&lt;commit&gt;-amd64` / `sha-&lt;commit&gt;-arm64` | 用于回滚到指定提交 |
+| 标签         | 说明                       |
+|--------------|----------------------------|
+| latest       | 最新版本（多架构，自动适配处理器） |
+| v2.6.2-Beta11 | 版本号（自动从 logo.txt 解析，多架构） |
+| &lt;commit-sha&gt; | 提交哈希，用于回滚         |
 
 ```bash
-# 自动选择架构（推荐）
-docker pull ghcr.io/keaident-su/yatori-python-console:latest
-
-# 强制指定处理器架构
-docker pull ghcr.io/keaident-su/yatori-python-console:v2.6.2-Beta11-arm64
+# amd64/arm64 自动分发，无需指定架构
+docker pull ghcr.io/keaident-su/yatori-python-console:v2.6.2-Beta11
 ```
 
 ## 🎯 功能/特性

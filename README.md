@@ -341,12 +341,12 @@ docker run -d --name yatori \
 | 标签         | 说明                       |
 |--------------|----------------------------|
 | latest       | 最新版本（多架构，自动适配处理器） |
-| V1.1.0 | 版本号（自动从 logo.txt 解析，多架构） |
-| &lt;commit-sha&gt; | 提交哈希，用于回滚         |
+| V1.1.0       | 版本标签（自动从 logo.txt 解析，多架构） |
+| v1.1.0       | 版本标签小写别名（等价于 V1.1.0） |
 
 ```bash
 # amd64/arm64 自动分发，无需指定架构
-docker pull ghcr.io/keaident-su/yatori-python-console:v1.1.0
+docker pull ghcr.io/keaident-su/yatori-python-console:V1.1.0
 ```
 
 ## 🎯 功能/特性

@@ -72,6 +72,12 @@ jobs:
           chmod +x "dist/${OUT}"
           ls -lh dist/
 
+      - name: 清理构建中间产物 (释放磁盘空间)
+        run: |
+          rm -rf build_stage
+          python -m pip cache purge || true
+          df -h / | tail -1
+
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
@@ -157,6 +163,12 @@ jobs:
           mv "${BIN}.zip" dist/
           rm -f "${{ env.APP_BASE_ZH }}"
           ls -lh dist/
+
+      - name: 清理构建中间产物 (释放磁盘空间, DMG 需足够临时空间)
+        run: |
+          rm -rf build_stage
+          python -m pip cache purge || true
+          df -h / | tail -1
 
       - name: 导入签名证书 (可选, 未配置 secrets 则跳过)
         id: sign

@@ -41,3 +41,16 @@ assets/
 
 # 无关项目目录
 *quesbank*/
+
+# 构建中间产物与日志
+build_stage/
+build_log.txt
+protected_build_log.txt
+*.bak_*.html
+
+# 运行时数据缓存（程序自动创建/回写）
+questions_answers.json
+
+# 第三方题库 SDK 资料（示例脚本含私有 token，不入库）
+axe_tiku_python_sdk/
+emmcy_tiku_python_sdk/

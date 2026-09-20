@@ -48,6 +48,12 @@ _model3_caches: Dict[str, List[XueXiTUserCache]] = {}
 _model3_pool_queues: Dict[str, Any] = {}
 _model3_pool_queues_guard = threading.Lock()
 
+# 活跃课程计数(账号级): 用于登录池公平分配，
+# 限制单个课程同时占用的session数(池大小/活跃课程数)，
+# 避免先到达的课程独占整个登录池导致其他课程的任务点看起来串行
+_active_course_count: Dict[str, int] = {}
+_active_course_guard = threading.Lock()
+
 # 无限制并发模式下，防止同一作业/考试被多个节点线程重复处理
 # (重复处理会因 enc 失效产生 "enc error")
 _work_processed: set = set()
@@ -157,9 +163,9 @@ def _normalize_ai_answer_candidates(answer: str) -> List[str]:
                 return cands
     except (ValueError, TypeError):
         pass
-    # 纯文本: 按常见分隔符切分
+    # 纯文本: 按常见分隔符切分(#为AXE题库多选答案分隔符)
     cands = []
-    for frag in re.split(r'[,，;；、|]', text):
+    for frag in re.split(r'[,，;；、|#]', text):
         frag = frag.strip().strip('"\'[]{} ')
         if frag and frag not in cands:
             cands.append(frag)
@@ -361,6 +367,9 @@ def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
 # ============ 刷课 ============
 
 def run_brush_operation(setting: Setting, users: List[User], user_caches: List[Any]):
+    # 初始化多答题源引擎(顺序调用/失败自动回退/本地题库缓存)
+    from logic.core.answer_engine import configure_answer_engine
+    configure_answer_engine(setting)
     # 解除多个独立账号同时进行的数量限制：所有账号同时并行执行
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               Yellow, f"共{len(user_caches)}个账号同时并行执行(独立账号数量限制已解除)")
@@ -731,9 +740,19 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
         unlimited = (cc.cx_node is not None and cc.cx_node < 0)
         pool = None
         pool_q = None
+        course_sem = None
         if not unlimited:
             pool = _model3_caches.get(cache.account, [])
             pool_q = _model3_pool_queues.get(cache.account)
+            # 公平分配: 单课程同时占用session上限 = 池大小/活跃课程数(至少1)
+            # 避免先到达的课程独占登录池, 导致其他课程任务点看似串行
+            with _active_course_guard:
+                _active_course_count[cache.account] = (
+                    _active_course_count.get(cache.account, 0) + 1)
+                active_n = _active_course_count[cache.account]
+            if pool:
+                course_sem = threading.BoundedSemaphore(
+                    max(1, len(pool) // max(active_n, 1)))
         node_threads = []
         progress_lock = threading.Lock()
         progress_state = {"done": 0}
@@ -810,14 +829,25 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                     t.start()
                     time.sleep(NODE_START_INTERVAL)
                     continue
+                # 课程级并发上限(公平分配): 占满则等待本课程的节点完成
+                if course_sem is not None:
+                    course_sem.acquire()
                 sess_idx = pool_q.get()  # 阻塞直到有空闲session
 
                 def _run_pool(idx=index, nid=node_id, si=sess_idx):
-                    _run_node_session(pool[si], idx, nid, si)
+                    try:
+                        _run_node_session(pool[si], idx, nid, si)
+                    finally:
+                        if course_sem is not None:
+                            course_sem.release()
                 t = threading.Thread(target=_run_pool, daemon=True)
                 node_threads.append(t)
                 t.start()
 
+        if course_sem is not None:
+            with _active_course_guard:
+                _active_course_count[cache.account] = max(
+                    0, _active_course_count.get(cache.account, 1) - 1)
         for t in node_threads:
             t.join()
     else:
@@ -949,6 +979,9 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
         _parse_iframe_light, [d for _, _, d in _card_desc_pairs])
 
     point_dtos: List[PointDto] = []
+    # 未能识别为标准类型的任务点(知识结构/引导问题/单文字/PPT/文档文章等):
+    # 收集起来统一"尽力完成", 避免被静默跳过导致任务点迟迟不变绿
+    other_points: List[Dict] = []
     for (card_idx, card, _desc), iframe_list in zip(_card_desc_pairs, _parsed_iframes):
         if not iframe_list:
             continue
@@ -968,9 +1001,17 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
             _fill_dto_from_iframe(dto, module_type, tp_data, card_idx,
                                   course_id_int, class_id_int,
                                   knowledge_id, cpi_int, card, cache)
-            point_dtos.append(dto)
+            if _point_dto_is_set(dto):
+                point_dtos.append(dto)
+            else:
+                other_points.append({
+                    "card_index": card_idx,
+                    "card": card,
+                    "module": module_type,
+                    "data": tp_data,
+                })
 
-    if not point_dtos:
+    if not point_dtos and not other_points:
         return
 
     # === Step 2.5: 对齐 Go ChapterFetchCardsAction - cords2 补全视频参数 ===
@@ -1032,6 +1073,15 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
 
     cc = user.courses_custom
 
+    # 文档/其它类任务点处理后的停留秒数
+    # (用户诉求: 不低于30秒, 给服务端充分时间标记任务点完成)
+    try:
+        _other_stay = int(getattr(cc, "other_task_stay", 30))
+    except (ValueError, TypeError):
+        _other_stay = 30
+    if _other_stay < 0:
+        _other_stay = 0
+
     # === 视频/音频类型 ===
     if video_dtos and cc.video_model != 0:
         for vdto in video_dtos:
@@ -1092,7 +1142,7 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
             if not ddto.is_job:
                 continue
             _execute_document(cache, course, ddto)
-            time.sleep(5)
+            time.sleep(_other_stay)
 
     # === 章测(作业)类型 ===
     if work_dtos and cc.auto_exam != 0 and (cc.cx_chapter_test_sw or 0) == 1:
@@ -1174,6 +1224,13 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
                 continue
             _execute_bbs(setting, user, cache, course, knowledge_item, bbs_dto)
             time.sleep(5)
+
+    # === 其它类型任务点(知识结构/引导问题/单文字/PPT/文档文章等) ===
+    # 尽力尝试完成后停留 _other_stay 秒
+    if other_points:
+        _handle_other_task_points(
+            setting, user, cache, course, knowledge_item, other_points,
+            class_id_int, course_id_int, knowledge_id, cpi_int)
 
 
 # ============ PageMobileChapterCardAction ============
@@ -1347,7 +1404,7 @@ def _fill_dto_from_iframe(dto: PointDto, module_type: str,
             dd.type = "document"
             dd.is_set = True
 
-    elif module_type == "insertreadv2":
+    elif (module_type or "").lower() == "insertreadv2":
         job_id = str(tp_data.get("_jobid", ""))
         if job_id:
             dd = dto.document
@@ -1466,6 +1523,14 @@ def _extract_jobid(data: Dict) -> str:
             if isinstance(val, (int, float)):
                 return str(int(val))
     return ""
+
+
+def _point_dto_is_set(dto: PointDto) -> bool:
+    """判断 PointDto 是否已识别为标准任务点(六类之一)"""
+    return bool(
+        dto.video.is_set or dto.work.is_set or dto.document.is_set or
+        dto.hyperlink.is_set or dto.live.is_set or dto.bbs.is_set
+    )
 
 
 # ============ AttachmentsDetection 系列 ============
@@ -2312,6 +2377,90 @@ def _execute_document(cache: XueXiTUserCache, course: XueXiTCourse,
                   BoldRed, f"文档提交异常: {body[:200] if body else 'empty'}")
 
 
+# ============ 其它类型任务点处理 ============
+
+def _handle_other_task_points(setting: Setting, user: User,
+                              cache: XueXiTUserCache, course: XueXiTCourse,
+                              knowledge: KnowledgeItem, other_points: List[Dict],
+                              class_id: int, course_id: int,
+                              knowledge_id: int, cpi: int):
+    """处理未能识别为标准类型的任务点(知识结构/引导问题/单文字/PPT/文档文章等)
+
+    - 尽力尝试完成: 若存在jobid则构造文档DTO走文档上报(best-effort)
+    - 处理完成后停留 otherTaskStay 秒(默认30), 给服务端充分时间标记完成
+    """
+    if not other_points:
+        return
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    cc = user.courses_custom
+    try:
+        stay = int(getattr(cc, "other_task_stay", 30))
+    except (ValueError, TypeError):
+        stay = 30
+    if stay < 0:
+        stay = 0
+
+    k_label = (f"{knowledge.label} {knowledge.name}".strip()
+               if knowledge.label else knowledge.name)
+
+    for op in other_points:
+        module_type = op.get("module", "")
+        tp_data = op.get("data", {}) or {}
+        card_index = op.get("card_index", 0)
+        title = (tp_data.get("title") or tp_data.get("name") or module_type)
+
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  "【", k_label, "】 ",
+                  DarkGray,
+                  f"检测到其它类型任务点(module={module_type})，"
+                  f"尝试尽力完成并停留{stay}秒...")
+
+        job_id = _extract_jobid(tp_data)
+        if not job_id:
+            # 无jobid无法上报, 仅按要求停留等待
+            if stay > 0:
+                time.sleep(stay)
+            continue
+
+        # best-effort: 构造文档DTO并尝试上报
+        try:
+            dto = PointDocumentDto()
+            dto.card_index = card_index
+            dto.course_id = str(course_id)
+            dto.class_id = str(class_id)
+            dto.knowledge_id = knowledge_id
+            dto.cpi = str(cpi)
+            dto.title = title
+            dto.job_id = job_id
+            dto.type = "document"
+            dto.is_set = True
+
+            _card, _enc, err = _page_mobile_chapter_card_action(
+                setting, cache, class_id, course_id,
+                knowledge_id, card_index, cpi)
+            if err:
+                if "章节未开放" in str(err):
+                    log_print(INFO, f"[{platform}]",
+                              "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】 ", BoldRed,
+                              "该章节未开放，已自动跳过")
+                    return
+            elif _card is not None:
+                _attachments_detection_document(dto, _card)
+            _execute_document(cache, course, dto)
+        except Exception as e:
+            log_print(DEBUG, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】", DarkGray,
+                      f"其它任务点({module_type})尽力处理异常: {e}")
+
+        if stay > 0:
+            time.sleep(stay)
+
+
 # ============ 外链执行 ============
 
 def _execute_hyperlink(cache: XueXiTUserCache, course: XueXiTCourse,
@@ -2538,17 +2687,15 @@ def _execute_bbs(setting: Setting, user: User, cache: XueXiTUserCache,
               "【", bdto.title, "】",
               Yellow, "正在执行讨论任务点...")
 
-    # 4. 根据答题模式获取回答内容
+    # 4. 根据答题模式获取回答内容(讨论回复仅走AI答题源)
     content = ""
-    if cc.auto_exam == 1:
+    if cc.auto_exam in (1, 2):
         try:
-            from logic.core.ai_client import ai_problem_message
-            ai = setting.ai_setting
+            from logic.core.answer_engine import answer_query
             prompt = topic_title
             if topic_content:
                 prompt = topic_title + "\n" + topic_content
-            answer = ai_problem_message(
-                ai.ai_url, ai.model, ai.api_key, ai.ai_type, prompt)
+            answer = answer_query(prompt, q_type="short", only_ai=True)
             content = answer if answer else "同意"
         except Exception:
             content = "同意"
@@ -2630,9 +2777,9 @@ def _similarity_array_select(target: str, options: List[str]) -> List[str]:
     if not target or not options:
         return ["A"]
 
-    # 多选题: 尝试分割AI答案 (常见分隔符: ，、, \n ; 等)
+    # 多选题: 尝试分割AI答案 (常见分隔符: ，、, \n ; # 等; #为AXE题库分隔符)
     # 对齐Go: for _, item := range ch.Answers { answers += SimilarityArraySelect(item, candidateSelects) }
-    parts = re.split(r'[,，、;\n|/]+', target)
+    parts = re.split(r'[,，、;#\n|/]+', target)
     parts = [p.strip().strip("'\"\u2018\u2019\u201c\u201d\u300c\u300d\u300e\u300f")
              for p in parts if p.strip()]
 
@@ -2716,8 +2863,10 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       Yellow, "该章测已过截止时间且未批阅，无法作答，已自动跳过")
         return
 
-    # 解析题目并提取元数据
-    questions, meta = _parse_work_questions_v2(body)
+    # 解析题目并提取元数据 (图片题干/选项自动OCR)
+    _img_ocr = _make_img_ocr(
+        cache, enabled=(getattr(setting.basic_setting, "ocr_image_question", 1) == 1))
+    questions, meta = _parse_work_questions_v2(body, img_ocr=_img_ocr)
     if not questions:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
@@ -2726,10 +2875,8 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
         return
 
     mode_str = ""
-    if cc.auto_exam == 1:
-        mode_str = "AI自动"
-    elif cc.auto_exam == 2:
-        mode_str = "外挂题库"
+    if cc.auto_exam in (1, 2):
+        mode_str = "多源答题"
     elif cc.auto_exam == 3:
         mode_str = "内置AI"
 
@@ -2746,11 +2893,12 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
     answerwqbid = ""
     ai_answered = 0  # AI实际给出答案的题数
     ai_raw_answers = []  # 调试用：记录AI原始返回值
-    for q in questions:
+    for _qi, q in enumerate(questions):
         q_type = q.get("type", "")
         q_text = q.get("text", "")
         q_id = q.get("id", "")
         answer = ""
+        answer_src = ""  # 命中的答题源名称(用于日志)
 
         # 提取选项纯文本(去掉 "A." 前缀) - 对齐Go TurnStandardQuestion
         raw_options = q.get("options", [])
@@ -2762,13 +2910,11 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             else:
                 opt_texts_for_ai.append(opt)
 
-        if cc.auto_exam == 1:
+        if cc.auto_exam in (1, 2):
+            # 多答题源顺序调用: 本地题库缓存 -> 各题库/AI源按顺序回退
             try:
-                from logic.core.ai_client import ai_problem_message
-                ai = setting.ai_setting
-                # 对齐Go: 传递题型和选项，AI返回JSON数组格式答案
-                answer = ai_problem_message(
-                    ai.ai_url, ai.model, ai.api_key, ai.ai_type,
+                from logic.core.answer_engine import answer_query_detail
+                answer, answer_src = answer_query_detail(
                     q_text, options=opt_texts_for_ai, q_type=q_type)
             except Exception:
                 answer = ""
@@ -2779,6 +2925,8 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         course.cpi),
                     options=opt_texts_for_ai, q_type=q_type)
                 answer = ai_body.strip() if ai_body else ""
+                if answer:
+                    answer_src = "内置AI(学习通)"
             except Exception:
                 answer = ""
         else:
@@ -2812,6 +2960,23 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             answer = answer.replace("对", "正确").replace(
                 "√", "正确").replace("×", "错误")
 
+        # 每题答题来源日志: 明确标注本题由哪个题库/AI源回答成功
+        if cc.auto_exam in (1, 2, 3):
+            _q_brief = q_text.replace("\n", " ").replace("\r", " ")[:50]
+            if answer:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          f"<{mode_str}>", "第", str(_qi + 1), "题",
+                          Yellow, f" 使用【{answer_src or '默认'}】回答: ",
+                          Default, f"{answer[:80]}",
+                          DarkGray, f" | 题目: {_q_brief}")
+            else:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          f"<{mode_str}>", "第", str(_qi + 1), "题",
+                          Red, " 所有答题源均未命中",
+                          DarkGray, f" | 题目: {_q_brief}")
+
         if q_id:
             answerwqbid += q_id + ","
             q["answer"] = answer
@@ -2826,15 +2991,15 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
               Yellow, f"[AI调试] ai_answered={ai_answered} auto_exam={cc.auto_exam} "
               f"题数={len(questions)} answers={ai_raw_answers}")
 
-    # 检查AI是否可用 - 如果AI没有给出任何实际答案，跳过提交
-    if ai_answered == 0 and cc.auto_exam in (1, 3) and questions:
+    # 检查答题源是否可用 - 如果所有源都没有给出实际答案，跳过提交
+    if ai_answered == 0 and cc.auto_exam in (1, 2, 3) and questions:
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   f"<{mode_str}>",
                   "【", course.course_name, "】",
                   "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
                   "【", title, "】",
-                  Yellow, f"AI未返回任何答案(余额不足?)，跳过提交")
+                  Yellow, f"所有答题源均未返回答案，跳过提交")
         return
 
     # 构建提交数据 - 完全对齐Go WorkNewSubmitAnswer的multipart fields
@@ -2969,15 +3134,15 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
     # 对齐Go WorkNewSubmitAnswer: writer.WriteField("answerwqbid", answerwqbid) 在最后
     submit_data["answerwqbid"] = answerwqbid
 
-    # 第二层保护：提交前再次验证AI答案不为空
-    if ai_answered == 0 and cc.auto_exam in (1, 3):
+    # 第二层保护：提交前再次验证答题源答案不为空
+    if ai_answered == 0 and cc.auto_exam in (1, 2, 3):
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   f"<{mode_str}>",
                   "【", course.course_name, "】",
                   "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
                   "【", title, "】",
-                  Yellow, f"[保护] AI未返回答案，阻止提交(ai_answered={ai_answered})")
+                  Yellow, f"[保护] 所有答题源均未返回答案，阻止提交(ai_answered={ai_answered})")
         return
 
     # 详细调试: 输出所有答案字段
@@ -3089,9 +3254,127 @@ def _parse_work_questions(html_body: str) -> List[Dict]:
     return questions
 
 
-def _parse_work_questions_v2(html_body: str) -> Tuple[List[Dict], Dict]:
+# ============ 图片题目 OCR ============
+
+# 匹配 <img> 的惰性加载/真实地址(data-src 优先)
+_IMG_SRC_RE = re.compile(
+    r'<img[^>]+?(?:data-src|data-original|src)=["\']([^"\']+)["\']',
+    re.IGNORECASE)
+
+
+def _normalize_img_url(url: str) -> str:
+    """规范化图片URL(补全协议/域名, 还原HTML实体)"""
+    if not url:
+        return ""
+    url = url.strip().replace("&amp;", "&")
+    if url.startswith("//"):
+        return "https:" + url
+    if url.startswith("/"):
+        return "https://mooc1.chaoxing.com" + url
+    return url
+
+
+def _ocr_from_html(fragment: str, img_ocr, limit: int = 10) -> str:
+    """从HTML片段中提取所有<img>并OCR, 返回拼接文本"""
+    if not fragment or img_ocr is None:
+        return ""
+    texts: List[str] = []
+    seen = set()
+    for m in _IMG_SRC_RE.finditer(fragment):
+        if len(texts) >= limit:
+            break
+        raw = m.group(1)
+        if not raw or raw.startswith("data:"):
+            continue
+        url = _normalize_img_url(raw)
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        t = img_ocr(url)
+        if t:
+            texts.append(t)
+    return " ".join(texts).strip()
+
+
+def _ocr_from_node(node, img_ocr, limit: int = 10) -> str:
+    """从BeautifulSoup节点中提取所有<img>并OCR, 返回拼接文本"""
+    if node is None or img_ocr is None:
+        return ""
+    try:
+        imgs = node.find_all("img")
+    except Exception:
+        return ""
+    if not imgs:
+        return ""
+    texts: List[str] = []
+    seen = set()
+    for img in imgs:
+        if len(texts) >= limit:
+            break
+        raw = (img.get("data-src") or img.get("data-original")
+               or img.get("src") or "")
+        if not raw or raw.startswith("data:"):
+            continue
+        url = _normalize_img_url(raw)
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        t = img_ocr(url)
+        if t:
+            texts.append(t)
+    return " ".join(texts).strip()
+
+
+def _make_img_ocr(cache: XueXiTUserCache, enabled: bool = True,
+                  max_imgs: int = 30):
+    """构造图片OCR解析器 callable(url)->str(带下载+识别缓存与限流)
+
+    不可用(未开启/未安装依赖)时返回 None
+    :param enabled: 是否开启(对应 basicSetting.ocrImageQuestion)
+    :param max_imgs: 单次解析最多识别的图片数量(防止图片过多拖慢)
+    """
+    if not enabled:
+        return None
+    from logic.core import ocr_utils
+    if not ocr_utils.ocr_available():
+        ocr_utils.warn_missing_once()
+        return None
+
+    state: Dict[str, Any] = {"client": None, "cache": {}, "count": 0}
+
+    def _resolve(url: str) -> str:
+        if not url:
+            return ""
+        cache_map = state["cache"]
+        if url in cache_map:
+            return cache_map[url]
+        if state["count"] >= max_imgs:
+            return ""
+        state["count"] += 1
+        client = state["client"]
+        if client is None:
+            try:
+                client = xxt_api._build_client(cache)
+                state["client"] = client
+            except Exception:
+                cache_map[url] = ""
+                return ""
+        try:
+            img_bytes, _ = client.get_image(url, retry=2)
+        except Exception:
+            img_bytes = None
+        text = ocr_utils.ocr_bytes(img_bytes) if img_bytes else ""
+        cache_map[url] = text
+        return text
+
+    return _resolve
+
+
+def _parse_work_questions_v2(html_body: str,
+                             img_ocr=None) -> Tuple[List[Dict], Dict]:
     """从作业页面HTML解析题目列表+元数据 - 对齐Go ParseWorkQuestionAction
     使用 BeautifulSoup + div.Py-mian1 块解析每道题（与Go的ParseQuestionSets完全对齐）
+    :param img_ocr: 可选的图片OCR解析器 callable(url)->str, 用于回填图片题干/选项
     Returns: (questions_list, metadata_dict)
     """
     questions = []
@@ -3167,6 +3450,10 @@ def _parse_work_questions_v2(html_body: str) -> Tuple[List[Dict], Dict]:
             text_wrap = title_div.find(class_="workTextWrap")
             if text_wrap:
                 text = text_wrap.get_text(strip=True)
+            # 图片题干OCR回填
+            ocr_text = _ocr_from_node(title_div, img_ocr)
+            if ocr_text:
+                text = (text + " " + ocr_text).strip() if text else ocr_text
         if not text:
             text = f"题目{qid}"
 
@@ -3188,6 +3475,11 @@ def _parse_work_questions_v2(html_body: str) -> Tuple[List[Dict], Dict]:
                         cc_content = li.find("cc")
                         opt_text = cc_content.get_text(
                             strip=True) if cc_content else ""
+                        # 图片选项OCR回填
+                        ocr_opt = _ocr_from_node(li, img_ocr)
+                        if ocr_opt:
+                            opt_text = (opt_text + " " + ocr_opt).strip() \
+                                if opt_text else ocr_opt
                         if letter:
                             options.append(f"{letter}. {opt_text}")
             answer_fields[f"answer{qid}"] = ""
@@ -3378,14 +3670,12 @@ def _write_course_work_and_exam(setting: Setting, user: User,
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
 
-    # AI可用性检查
-    if cc.auto_exam == 1:
-        from logic.core.ai_client import ai_check
-        ai = setting.ai_setting
-        err = ai_check(ai.ai_url, ai.model, ai.api_key, ai.ai_type)
-        if err:
+    # 答题源可用性检查(多答题源: 题库+AI, 含本地题库缓存)
+    if cc.auto_exam in (1, 2):
+        from logic.core.answer_engine import engine_is_ready
+        if not engine_is_ready():
             log_print(INFO, f"[{platform}]",
-                      BoldRed, f"<{ai.ai_type}> AI不可用: {err}")
+                      BoldRed, "未配置可用的答题源(题库/AI)且本地题库缓存为空，跳过作业与考试")
             return
 
     # 作业
@@ -3427,8 +3717,10 @@ def _html_input_name_get(html: str, name: str) -> str:
     return m.group(1) if m else ""
 
 
-def _html_work_question_turn_entity(html: str) -> Dict:
-    """解析作业题目HTML提取元数据 - 对应 Go HtmlWorkQuestionTurnEntity"""
+def _html_work_question_turn_entity(html: str, img_ocr=None) -> Dict:
+    """解析作业题目HTML提取元数据 - 对应 Go HtmlWorkQuestionTurnEntity
+    :param img_ocr: 可选的图片OCR解析器, 用于回填图片题干/选项
+    """
     q = {}
     qid = _html_input_get(html, "questionId")
     q["questionId"] = qid
@@ -3443,13 +3735,24 @@ def _html_work_question_turn_entity(html: str) -> Dict:
     title_match = re.search(
         r'class=["\'][^"\']*workWrap[^"\']*["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL)
     if title_match:
-        q["questionContent"] = re.sub(
-            r'<[^>]+>', '', title_match.group(1)).strip()
+        raw_title = title_match.group(1)
+        content = re.sub(r'<[^>]+>', '', raw_title).strip()
+        # 图片题干OCR回填
+        ocr_title = _ocr_from_html(raw_title, img_ocr)
+        if ocr_title:
+            content = (content + " " +
+                       ocr_title).strip() if content else ocr_title
+        q["questionContent"] = content
     # Extract options from div.centerSpan
     options = {}
     for opt_m in re.finditer(r'<div[^>]*class=["\']centerSpan["\'][^>]*id=["\']([A-Z])["\'][^>]*>(.*?)</div>', html, re.IGNORECASE | re.DOTALL):
         letter = opt_m.group(1)
-        text = re.sub(r'<[^>]+>', '', opt_m.group(2)).strip()
+        raw_opt = opt_m.group(2)
+        text = re.sub(r'<[^>]+>', '', raw_opt).strip()
+        # 图片选项OCR回填
+        ocr_opt = _ocr_from_html(raw_opt, img_ocr)
+        if ocr_opt:
+            text = (text + " " + ocr_opt).strip() if text else ocr_opt
         if text:
             options[letter] = text
     q["options"] = [options.get(l, "")
@@ -3490,12 +3793,13 @@ def _extract_exam_question_text(tit) -> str:
     return "".join(parts).strip()
 
 
-def _html_exam_question_turn_entity(html: str) -> Dict:
+def _html_exam_question_turn_entity(html: str, img_ocr=None) -> Dict:
     """解析考试题目HTML提取元数据 - 对应 Go HtmlQuestionTurnEntity
     选项解析对齐 Go singleTurn/multipleTurn/trueOrFalseTurn:
     - 单选: div.singleChoice[name=X] 内 .answerInfo(含<cc>标签)文本
     - 多选: div.mulChoice[name=X](兼容multiChoice) 同上
     - 判断: .answerList 内 .No(字母)+.answerInfo(文本)
+    :param img_ocr: 可选的图片OCR解析器, 用于回填图片题干/选项
     """
     q = {}
     qid = _html_input_get(html, "questionId")
@@ -3513,6 +3817,11 @@ def _html_exam_question_turn_entity(html: str) -> Dict:
         tit = soup.find(class_="tit")
         if tit:
             content = _extract_exam_question_text(tit)
+            # 图片题干OCR回填
+            ocr_tit = _ocr_from_node(tit, img_ocr)
+            if ocr_tit:
+                content = (content + " " + ocr_tit).strip() \
+                    if content else ocr_tit
             if content:
                 q["questionContent"] = content
 
@@ -3532,7 +3841,13 @@ def _html_exam_question_turn_entity(html: str) -> Dict:
                     info = opt_div.find(class_="answerInfo")
                     text = (info.get_text(" ", strip=True) if info
                             else opt_div.get_text(" ", strip=True))
-                    text = re.sub(r"\s+", "", text)
+                    # 图片选项OCR回填(优先answerInfo节点, 否则整个选项div)
+                    ocr_opt = _ocr_from_node(
+                        info if info is not None else opt_div, img_ocr)
+                    if ocr_opt:
+                        text = re.sub(r"\s+", "", text) + ocr_opt
+                    else:
+                        text = re.sub(r"\s+", "", text)
                     if text and letter not in options:
                         options[letter] = letter + text
         elif qtype_code == "3":
@@ -3544,6 +3859,10 @@ def _html_exam_question_turn_entity(html: str) -> Dict:
                 if no_el is not None and info_el is not None:
                     letter = no_el.get_text(strip=True)
                     text = info_el.get_text(strip=True)
+                    # 图片选项OCR回填
+                    ocr_opt = _ocr_from_node(info_el, img_ocr)
+                    if ocr_opt:
+                        text = (text + " " + ocr_opt).strip() if text else ocr_opt
                     if text:
                         if not letter:
                             letter = chr(65 + len(options))
@@ -3556,6 +3875,11 @@ def _html_exam_question_turn_entity(html: str) -> Dict:
                     if sub_no is not None and sub_info is not None:
                         letter = sub_no.get_text(strip=True)
                         text = sub_info.get_text(strip=True)
+                        # 图片选项OCR回填
+                        ocr_opt = _ocr_from_node(sub_info, img_ocr)
+                        if ocr_opt:
+                            text = (text + " " +
+                                    ocr_opt).strip() if text else ocr_opt
                         if text:
                             if not letter:
                                 letter = chr(65 + len(options))
@@ -3567,6 +3891,10 @@ def _html_exam_question_turn_entity(html: str) -> Dict:
                 gray = cl.find(class_="grayTit")
                 if gray:
                     t = gray.get_text(strip=True)
+                    # 图片题干/填空OCR回填
+                    ocr_t = _ocr_from_node(gray, img_ocr)
+                    if ocr_t:
+                        t = (t + " " + ocr_t).strip() if t else ocr_t
                     if t:
                         options[t] = t
         q["options"] = [options.get(l, "")
@@ -3708,6 +4036,9 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                   Yellow, f"正在写作业中(共{question_total}题)...")
 
         # 逐题回答
+        # 图片题干/选项自动OCR解析器(整份作业复用, 带URL缓存与限流)
+        _img_ocr = _make_img_ocr(
+            cache, enabled=(getattr(setting.basic_setting, "ocr_image_question", 1) == 1))
         for qi in range(question_total):
             # 拉取题目
             q_body, _ = xxt_api.pull_work_question_api(
@@ -3718,7 +4049,8 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if not q_body:
                 continue
 
-            q_entity = _html_work_question_turn_entity(q_body)
+            q_entity = _html_work_question_turn_entity(
+                q_body, img_ocr=_img_ocr)
             q_text_raw = q_entity.get("questionContent", "")
             q_type_code = q_entity.get("questionTypeCode", "0")
             qid = q_entity.get("questionId", "")
@@ -3736,12 +4068,12 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       "【", course.course_name, "】【", work_name, "】",
                       Yellow, f"写作业状态中，正在回答第{qi+1}题")
 
-            # AI答题
+            # 自动答题(多答题源顺序调用)
             answer = ""
-            if cc.auto_exam == 1:
+            answer_src = ""
+            if cc.auto_exam in (1, 2):
                 try:
-                    from logic.core.ai_client import ai_problem_message
-                    ai = setting.ai_setting
+                    from logic.core.answer_engine import answer_query_detail
                     # 对齐Go: 传递题型和选项
                     _wt_code_map = {'0': 'single_choice', '1': 'multiple_choice',
                                     '2': 'fill', '3': 'judge', '4': 'short',
@@ -3749,8 +4081,7 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                                     '11': 'matching', '8': 'short'}
                     _wt = _wt_code_map.get(q_type_code, '')
                     _w_opts = q_entity.get('options', [])
-                    answer = ai_problem_message(
-                        ai.ai_url, ai.model, ai.api_key, ai.ai_type,
+                    answer, answer_src = answer_query_detail(
                         q_text, options=_w_opts, q_type=_wt)
                 except Exception:
                     answer = ""
@@ -3765,11 +4096,21 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         options=q_entity.get('options', []),
                         q_type=_wt3_map.get(q_type_code, ''))
                     answer = ai_body.strip() if ai_body else ""
+                    if answer:
+                        answer_src = "内置AI(学习通)"
                 except Exception:
                     answer = ""
             if not answer:
                 answer = "A" if q_type_code in ("0", "1") else (
                     "true" if q_type_code == "3" else "答案")
+
+            # 答题来源日志: 明确标注本题由哪个题库/AI源回答成功
+            _ans_src_show = answer_src or "默认"
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
+                      Yellow, f"第{qi+1}题 答题源【{_ans_src_show}】原始答案: ",
+                      Default, f"{str(answer)[:80]}",
+                      DarkGray, f" | 题目: {q_text.replace(chr(10), ' ')[:50]}")
 
             # 判断答案格式 - 对齐Go的SimilarityArraySelect逻辑
             # 忽略选项字母前缀匹配内容，AI返回对象数组/文本/字母均兼容
@@ -3874,7 +4215,7 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if submit_ok:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", work_name, "】",
-                          Green, f"第{qi+1}题回答成功，服务器返回:{submit_str[:200]}")
+                          Green, f"第{qi+1}题回答成功(答题源: {_ans_src_show}, 提交值: {str(answer)[:40]})，服务器返回:{submit_str[:200]}")
             else:
                 # enc 失效(该作业可能已被提交，如章测已先行提交)：静默跳过
                 if "enc error" in submit_str:
@@ -3884,7 +4225,7 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                     break
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", work_name, "】",
-                          Red, f"第{qi+1}题提交失败(status={submit_status})，服务器返回:{submit_str[:300]}")
+                          Red, f"第{qi+1}题提交失败(答题源: {_ans_src_show}, status={submit_status})，服务器返回:{submit_str[:300]}")
 
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】【", work_name, "】",
@@ -4293,6 +4634,9 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
 
         # 逐题回答
         exam_skipped = False
+        # 图片题干/选项自动OCR解析器(整场考试复用, 带URL缓存与限流)
+        _img_ocr = _make_img_ocr(
+            cache, enabled=(getattr(setting.basic_setting, "ocr_image_question", 1) == 1))
         for qi in range(question_total):
             # 拉取题目 - 使用 reVersionTestStartNew URL
             # 对齐 Go: relationAnswerLastUpdateTime 传试卷中的 encLastUpdateTime
@@ -4308,7 +4652,8 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if not q_body:
                 continue
 
-            q_entity = _html_exam_question_turn_entity(q_body)
+            q_entity = _html_exam_question_turn_entity(
+                q_body, img_ocr=_img_ocr)
             q_text = q_entity.get("questionContent", q_body[:500])
             q_type_code = q_entity.get("questionTypeCode", "0")
             q_type_str = q_entity.get("questionTypeStr", "")
@@ -4326,12 +4671,12 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       "【", course.course_name, "】【", exam_name, "】",
                       Yellow, f"考试状态中，正在回答第{qi+1}题，总共{question_total}题")
 
-            # AI答题
+            # 自动答题(多答题源顺序调用)
             answer = ""
-            if cc.auto_exam == 1:
+            answer_src = ""
+            if cc.auto_exam in (1, 2):
                 try:
-                    from logic.core.ai_client import ai_problem_message
-                    ai = setting.ai_setting
+                    from logic.core.answer_engine import answer_query_detail
                     # 对齐Go: 传递题型和选项
                     _wt_code_map = {'0': 'single_choice', '1': 'multiple_choice',
                                     '2': 'fill', '3': 'judge', '4': 'short',
@@ -4339,8 +4684,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                                     '11': 'matching', '8': 'short'}
                     _wt = _wt_code_map.get(q_type_code, '')
                     _w_opts = q_entity.get('options', [])
-                    answer = ai_problem_message(
-                        ai.ai_url, ai.model, ai.api_key, ai.ai_type,
+                    answer, answer_src = answer_query_detail(
                         q_text, options=_w_opts, q_type=_wt)
                 except Exception:
                     answer = ""
@@ -4355,11 +4699,21 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         options=q_entity.get('options', []),
                         q_type=_wt3_map.get(q_type_code, ''))
                     answer = ai_body.strip() if ai_body else ""
+                    if answer:
+                        answer_src = "内置AI(学习通)"
                 except Exception:
                     answer = ""
             if not answer:
                 answer = "A" if q_type_code in ("0", "1") else (
                     "true" if q_type_code == "3" else "答案")
+
+            # 答题来源日志: 明确标注本题由哪个题库/AI源回答成功
+            _ans_src_show = answer_src or "默认"
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Yellow, f"第{qi+1}题 答题源【{_ans_src_show}】原始答案: ",
+                      Default, f"{str(answer)[:80]}",
+                      DarkGray, f" | 题目: {q_text.replace(chr(10), ' ')[:50]}")
 
             # 匹配答案到选项 - 对齐Go的SimilarityArraySelect逻辑
             # 忽略选项字母前缀匹配内容，AI返回对象数组/文本/字母均兼容
@@ -4512,7 +4866,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
-                          Green, f"第{qi+1}题回答成功，服务器返回:{submit_str[:200]}")
+                          Green, f"第{qi+1}题回答成功(答题源: {_ans_src_show}, 提交值: {str(answer)[:40]})，服务器返回:{submit_str[:200]}")
             else:
                 # enc 失效(该考试可能已被提交)：静默跳过
                 if "enc error" in submit_str:
@@ -4525,7 +4879,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
-                          Red, f"第{qi+1}题提交失败(status={submit_status})，服务器返回:{submit_str[:300]}")
+                          Red, f"第{qi+1}题提交失败(答题源: {_ans_src_show}, status={submit_status})，服务器返回:{submit_str[:300]}")
 
         if exam_skipped:
             log_print(INFO, f"[{platform}]",

@@ -1,0 +1,161 @@
+name: release-build
+
+# 触发: 推送 V* tag(如 V1.1.0) / 手动触发
+# 产物: Linux(x86_64/arm64) 单文件二进制、macOS(x86_64/arm64) ZIP+DMG
+# 加固: Cython 编译为原生机器码 + PyInstaller 单文件(与 build_protected.py 一致)
+on:
+  push:
+    tags: [ "V*" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  APP_VERSION: V1.1.0
+  APP_BASE: "yatori-python刷课系统V1.1.0"
+
+jobs:
+  # ================= Linux: 各处理器架构二进制 =================
+  build-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-latest,    arch: x86_64 }
+          - { runner: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cython setuptools pyinstaller
+
+      - name: 加固构建 (Cython -> PyInstaller 单文件)
+        run: python build_protected.py
+
+      - name: 重命名产物 (平台-架构分版本)
+        run: |
+          OUT="${{ env.APP_BASE }}-linux-${{ matrix.arch }}"
+          mv "dist/${{ env.APP_BASE }}" "dist/${OUT}"
+          chmod +x "dist/${OUT}"
+          ls -lh dist/
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/${{ env.APP_BASE }}-linux-${{ matrix.arch }}
+          if-no-files-found: error
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.APP_VERSION }}
+          files: dist/${{ env.APP_BASE }}-linux-${{ matrix.arch }}
+
+  # ================= macOS: 各处理器架构 ZIP + DMG =================
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15-intel, arch: x86_64 }
+          - { runner: macos-15,       arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    env:
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      MACOS_KEYCHAIN_PWD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cython setuptools pyinstaller
+
+      - name: 加固构建 (Cython -> PyInstaller 单文件)
+        run: python build_protected.py
+
+      - name: 重命名产物 + ZIP 点开即用包
+        run: |
+          OUT="${{ env.APP_BASE }}-macos-${{ matrix.arch }}"
+          mv "dist/${{ env.APP_BASE }}" "dist/${OUT}"
+          chmod +x "dist/${OUT}"
+          cd dist
+          zip -r --symlinks "${OUT}.zip" "${OUT}"
+          ls -lh
+
+      - name: 导入签名证书 (可选, 未配置 secrets 则跳过)
+        id: sign
+        run: |
+          if [ -n "${MACOS_CERTIFICATE}" ]; then
+            echo "==> 检测到签名证书, 导入钥匙串"
+            KEYCHAIN="build.keychain"
+            KEYCHAIN_PWD="${MACOS_KEYCHAIN_PWD:-buildpwd}"
+            security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+            security default-keychain -s "$KEYCHAIN"
+            security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+            echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+            security import certificate.p12 -k "$KEYCHAIN" \
+              -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: \
+              -s -k "$KEYCHAIN_PWD" "$KEYCHAIN" > /dev/null
+            rm -f certificate.p12
+            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
+              | grep "Developer ID Application" | head -1 \
+              | sed 's/.*"\(.*\)".*/\1/')
+            echo "sign_identity=${IDENTITY}" >> "$GITHUB_OUTPUT"
+            echo "==> 签名身份: ${IDENTITY}"
+          else
+            echo "==> 未配置 MACOS_CERTIFICATE, 跳过签名(产物未签名/未公证)"
+            echo "sign_identity=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 生成 DMG 拖拽安装包
+        run: |
+          bash .github/scripts/make_macos_dmg.sh \
+            "dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}" \
+            "dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg" \
+            "${{ steps.sign.outputs.sign_identity }}"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.APP_VERSION }}
+          files: |
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg

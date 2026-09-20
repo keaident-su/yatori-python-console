@@ -5,6 +5,7 @@
 """
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +25,8 @@ class BasicSetting:
     log_level: str = "INFO"        # 日志等级
     log_model: int = 0             # 日志模式
     web_model: int = 0             # Web模式
+    web_port: int = 8080           # Web模式监听端口(多开时被占用会自动顺延到空闲端口)
+    ocr_image_question: int = 1    # 图片题目OCR识别开关(0关闭,1开启)
 
 
 @dataclass
@@ -34,6 +37,13 @@ class EmailInform:
     smtp_port: int = 0
     user_name: str = ""
     password: str = ""
+
+
+@dataclass
+class ShowDocInform:
+    """ShowDoc推送配置 - 与邮件通知并列的推送方案, 两者可独立开关、同时开启"""
+    sw: int = 0                 # 是否开启ShowDoc推送(0关闭,1开启)
+    url: str = ""               # ShowDoc专属推送地址(含token, 在 push.showdoc.com.cn 获取)
 
 
 @dataclass
@@ -52,12 +62,39 @@ class ApiQueSetting:
 
 
 @dataclass
+class AnswerSourceItemCfg:
+    """答题源配置项(题库组/组内子项)
+    自定义名称(name)用于调用顺序(order)排序
+    """
+    name: str = ""              # 自定义名称(二次命名/重命名)
+    type: str = ""              # emmcy(言溪题库) / axe(AVXE题库) / ai(AI大模型)
+    enable: int = 1             # 独立启停开关: 1启用 / 0禁用
+    token: str = ""             # 密钥(token/APIKey), 仅需填写此项
+    ai_type: str = ""           # AI类型(仅type=ai): DEEPSEEK/TONGYI/...
+    model: str = ""             # AI模型(仅type=ai, 可留空用默认)
+    url: str = ""               # 自定义接口地址(可留空, 题库/AI均有内置默认)
+    items: List["AnswerSourceItemCfg"] = field(default_factory=list)  # 组内子项
+
+
+@dataclass
+class AnswerSetting:
+    """多答题源设置(顺序依次调用、失败即回退)"""
+    token_check: int = 1        # 启动时token自检开关: 1开启 / 0关闭
+    local_cache_enable: int = 1  # 本地题库缓存开关: 1开启 / 0关闭
+    local_cache_path: str = "questions_answers.json"  # 缓存文件(格式同题库json)
+    order: List[str] = field(default_factory=list)     # 调用顺序(填自定义名称)
+    sources: List[AnswerSourceItemCfg] = field(default_factory=list)  # 题库组列表
+
+
+@dataclass
 class Setting:
     """总设置"""
     basic_setting: BasicSetting = field(default_factory=BasicSetting)
     email_inform: EmailInform = field(default_factory=EmailInform)
+    showdoc_inform: ShowDocInform = field(default_factory=ShowDocInform)
     ai_setting: AiSetting = field(default_factory=AiSetting)
     api_que_setting: ApiQueSetting = field(default_factory=ApiQueSetting)
+    answer_setting: AnswerSetting = field(default_factory=AnswerSetting)
 
 
 @dataclass
@@ -81,6 +118,7 @@ class CoursesCustom:
     video_model: int = 1                    # 观看视频模式
     auto_exam: int = 0                      # 是否自动考试
     exam_auto_submit: int = 0               # 是否自动提交试卷
+    other_task_stay: int = 30               # 其它/文档类任务点处理后的停留秒数(知识结构/引导问题/单文字/PPT/文档文章等)
     device_flag: str = ""                   # 设备特征码(学习通APP内获取, 用于考试客户端签名)
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
@@ -97,6 +135,8 @@ class User:
     password: str = ""
     is_proxy: int = 0
     inform_emails: List[str] = field(default_factory=list)
+    showdoc_sw: int = 0                     # 该用户独立的ShowDoc推送开关(0关,1开, 与全局通道互不影响)
+    showdoc_urls: List[str] = field(default_factory=list)  # 该用户独立的ShowDoc推送地址列表(可多个)
     courses_custom: CoursesCustom = field(default_factory=CoursesCustom)
 
 
@@ -174,8 +214,6 @@ def _apply_yaml_mapping(data: dict, target):
     if not isinstance(data, dict):
         return target
 
-    import re
-
     # 构建归一化查找表：去除下划线并全小写 → 实际字段名
     _norm_map = {}
     for attr in dir(target):
@@ -198,8 +236,8 @@ def _apply_yaml_mapping(data: dict, target):
                 else:
                     continue
         current = getattr(target, attr_name, None)
-        if isinstance(current, (BasicSetting, EmailInform, AiSetting,
-                                ApiQueSetting, Setting, CoursesCustom)):
+        if isinstance(current, (BasicSetting, EmailInform, ShowDocInform,
+                                AiSetting, ApiQueSetting, Setting, CoursesCustom)):
             _apply_yaml_mapping(value, current)
         elif isinstance(current, list) and isinstance(value, list):
             # 处理列表字段
@@ -230,10 +268,31 @@ def _default_value(config: JSONDataForConfig):
     bs.log_out_file_sw = _safe_int(bs.log_out_file_sw, 1)
     bs.log_model = _safe_int(bs.log_model, 0)
     bs.web_model = _safe_int(bs.web_model, 0)
+    bs.web_port = _safe_int(bs.web_port, 8080)
+    bs.ocr_image_question = _safe_int(bs.ocr_image_question, 1)
+
+    # ShowDoc推送 int 字段强制转换
+    config.setting.showdoc_inform.sw = _safe_int(
+        config.setting.showdoc_inform.sw, 0)
+
+    # 多答题源设置 int 字段强制转换
+    aset = config.setting.answer_setting
+    aset.token_check = _safe_int(aset.token_check, 1)
+    aset.local_cache_enable = _safe_int(aset.local_cache_enable, 1)
+    if not (aset.local_cache_path or "").strip():
+        aset.local_cache_path = "questions_answers.json"
+
+    def _fix_source(src: AnswerSourceItemCfg):
+        src.enable = _safe_int(src.enable, 1)
+        for sub in src.items:
+            _fix_source(sub)
+    for _src in aset.sources:
+        _fix_source(_src)
 
     for user in config.users:
         # User 层 int 字段
         user.is_proxy = _safe_int(user.is_proxy, 0)
+        user.showdoc_sw = _safe_int(user.showdoc_sw, 0)
 
         # CoursesCustom 层 int/Optional[int] 字段
         cc = user.courses_custom
@@ -250,6 +309,7 @@ def _default_value(config: JSONDataForConfig):
         cc.video_model = _safe_int(cc.video_model, 1)
         cc.auto_exam = _safe_int(cc.auto_exam, 0)
         cc.exam_auto_submit = _safe_int(cc.exam_auto_submit, 0)
+        cc.other_task_stay = _safe_int(cc.other_task_stay, 30)
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)
@@ -283,10 +343,95 @@ def _parse_user_list(users_data: list) -> List[User]:
             password=u.get('password', ''),
             is_proxy=_safe_int(u.get('isProxy', u.get('is_proxy', 0))),
             inform_emails=u.get('informEmails', u.get('inform_emails', [])),
+            showdoc_sw=_safe_int(u.get('showdocSw', u.get('showdoc_sw', 0))),
+            showdoc_urls=u.get('showdocUrls', u.get('showdoc_urls', [])),
             courses_custom=cc,
         )
         users.append(user)
     return users
+
+
+_ANSWER_TYPE_ALIAS = {
+    "emmcy": "emmcy", "yanxi": "emmcy", "yanxi_tiku": "emmcy", "言溪": "emmcy",
+    "axe": "axe", "avxe": "axe", "axe_tiku": "axe",
+    "ai": "ai", "ai_model": "ai", "model": "ai",
+    "local": "local", "local_json": "local", "cache": "local",
+    "本地题库缓存": "local",
+}
+
+
+def _parse_answer_source_item(data, default_type: str = "") -> AnswerSourceItemCfg:
+    """解析单个答题源配置(支持 snake_case/camelCase 键名)"""
+    item = AnswerSourceItemCfg()
+    if not isinstance(data, dict):
+        return item
+
+    def _pick(*keys):
+        for k in keys:
+            if k in data and data[k] is not None:
+                return data[k]
+        return None
+
+    name = _pick("name", "remarkName", "remark_name", "title")
+    item.name = str(name).strip() if name is not None else ""
+
+    s_type = _pick("type", "sourceType", "source_type", "tikuType", "tiku_type")
+    if s_type is not None:
+        raw_type = str(s_type).strip()
+        item.type = _ANSWER_TYPE_ALIAS.get(raw_type.lower(), raw_type)
+    else:
+        item.type = default_type
+
+    enable = _pick("enable", "sw", "use", "open")
+    item.enable = _safe_int(enable, 1) if enable is not None else 1
+
+    token = _pick("token", "apiKey", "api_key", "key", "secret")
+    item.token = str(token).strip() if token is not None else ""
+
+    ai_type = _pick("aiType", "ai_type", "modelType", "model_type")
+    item.ai_type = str(ai_type).strip() if ai_type is not None else ""
+
+    model = _pick("model", "aiModel", "ai_model")
+    if model is not None and str(model).strip() != str(ai_type).strip():
+        item.model = str(model).strip()
+
+    url = _pick("url", "baseUrl", "base_url", "apiUrl", "api_url",
+               "path", "file", "filePath", "file_path")
+    item.url = str(url).strip() if url is not None else ""
+
+    items = _pick("items", "children", "subItems", "sub_items",
+                  "subSources", "sub_sources")
+    if isinstance(items, list):
+        for sub in items:
+            item.items.append(
+                _parse_answer_source_item(sub, default_type=item.type))
+    return item
+
+
+def _parse_answer_setting(data) -> AnswerSetting:
+    """解析多答题源设置(支持 order 为字符串或列表, sources/groups 双键名)"""
+    ans = AnswerSetting()
+    if not isinstance(data, dict):
+        return ans
+
+    ans.token_check = _safe_int(data.get("tokenCheck", data.get("token_check", 1)), 1)
+    ans.local_cache_enable = _safe_int(
+        data.get("localCacheEnable", data.get("local_cache_enable", 1)), 1)
+    path = data.get("localCachePath", data.get("local_cache_path", ""))
+    if isinstance(path, str) and path.strip():
+        ans.local_cache_path = path.strip()
+
+    order = data.get("order", data.get("priority", None))
+    if isinstance(order, str):
+        ans.order = [p.strip() for p in re.split(r'[,，;；\n]+', order) if p.strip()]
+    elif isinstance(order, list):
+        ans.order = [str(p).strip() for p in order if str(p or "").strip()]
+
+    sources = data.get("sources", data.get("groups", data.get("banks", [])))
+    if isinstance(sources, list):
+        for s in sources:
+            ans.sources.append(_parse_answer_source_item(s))
+    return ans
 
 
 def _parse_setting(setting_data: dict) -> Setting:
@@ -305,6 +450,11 @@ def _parse_setting(setting_data: dict) -> Setting:
     if isinstance(ei_data, dict):
         _apply_yaml_mapping(ei_data, setting.email_inform)
 
+    sd_data = setting_data.get(
+        'showdocInform', setting_data.get('showdoc_inform', {}))
+    if isinstance(sd_data, dict):
+        _apply_yaml_mapping(sd_data, setting.showdoc_inform)
+
     ai_data = setting_data.get('aiSetting', setting_data.get('ai_setting', {}))
     if isinstance(ai_data, dict):
         _apply_yaml_mapping(ai_data, setting.ai_setting)
@@ -313,6 +463,10 @@ def _parse_setting(setting_data: dict) -> Setting:
         'apiQueSetting', setting_data.get('api_que_setting', {}))
     if isinstance(aq_data, dict):
         _apply_yaml_mapping(aq_data, setting.api_que_setting)
+
+    ans_data = setting_data.get(
+        'answerSetting', setting_data.get('answer_setting', {}))
+    setting.answer_setting = _parse_answer_setting(ans_data)
 
     return setting
 
@@ -351,8 +505,13 @@ def read_config(file_path: str = "./config.yaml") -> JSONDataForConfig:
 
 
 def read_logo() -> str:
-    """读取 LOGO 文本"""
-    logo_path = Path(__file__).parent / "logo.txt"
+    """读取 LOGO 文本（兼容 PyInstaller 打包环境）"""
+    if getattr(sys, "frozen", False):
+        # 打包后 logo.txt 作为数据文件内置于 sys._MEIPASS/config/logo.txt
+        base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+        logo_path = Path(base) / "config" / "logo.txt"
+    else:
+        logo_path = Path(__file__).parent / "logo.txt"
     if logo_path.exists():
         return logo_path.read_text(encoding='utf-8')
     return ""

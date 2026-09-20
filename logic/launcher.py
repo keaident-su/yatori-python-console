@@ -60,18 +60,22 @@ def lunch():
         level=string_to_log_level(bs.log_level),
         log_file_sw=(bs.log_out_file_sw == 1),
         color_log=(bs.color_log == 1),
-        log_dir="./logs"
+        log_dir=os.path.join("assets", "logs")
     )
 
     # 4. 配置文件检查
     _config_json_check(config_data)
+
+    # 4.5 多答题源初始化 + 启动时 token 有效性自检(输出检查结果)
+    from logic.core.answer_engine import run_startup_token_check
+    run_startup_token_check(config_data.setting)
 
     # 5. 检查代理 IP
     _check_proxy_ip()
 
     # 6. Web 模式
     if config_data.setting.basic_setting.web_model == 1:
-        _start_web_service()
+        _start_web_service(config_data.setting.basic_setting.web_port)
     else:
         # 7. 并发刷课
         brush_block(config_data)
@@ -163,6 +167,13 @@ def _config_to_yaml_dict(config: JSONDataForConfig) -> dict:
             "apiQueSetting": {
                 "url": config.setting.api_que_setting.url,
             },
+            "answerSetting": {
+                "tokenCheck": 1,
+                "localCacheEnable": 1,
+                "localCachePath": "questions_answers.json",
+                "order": "",
+                "sources": [],
+            },
         },
         "users": users,
     }
@@ -219,12 +230,40 @@ def _check_proxy_ip():
         sys.exit(0)
 
 
-def _start_web_service():
-    """启动 Web 服务"""
-    from dao.database import sqlite_init
-    from global_state import global_var
+def _pick_free_port(start_port: int, max_tries: int = 100) -> int:
+    """从 start_port 开始向下寻找空闲端口
 
-    # 初始化数据库
+    用于支持程序多开: 多个实例可以同时在各自端口上监听。
+    注意: 探测时不设置 SO_REUSEADDR —— Windows 下它允许重复绑定，
+    只有直接 bind 才能真正判断端口是否被其它实例占用。
+    """
+    import socket as _socket
+    for offset in range(max_tries):
+        port = start_port + offset
+        if port > 65535:
+            break
+        s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
+        try:
+            s.bind(("0.0.0.0", port))
+            return port
+        except OSError:
+            continue
+        finally:
+            s.close()
+    return start_port
+
+
+def _start_web_service(web_port: int = 8080):
+    """启动 Web 服务 - 支持多开
+
+    端口从配置 basicSetting.webPort 读取(默认8080)；若端口已被占用
+    (通常是已有一个实例在运行)，自动顺延到下一个空闲端口，
+    第二个实例不会再因端口冲突而直接退出。
+    """
+    from dao.database import sqlite_init
+    from global_state import global_var  # noqa: F401
+
+    # 初始化数据库(多实例可共用同一 yatori.db, WAL+busy_timeout 保证并发安全)
     sqlite_init()
 
     # 启动 FastAPI
@@ -232,7 +271,31 @@ def _start_web_service():
     from web.server import create_app
 
     app = create_app()
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+
+    try:
+        base_port = int(web_port)
+    except (TypeError, ValueError):
+        base_port = 8080
+    if not (0 < base_port <= 65535):
+        base_port = 8080
+
+    # 端口占用自动顺延 + 启动重试, 避免多开时第二个实例直接崩溃退出
+    for _ in range(50):
+        port = _pick_free_port(base_port)
+        if port != base_port:
+            log_print(INFO, Yellow,
+                      f"端口 {base_port} 已被占用(可能已有多开实例在运行)，"
+                      f"已自动改用空闲端口 {port} 启动")
+        log_print(INFO, Green,
+                  f"Web服务已启动: http://127.0.0.1:{port} "
+                  f"(局域网访问: http://<本机IP>:{port})")
+        try:
+            uvicorn.run(app, host="0.0.0.0", port=port)
+            return
+        except (OSError, SystemExit) as e:
+            log_print(INFO, Yellow,
+                      f"端口 {port} 启动失败({e})，正在尝试下一个端口...")
+            base_port = port + 1
 
 
 def brush_block(config_data: JSONDataForConfig):

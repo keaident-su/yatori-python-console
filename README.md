@@ -3,6 +3,8 @@
 > 本项目是借助 AI 基于 [yatori-go-console](https://github.com/yatori-dev/yatori-go-console) 重构的 **Python 版本** 多平台网课自动刷课工具。
 >
 > 独立程序、不依赖浏览器，支持多账号并行、多任务点并发刷课。
+>
+> **当前版本：V1.1.0**
 
 ## 📢 作者有话说
 
@@ -45,7 +47,8 @@ setting:                          # 全局设置
     logOutFileSw: 1               # 输出日志文件：0关闭 / 1开启
     logLevel: 'INFO'              # 日志等级：DEBUG / INFO / WARNING / ERROR
     logModel: 0                   # 日志模式
-    webModel: 0                   # Web模式：0关闭 / 1启动 FastAPI Web 服务(端口8080)
+    webModel: 0                   # Web模式：0关闭 / 1启动 FastAPI Web 服务(默认端口8080)
+    webPort: 8080                 # Web服务监听端口(程序支持多开, 端口被占用会自动顺延到空闲端口)
   emailInform:                    # 邮箱通知（可选）
     sw: true                      # 总开关
     SMTPHost: 'smtp.example.com'
@@ -59,6 +62,35 @@ setting:                          # 全局设置
     API_KEY: 'sk-xxxx'            # 你的 API Key
   apiQueSetting:                  # 外部题库接口（autoExam=2 时使用）
     url: 'http://localhost:8083'
+  answerSetting:                  # 多答题源设置（顺序依次调用、失败即回退）
+    tokenCheck: 1                 # 启动时对 token 有效性自检：0关闭 / 1开启
+    localCacheEnable: 1           # 本地缓存默认开关(兼容项: 也可在 sources 中以 type: local 独立配置)
+    localCachePath: 'questions_answers.json'  # 缓存文件(格式与题库json一致: {"题目":"答案"})
+    # 调用顺序：填各答题源的【自定义名称】，逗号分隔，从高到低
+    # 未列出的答题源按配置顺序排在后面；留空则全部按配置顺序
+    order: '本地题库缓存, 言溪题库, AVXE题库, AI'
+    # 答题源列表：支持多个题库组，每组可含多个子项(items)，组与子项均可自定义命名
+    # 类型：local=本地题库缓存 / emmcy=言溪题库 / axe=AVXE题库 / ai=AI大模型
+    sources:
+      - name: '本地题库缓存'      # 本地缓存也是独立答题源: 可排序/可开关
+        type: 'local'
+        enable: 1                # 0禁用(不读也不写缓存) / 1启用
+        # url: 'questions_answers.json'   # 缓存文件路径(可留空用默认)
+      - name: '言溪题库'          # 自定义名称(二次命名，用于上方 order 排序)
+        type: 'emmcy'
+        enable: 1                # 独立启停开关：0禁用 / 1启用
+        token: '你的言溪token'    # 官网个人中心获取
+      - name: 'AVXE题库'
+        type: 'axe'
+        enable: 1
+        token: '你的AVXE token'
+        url: ''                   # 可留空用默认; 旧的apifox文档地址会被自动纠正
+      - name: 'AI'
+        type: 'ai'
+        enable: 1
+        token: 'sk-xxxx'         # AI 的 APIKey
+        aiType: 'DEEPSEEK'       # AI 类型(同旧版 aiSetting.aiType)
+        model: ''                # 可留空用默认模型
 
 users:                            # 账号列表，支持多账号
   - accountType: 'XUEXITONG'      # 平台类型，见下方「平台类型对照表」
@@ -73,7 +105,7 @@ users:                            # 账号列表，支持多账号
       studyTime: '10-30'          # 学习时长区间（秒），随机取中间值，仅部分平台生效
       shuffleSw: 0                # 打乱课程顺序：0关闭 / 1开启
       videoModel: 1               # 刷视频模式，见下方说明
-      autoExam: 0                 # 自动考试：0不考试 / 1AI考试 / 2外部题库对接
+      autoExam: 0                 # 自动答题/考试模式: 0不考 / 1自动答题(多答题源) / 2同1(旧配置兼容) / 3内置AI
       examAutoSubmit: 0           # 考完自动提交试卷：0否 / 1是
       cxNode: 3                   # 【学习通】多任务点并发数
       cxChapterTestSw: 1          # 【学习通】章测开关：0关闭 / 1开启
@@ -97,18 +129,61 @@ users:                            # 账号列表，支持多账号
 > [!TIP]
 > 学习通 `videoModel: 3` 为多任务点并发模式：`cxNode` 设为几就同时刷几个任务点，并支持多课程并发；该模式已解除并发数量限制（对齐 Go 版 CxNode=-1 路径），每个节点独立 relogin 并发执行，配合多核 CPU 自适应调度可大幅提速。
 
-### 3. autoExam 自动考试说明
+### 3. autoExam 自动答题/考试模式说明
 
 | 值 | 模式           | 说明                                       |
 |----|----------------|--------------------------------------------|
-| 0  | 不考试         | 跳过考试任务                               |
-| 1  | AI 考试        | 调用 AI 大模型自动答题，需配置 `aiSetting` |
-| 2  | 外部题库对接   | 对接外部题库接口，需配置 `apiQueSetting`   |
+| 0  | 不考           | 不进行自动答题(跳过考试/章测/作业答题)     |
+| 1  | 自动答题       | 自动答题-多答题源（题库+AI+本地缓存 按 order 顺序调用），需配置 `answerSetting` |
+| 2  | 自动答题       | 同 1（保留旧值兼容，同样使用多答题源）-旧配置兼容 |
+| 3  | 内置AI         | 内置AI答题（学习通自带接口）               |
 
 > [!TIP]
 > 学习通考试刷完后，若支持重考：`cxExamSwAgain: 0`（默认）仅在分数低于 60 分时重考；`cxExamSwAgain: 1` 则只要还有重考机会，不管分数一律强制重考。
 
-### 4. AI 类型对照表（aiType）
+### 4. 多答题源说明（answerSetting）
+
+自动答题（章测/作业/考试/讨论）统一走多答题源引擎，特性如下：
+
+| 特性 | 说明 |
+|------|------|
+| 顺序调用·失败回退 | 按顺序依次调用答题源，某个源取不到答案自动转向下一个，直到拿到答案 |
+| 配置极简 | 每个答题源只需填 `token`，其余参数（接口地址/请求格式/返回解析）全部内置 |
+| 自定义顺序 | `order` 填写各答题源的自定义名称调整调用优先级（含"本地题库缓存"），未列出的按配置顺序排在后面 |
+| 独立启停 | 每个答题源 `enable: 0/1` 可单独开启关闭（含本地题库缓存） |
+| 题库组与子项 | `sources` 支持多个题库组；组内可用 `items` 配置多个子项（多个token），组名与子项名均可自定义（二次命名），子项名称同样可用于 `order` 排序 |
+| 本地题库缓存 | 独立答题源（`type: local`）：可单独开关、可参与 `order` 排序；文件路径可用条目 `url` 或 `localCachePath` 指定；**外部题库/AI 答对的题目会自动写入缓存并输出日志**，下次优先命中 |
+| 启动自检 | 程序启动时自动检查各答题源 token 有效性并输出结果（如剩余次数），显示本地缓存加载条数，可用 `tokenCheck: 0` 关闭 |
+| 全量日志 | 每个答题源每一次被尝试调用（成功/无结果/异常/禁用/跳过）均输出日志，并明确标注每题由哪个源回答成功、是否已写入本地缓存 |
+
+题库组 + 子项 + 本地缓存示例（同类型多个token可分别命名、按序调用）：
+
+```yaml
+  answerSetting:
+    order: '本地题库缓存, 言溪小号, 言溪主号, AI'
+    sources:
+      - name: '本地题库缓存'
+        type: 'local'
+        enable: 1
+      - name: '言溪题库组'
+        type: 'emmcy'
+        enable: 1
+        items:
+          - name: '言溪主号'
+            token: 'token-1'
+          - name: '言溪小号'
+            token: 'token-2'
+      - name: 'AI'
+        type: 'ai'
+        enable: 1
+        token: 'sk-xxxx'
+        aiType: 'DEEPSEEK'
+```
+
+> [!TIP]
+> 兼容旧配置：若 `answerSetting` 未配置任何答题源，但旧版 `aiSetting.API_KEY` 已填写，程序会自动将旧 AI 配置作为兜底答题源使用。
+
+### 5. AI 类型对照表（aiType）
 
 | 值           | 服务商               | 默认模型           |
 |--------------|----------------------|--------------------|
@@ -122,7 +197,7 @@ users:                            # 账号列表，支持多账号
 | METAAI       | 秘塔 AI              | 自定义             |
 | OTHER        | 自定义接口           | 配合 aiUrl 使用    |
 
-### 5. 平台类型对照表（accountType）
+### 6. 平台类型对照表（accountType）
 
 | 值         | 平台             | 备注                                 |
 |------------|------------------|--------------------------------------|
@@ -136,7 +211,7 @@ users:                            # 账号列表，支持多账号
 | QSXT       | 青书学堂         | 只支持普通模式                       |
 | WELEARN    | 微学             | 移植自 Go 版                         |
 
-### 6. 学习通 deviceFlag 设备特征码
+### 7. 学习通 deviceFlag 设备特征码
 
 学习通考试启用客户端签名校验时，纯 HTTP 程序无法作答，需要配置 `deviceFlag`：
 
@@ -144,7 +219,7 @@ users:                            # 账号列表，支持多账号
 2. 填入 `coursesCustom.deviceFlag`
 3. 留空则每次登录自动生成（部分课程考试可能无法完成）
 
-### 7. 学习通人脸识别说明
+### 8. 学习通人脸识别说明
 
 学习通刷课时触发人脸识别，程序会自动尝试绕过（手机端卡片人脸/PC端视频人脸两套流程）：
 
@@ -163,7 +238,7 @@ users:                            # 账号列表，支持多账号
 - **失败处理**：若账号从未录入过人脸（提示"没有历史人脸"），需先在手机学习通 APP 完成一次人脸识别录入
 - **PC端视频人脸**：视频 403 触发时走 PC 端流程（updateqrstatus/getqrstatus 轮询验证）
 
-### 8. 启动方式
+### 9. 启动方式
 
 **方式一：控制台直接刷课**
 
@@ -173,13 +248,16 @@ python main.py
 
 **方式二：Web 服务模式（可部署服务器）**
 
-将 `setting.basicSetting.webModel` 设为 `1`，启动后 FastAPI Web 服务监听 `0.0.0.0:8080`：
+将 `setting.basicSetting.webModel` 设为 `1`，启动后 FastAPI Web 服务监听 `0.0.0.0:8080`（端口可在 `basicSetting.webPort` 修改）：
+
+> [!TIP]
+> 程序支持多开：重复启动时若端口被占用，会自动顺延到下一个空闲端口（如 8081），并在日志中提示实际监听地址。
 
 ```bash
 python main.py
 ```
 
-### 9. 常用场景示例
+### 10. 常用场景示例
 
 ```yaml
 # 示例：学习通账号，多任务点并发刷课 + AI 自动考试 + 章测/作业
@@ -190,7 +268,7 @@ users:
     coursesCustom:
       videoModel: 3        # 多任务点并发
       cxNode: 10           # 10个任务点并发
-      autoExam: 1          # AI 自动考试
+      autoExam: 1          # 自动答题(多答题源: 题库+AI 顺序调用)
       examAutoSubmit: 1    # 自动交卷
       cxChapterTestSw: 1   # 刷章测
       cxWorkSw: 1          # 刷作业
@@ -199,6 +277,52 @@ users:
         - '形势与政策'
         - '古代汉语'
 ```
+
+### 11. 本地图片 OCR（可选，离线）
+
+部分课程的题目/选项以**图片**形式给出，程序内置本地 OCR 自动识别为文本后再交给答题源作答：
+
+| 引擎 | 说明 |
+|------|------|
+| rapidocr-onnxruntime（首选） | PaddleOCR 的 ONNX 移植，wheel 内置模型，**完全离线**，无需下载、无需联网 |
+| ddddocr（降级备选） | 轻量验证码识别，同样内置模型；未安装时自动跳过 |
+
+- 依赖已包含在 `requirements.txt`，安装即用（会自动带上 onnxruntime/numpy/opencv）
+- 引擎懒加载 + 单例 + 线程安全，不影响启动速度；缺库时优雅降级，**不会中断刷课**
+- Windows 加固版 exe 已内置 OCR 模型，开箱即用
+
+## 🪟 Windows 单文件 exe（加固发布版）
+
+打包产物：`yatori-python刷课系统V1.1.0.exe`（单文件、免安装 Python 环境）。
+
+### 使用方法
+
+1. 将 exe 放到任意文件夹（如 `D:\yatori`），并把 `config.yaml` 放在 **exe 同目录**
+2. 双击运行；首次运行自动生成 `assets\faces`、`assets\fsces`、`assets\logs`、`assets\sound` 等目录
+3. 日志输出在 `assets\logs\日期.log`；人脸图缓存放 `assets\faces\账号.jpg`（可选）
+4. 本地题库缓存文件为 exe 同目录的 `questions_answers.json`（运行时自动创建/回写）
+
+### 加固说明（防反编译 / 防逆向）
+
+| 措施 | 说明 |
+|------|------|
+| 自研代码 Cython 原生编译 | `config/logic/utils/dao/entity/global_state/web` 全部编译为 `.pyd` 机器码扩展；发布产物中**不含任何自研 Python 源码与字节码**，无法通过 pyinstxtractor + 反编译器还原出源码 |
+| 去除调试信息 | 不嵌入源码签名（embedsignature=False）、不生成代码注释，降低可读信息 |
+| 进程池冻结适配 | 打包环境自动禁用多进程解析池并启用 freeze 保护，避免 Windows spawn 造成进程裂变 |
+| 单文件封装 | 第三方依赖与内置资源封装于单文件，需先解包才能进一步分析 |
+
+> [!NOTE]
+> 如需商业级更强保护（如商业 PyArmor 的 BCC/RFT 虚拟化、Nuitka Commercial 反调试校验），需自行购买授权后在 `build_protected.py` 中接入；当前免费方案为 Cython 原生编译。
+
+### 重新构建加固版
+
+```bash
+pip install -r requirements.txt
+pip install cython setuptools pyinstaller
+python build_protected.py
+```
+
+上面一条命令会自动完成：源码隔离复制 → Cython 编译为 .pyd → 裁剪源码 → 全量导入校验 → PyInstaller 打包 → 产物输出到 `dist/`。
 
 ## 🐳 Docker 部署
 
@@ -229,12 +353,12 @@ docker run -d --name yatori \
 | 标签         | 说明                       |
 |--------------|----------------------------|
 | latest       | 最新版本（多架构，自动适配处理器） |
-| v2.6.2-Beta11 | 版本号（自动从 logo.txt 解析，多架构） |
+| V1.1.0 | 版本号（自动从 logo.txt 解析，多架构） |
 | &lt;commit-sha&gt; | 提交哈希，用于回滚         |
 
 ```bash
 # amd64/arm64 自动分发，无需指定架构
-docker pull ghcr.io/keaident-su/yatori-python-console:v2.6.2-Beta11
+docker pull ghcr.io/keaident-su/yatori-python-console:v1.1.0
 ```
 
 ## 🎯 功能/特性
@@ -249,6 +373,10 @@ docker pull ghcr.io/keaident-su/yatori-python-console:v2.6.2-Beta11
 | 支持状态邮箱通知              | ✅ |
 | 支持自动考试                  | ✅ |
 | 答题支持 AI 大模型加持        | ✅ |
+| 多答题源顺序调用（题库/AI/本地缓存，失败自动回退） | ✅ |
+| 本地题库缓存自动回写（命中优先） | ✅ |
+| 本地图片题 OCR 识别（离线，内置模型） | ✅ |
+| Windows 加固单文件 exe（Cython 原生编译） | ✅ |
 | 考试客户端签名（deviceFlag）  | ✅ |
 | 灵活配置文件                  | ✅ |
 | 可视化配置文件生成器          | ✅ |
@@ -279,13 +407,16 @@ docker pull ghcr.io/keaident-su/yatori-python-console:v2.6.2-Beta11
 yatori-python-console/
 ├── main.py                # 主入口
 ├── config.yaml            # 用户配置（不入库，本地创建）
+├── questions_answers.json # 本地题库缓存（运行时自动创建/回写）
+├── build_protected.py     # Windows 加固版流水线（Cython 编译 + PyInstaller 打包）
+├── assets/                # 日志/人脸缓存等运行目录（首次运行自动生成）
 ├── 配置文件生成器.html      # 可视化配置生成器
 ├── config/                # 配置加载与模型定义
 ├── dao/                   # 数据库访问层（SQLite）
 ├── entity/                # DTO/POJO/VO 实体
 ├── global_state/          # 全局状态
 ├── logic/                 # 核心业务逻辑
-│   ├── core/              # HTTP客户端、AI客户端、CPU进程池等基础设施
+│   ├── core/              # HTTP/AI客户端、多答题源引擎、题库客户端、OCR、CPU调度等基础设施
 │   ├── xuexitong/         # 学习通
 │   ├── yinghua/           # 英华学堂
 │   ├── enaea/             # 学习公社

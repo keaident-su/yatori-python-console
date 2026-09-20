@@ -11,3 +11,6 @@ beautifulsoup4>=4.12.0
 requests>=2.31.0
 Pillow>=10.0.0
 tls-client>=1.0.0
+# 本地图片OCR(识别图片形式的题目/选项): 优先使用 rapidocr-onnxruntime
+# (PaddleOCR的ONNX移植, wheel内置模型, 离线可用无需下载; 会自动安装 onnxruntime/numpy)
+rapidocr-onnxruntime>=1.2.0

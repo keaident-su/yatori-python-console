@@ -11,6 +11,7 @@ from config.config import User, Setting, JSONDataForConfig
 from utils.log import log_print, INFO, Green, Red, Default, Purple, Yellow, BoldRed
 from global_state.global_var import ACCOUNT_TYPE_STR
 from utils.email_utils import send_mail
+from utils.showdoc_utils import send_showdoc
 from utils.notice import play_notice_sound
 
 
@@ -36,7 +37,11 @@ def generic_user_block(setting: Setting, user: User,
         log_print(INFO, f"[{platform_name}]", "[", Green, user.account,
                   Default, "] ", Purple, "所有待学习课程学习完毕")
 
-    # 邮件通知
+    # ============ 推送通知内容(邮件与ShowDoc共用, 可自行修改此处内容) ============
+    notify_content = (f"账号：[{user.account}]<br>平台：[{platform_name}]<br>"
+                      f"通知：所有课程已执行完毕")
+
+    # 邮件通知 (开关: setting.emailInform.sw)
     if setting.email_inform.sw == 1 and len(user.inform_emails) > 0:
         send_mail(
             setting.email_inform.smtp_host,
@@ -44,8 +49,23 @@ def generic_user_block(setting: Setting, user: User,
             setting.email_inform.user_name,
             setting.email_inform.password,
             user.inform_emails,
-            f"账号：[{user.account}]<br>平台：[{platform_name}]<br>通知：所有课程已执行完毕"
+            notify_content
         )
+
+    # ShowDoc推送: 全局通道(全局开关+全局地址) + 用户通道(用户开关+用户地址列表)
+    # 两条通道互相独立: 全局开关关闭不影响用户自身的开关
+    _showdoc_targets: List[str] = []
+    if setting.showdoc_inform.sw == 1:
+        _g_url = (setting.showdoc_inform.url or "").strip()
+        if _g_url:
+            _showdoc_targets.append(_g_url)
+    if user.showdoc_sw == 1:
+        for _u_url in (user.showdoc_urls or []):
+            _u_url = (_u_url or "").strip()
+            if _u_url and _u_url not in _showdoc_targets:
+                _showdoc_targets.append(_u_url)
+    for _target in _showdoc_targets:
+        send_showdoc(_target, "Yatori课程助手通知", notify_content)
 
     # 提示音
     if setting.basic_setting.completion_tone == 1:

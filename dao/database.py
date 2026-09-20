@@ -26,15 +26,18 @@ def sqlite_init(db_path: str = "yatori.db"):
         f"sqlite:///{db_path}",
         echo=False,
         poolclass=StaticPool,
-        connect_args={"check_same_thread": False},
+        # timeout=30: 程序多开/多实例共用同一 yatori.db 时, 等待写锁而非立即报错
+        connect_args={"check_same_thread": False, "timeout": 30},
     )
 
-    # 开启 WAL 模式，提升并发性能
+    # 开启 WAL 模式，提升并发性能(多实例同时读写更稳)
     @event.listens_for(_engine, "connect")
     def set_sqlite_pragma(dbapi_conn, connection_record):
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
+        # busy_timeout: 多实例并发写时最多等待30秒锁释放, 避免 database is locked
+        cursor.execute("PRAGMA busy_timeout=30000")
         cursor.close()
 
     # 自动创建表

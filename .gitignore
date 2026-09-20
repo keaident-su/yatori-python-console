@@ -50,6 +50,7 @@ protected_build_log.txt
 
 # 运行时数据缓存（程序自动创建/回写）
 questions_answers.json
+questions.json
 
 # 第三方题库 SDK 资料（示例脚本含私有 token，不入库）
 axe_tiku_python_sdk/

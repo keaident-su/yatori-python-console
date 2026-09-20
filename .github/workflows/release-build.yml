@@ -3,9 +3,11 @@ name: release-build
 # 触发: 推送 V* tag(如 V1.1.0) / 手动触发
 # 产物: Linux(x86_64/arm64) 单文件二进制、macOS(x86_64/arm64) ZIP+DMG
 # 加固: Cython 编译为原生机器码 + PyInstaller 单文件(与 build_protected.py 一致)
+# 说明: Release 附件真实文件名使用 ASCII(GitHub 不支持非 ASCII 文件名),
+#       中文显示名通过 asset label 设置; 压缩包内部文件名保留中文。
 on:
   push:
-    tags: [ "V*" ]
+    tags: ["V*"]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +15,8 @@ permissions:
 
 env:
   APP_VERSION: V1.1.0
-  APP_BASE: "yatori-python刷课系统V1.1.0"
+  APP_BASE_ZH: "yatori-python刷课系统V1.1.0" # 程序/压缩包内中文名
+  APP_BASE: "yatori-python-console-V1.1.0" # Release 附件 ASCII 名
 
 jobs:
   # ================= Linux: 各处理器架构二进制 =================
@@ -22,7 +25,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { runner: ubuntu-latest,    arch: x86_64 }
+          - { runner: ubuntu-latest, arch: x86_64 }
           - { runner: ubuntu-24.04-arm, arch: arm64 }
     runs-on: ${{ matrix.runner }}
     steps:
@@ -47,14 +50,14 @@ jobs:
       - name: 重命名产物 (平台-架构分版本)
         run: |
           OUT="${{ env.APP_BASE }}-linux-${{ matrix.arch }}"
-          mv "dist/${{ env.APP_BASE }}" "dist/${OUT}"
+          mv "dist/${{ env.APP_BASE_ZH }}" "dist/${OUT}"
           chmod +x "dist/${OUT}"
           ls -lh dist/
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ matrix.arch }}
+          name: ${{ env.APP_BASE }}-linux-${{ matrix.arch }}
           path: dist/${{ env.APP_BASE }}-linux-${{ matrix.arch }}
           if-no-files-found: error
 
@@ -66,6 +69,16 @@ jobs:
           name: ${{ env.APP_VERSION }}
           files: dist/${{ env.APP_BASE }}-linux-${{ matrix.arch }}
 
+      - name: 设置中文显示名 (asset label)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/set_asset_label.py \
+            "${{ github.repository }}" "${{ github.ref_name }}" \
+            "${{ env.APP_BASE }}-linux-${{ matrix.arch }}" \
+            "${{ env.APP_BASE_ZH }}-linux-${{ matrix.arch }}"
+
   # ================= macOS: 各处理器架构 ZIP + DMG =================
   build-macos:
     strategy:
@@ -73,7 +86,7 @@ jobs:
       matrix:
         include:
           - { runner: macos-15-intel, arch: x86_64 }
-          - { runner: macos-15,       arch: arm64 }
+          - { runner: macos-15, arch: arm64 }
     runs-on: ${{ matrix.runner }}
     env:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
@@ -98,14 +111,16 @@ jobs:
       - name: 加固构建 (Cython -> PyInstaller 单文件)
         run: python build_protected.py
 
-      - name: 重命名产物 + ZIP 点开即用包
+      - name: 生成 ZIP 点开即用包 (包内保留中文名)
         run: |
-          OUT="${{ env.APP_BASE }}-macos-${{ matrix.arch }}"
-          mv "dist/${{ env.APP_BASE }}" "dist/${OUT}"
-          chmod +x "dist/${OUT}"
-          cd dist
-          zip -r --symlinks "${OUT}.zip" "${OUT}"
-          ls -lh
+          BIN="${{ env.APP_BASE }}-macos-${{ matrix.arch }}"
+          mv "dist/${{ env.APP_BASE_ZH }}" "dist/${BIN}"
+          chmod +x "dist/${BIN}"
+          cp "dist/${BIN}" "${{ env.APP_BASE_ZH }}"
+          zip "${BIN}.zip" "${{ env.APP_BASE_ZH }}"
+          mv "${BIN}.zip" dist/
+          rm -f "${{ env.APP_BASE_ZH }}"
+          ls -lh dist/
 
       - name: 导入签名证书 (可选, 未配置 secrets 则跳过)
         id: sign
@@ -143,7 +158,7 @@ jobs:
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ matrix.arch }}
+          name: ${{ env.APP_BASE }}-macos-${{ matrix.arch }}
           path: |
             dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}
             dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip
@@ -159,3 +174,17 @@ jobs:
           files: |
             dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip
             dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg
+
+      - name: 设置中文显示名 (asset label)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/set_asset_label.py \
+            "${{ github.repository }}" "${{ github.ref_name }}" \
+            "${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip" \
+            "${{ env.APP_BASE_ZH }}-macos-${{ matrix.arch }}.zip"
+          python .github/scripts/set_asset_label.py \
+            "${{ github.repository }}" "${{ github.ref_name }}" \
+            "${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg" \
+            "${{ env.APP_BASE_ZH }}-macos-${{ matrix.arch }}.dmg"

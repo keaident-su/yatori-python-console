@@ -120,13 +120,13 @@ if __name__ == "__main__":
 
 
 def module_has_pyd(rel_py: str) -> bool:
-    """判断某 .py 是否已成功产出 .pyd"""
+    """判断某 .py 是否已成功产出原生扩展(.pyd/.so)"""
     pyd_stem = (STAGE / rel_py).with_suffix("")
     parent = pyd_stem.parent
     if not parent.exists():
         return False
     return any(f.name.startswith(pyd_stem.name + ".")
-               and f.suffix == ".pyd" for f in parent.iterdir())
+               and f.suffix in (".pyd", ".so") for f in parent.iterdir())
 
 
 def build_ext(modules: list) -> list:
@@ -260,13 +260,13 @@ for _p in THIRD_PARTY:
     except Exception:
         pass
 
-# 扫描 stage 内自研 .pyd -> 模块名(以 os.sep 拼接, 避免转义问题)
+# 扫描 stage 内自研原生扩展(.pyd/.so) -> 模块名(以 os.sep 拼接, 避免转义问题)
 for _root, _dirs, _files in os.walk("."):
     _dirs[:] = [d for d in _dirs if d not in ("build", "dist", "pyi_work", "__pycache__")]
     for _f in _files:
-        if not _f.endswith(".pyd"):
+        if not (_f.endswith(".pyd") or _f.endswith(".so")):
             continue
-        _stem = _f.split(".")[0]          # 如 part.cp313-win_amd64.pyd -> part
+        _stem = _f.split(".")[0]          # 如 part.cp313-win_amd64.pyd / part.cpython-313-x86_64-linux-gnu.so -> part
         if _stem == "__init__":
             _mod = os.path.relpath(_root, ".").replace(os.sep, "/")
         else:

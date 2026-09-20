@@ -2,7 +2,7 @@ name: release-build
 
 # 触发: 推送 V* tag(如 V1.1.0) / 手动触发
 # 产物: Linux(x86_64/arm64) 单文件二进制、macOS(x86_64/arm64) ZIP+DMG
-# 加固: Cython 编译为原生机器码 + PyInstaller 单文件(与 build_protected.py 一致)
+# 构建: Cython 编译 + PyInstaller 单文件(与 build_protected.py 一致)
 # 说明: Release 附件真实文件名使用 ASCII(GitHub 不支持非 ASCII 文件名),
 #       中文显示名通过 asset label 设置; 压缩包内部文件名保留中文。
 on:
@@ -62,7 +62,7 @@ jobs:
                   print("removed:", os.path.basename(f))
           PY
 
-      - name: 加固构建 (Cython -> PyInstaller 单文件)
+      - name: 构建 (Cython -> PyInstaller 单文件)
         run: python build_protected.py
 
       - name: 重命名产物 (平台-架构分版本)
@@ -150,7 +150,7 @@ jobs:
                   print("removed:", os.path.basename(f))
           PY
 
-      - name: 加固构建 (Cython -> PyInstaller 单文件)
+      - name: 构建 (Cython -> PyInstaller 单文件)
         run: python build_protected.py
 
       - name: 生成 ZIP 点开即用包 (包内保留中文名)

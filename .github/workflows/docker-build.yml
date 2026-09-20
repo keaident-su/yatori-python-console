@@ -3,7 +3,7 @@ name: docker-build
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["v*", "V*"]
   workflow_dispatch:
 
 env:
@@ -37,7 +37,8 @@ jobs:
       - name: Extract version from logo.txt
         id: version
         run: |
-          VERSION=$(grep -oP 'v[0-9]+(\.[0-9]+)+(-Beta[0-9.]+)?' config/logo.txt | head -1)
+          VERSION=$(grep -oP '[vV][0-9]+(\.[0-9]+)+(-Beta[0-9.]+)?' config/logo.txt | head -1 || true)
+          VERSION=$(echo "${VERSION:-latest}" | tr '[:upper:]' '[:lower:]')
           echo "version=${VERSION:-latest}" >> "$GITHUB_OUTPUT"
           echo "解析到版本号: ${VERSION:-latest}"
 

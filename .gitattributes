@@ -1,0 +1,14 @@
+# 默认自动检测文本文件
+* text=auto
+
+# Shell 脚本必须保持 LF 换行(否则 Linux/macOS 运行报错)
+*.sh text eol=lf
+
+# Python / YAML / Markdown 保持 LF
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+
+# Windows 批处理保持 CRLF
+*.bat text eol=crlf

@@ -44,6 +44,24 @@ jobs:
           pip install -r requirements.txt
           pip install cython setuptools pyinstaller
 
+      - name: 清理 tls_client 异平台原生库 (防 PyInstaller 误收集)
+        run: |
+          python - <<'PY'
+          import glob, os, sys, tls_client
+          dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+          if sys.platform == "win32":
+              want = ".dll"
+          elif sys.platform == "darwin":
+              want = ".dylib"
+          else:
+              want = ".so"
+          for f in glob.glob(os.path.join(dep, "*")):
+              ext = os.path.splitext(f)[1].lower()
+              if ext in (".dll", ".dylib", ".so") and ext != want:
+                  os.remove(f)
+                  print("removed:", os.path.basename(f))
+          PY
+
       - name: 加固构建 (Cython -> PyInstaller 单文件)
         run: python build_protected.py
 
@@ -107,6 +125,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install cython setuptools pyinstaller
+
+      - name: 清理 tls_client 异平台原生库 (防 PyInstaller 误收集)
+        run: |
+          python - <<'PY'
+          import glob, os, sys, tls_client
+          dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+          if sys.platform == "win32":
+              want = ".dll"
+          elif sys.platform == "darwin":
+              want = ".dylib"
+          else:
+              want = ".so"
+          for f in glob.glob(os.path.join(dep, "*")):
+              ext = os.path.splitext(f)[1].lower()
+              if ext in (".dll", ".dylib", ".so") and ext != want:
+                  os.remove(f)
+                  print("removed:", os.path.basename(f))
+          PY
 
       - name: 加固构建 (Cython -> PyInstaller 单文件)
         run: python build_protected.py

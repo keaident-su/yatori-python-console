@@ -38,9 +38,11 @@ jobs:
         id: version
         run: |
           VERSION=$(grep -oP '[vV][0-9]+(\.[0-9]+)+(-Beta[0-9.]+)?' config/logo.txt | head -1 || true)
-          VERSION=$(echo "${VERSION:-latest}" | tr '[:upper:]' '[:lower:]')
-          echo "version=${VERSION:-latest}" >> "$GITHUB_OUTPUT"
-          echo "解析到版本号: ${VERSION:-latest}"
+          VERSION=${VERSION:-latest}
+          # Docker tag 规范允许大写字母(仅仓库名强制小写), 版本标签保持原样 V1.1.0
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version_lower=$(echo "${VERSION}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "解析到版本号: ${VERSION}"
 
       - name: Docker meta
         id: meta
@@ -50,8 +52,7 @@ jobs:
           tags: |
             type=raw,value=latest
             type=raw,value=${{ steps.version.outputs.version }}
-            type=sha,format=short
-            type=ref,event=tag
+            type=raw,value=${{ steps.version.outputs.version_lower }}
 
       - name: Build and push
         uses: docker/build-push-action@v6

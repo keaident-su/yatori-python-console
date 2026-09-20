@@ -264,7 +264,16 @@ THIRD_PARTY = [
 hiddenimports = []
 for _p in THIRD_PARTY:
     try:
-        hiddenimports += collect_submodules(_p, on_error="ignore")
+        if _p == "tls_client":
+            # 排除 dependencies 子包: 该目录包含各平台原生库(含 Linux ELF .so),
+            # macOS 上会被当作扩展模块收集并触发 Mach-O 解析错误而构建失败;
+            # tls_client 运行时用 ctypes 直接加载库文件(已由上方 datas 按平台打入),
+            # 不依赖该子包被 import。
+            hiddenimports += collect_submodules(
+                _p, on_error="ignore",
+                filter=lambda name: name != "tls_client.dependencies")
+        else:
+            hiddenimports += collect_submodules(_p, on_error="ignore")
     except Exception:
         pass
 
@@ -304,7 +313,7 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=["tkinter", "matplotlib", "PyQt5", "PySide2", "notebook",
-              "pandas", "scipy", "torch"],
+              "pandas", "scipy", "torch", "tls_client.dependencies"],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=None,

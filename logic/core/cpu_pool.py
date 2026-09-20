@@ -12,6 +12,7 @@ initializer 绑定 P 核（优先吃满高性能核，探测失败自动降级�
 任何异常都会优雅降级为当前进程内联执行，绝不影响主流程。
 """
 import atexit
+import sys
 import threading
 from concurrent.futures import ProcessPoolExecutor
 from typing import Callable, Iterable, List, Any
@@ -28,6 +29,12 @@ _pool_disabled = False  # 一旦创建/使用失败则永久禁用，直接内�
 def _get_pool():
     global _pool, _pool_disabled
     if _pool_disabled:
+        return None
+    # 打包(PyInstaller)环境：Windows spawn 子进程会重新拉起 exe，单文件模式每个子进程
+    # 还需完整解压一次，代价高且易触发进程裂变/卡死；因此冻结环境直接回退为内联串行
+    # 执行（功能完全一致，仅 CPU 密集解析不吃满多核；刷课的网络并发走线程不受影响）。
+    if getattr(sys, "frozen", False):
+        _pool_disabled = True
         return None
     with _pool_lock:
         if _pool is None and not _pool_disabled:

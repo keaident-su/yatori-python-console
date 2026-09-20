@@ -289,9 +289,9 @@ users:
 
 - 依赖已包含在 `requirements.txt`，安装即用（会自动带上 onnxruntime/numpy/opencv）
 - 引擎懒加载 + 单例 + 线程安全，不影响启动速度；缺库时优雅降级，**不会中断刷课**
-- Windows 加固版 exe 已内置 OCR 模型，开箱即用
+- Windows 单文件 exe 已内置 OCR 模型，开箱即用
 
-## 🪟 Windows 单文件 exe（加固发布版）
+## 🪟 Windows 单文件 exe
 
 打包产物：`yatori-python刷课系统V1.1.0.exe`（单文件、免安装 Python 环境）。
 
@@ -302,19 +302,7 @@ users:
 3. 日志输出在 `assets\logs\日期.log`；人脸图缓存放 `assets\faces\账号.jpg`（可选）
 4. 本地题库缓存文件为 exe 同目录的 `questions_answers.json`（运行时自动创建/回写）
 
-### 加固说明（防反编译 / 防逆向）
-
-| 措施 | 说明 |
-|------|------|
-| 自研代码 Cython 原生编译 | `config/logic/utils/dao/entity/global_state/web` 全部编译为 `.pyd` 机器码扩展；发布产物中**不含任何自研 Python 源码与字节码**，无法通过 pyinstxtractor + 反编译器还原出源码 |
-| 去除调试信息 | 不嵌入源码签名（embedsignature=False）、不生成代码注释，降低可读信息 |
-| 进程池冻结适配 | 打包环境自动禁用多进程解析池并启用 freeze 保护，避免 Windows spawn 造成进程裂变 |
-| 单文件封装 | 第三方依赖与内置资源封装于单文件，需先解包才能进一步分析 |
-
-> [!NOTE]
-> 如需商业级更强保护（如商业 PyArmor 的 BCC/RFT 虚拟化、Nuitka Commercial 反调试校验），需自行购买授权后在 `build_protected.py` 中接入；当前免费方案为 Cython 原生编译。
-
-### 重新构建加固版
+### 重新构建
 
 ```bash
 pip install -r requirements.txt
@@ -322,7 +310,7 @@ pip install cython setuptools pyinstaller
 python build_protected.py
 ```
 
-上面一条命令会自动完成：源码隔离复制 → Cython 编译为 .pyd → 裁剪源码 → 全量导入校验 → PyInstaller 打包 → 产物输出到 `dist/`。
+上面一条命令会自动完成构建与打包，产物输出到 `dist/`。
 
 ## 🐳 Docker 部署
 
@@ -376,7 +364,7 @@ docker pull ghcr.io/keaident-su/yatori-python-console:v1.1.0
 | 多答题源顺序调用（题库/AI/本地缓存，失败自动回退） | ✅ |
 | 本地题库缓存自动回写（命中优先） | ✅ |
 | 本地图片题 OCR 识别（离线，内置模型） | ✅ |
-| Windows 加固单文件 exe（Cython 原生编译） | ✅ |
+| Windows 单文件 exe（免安装 Python 环境） | ✅ |
 | 考试客户端签名（deviceFlag）  | ✅ |
 | 灵活配置文件                  | ✅ |
 | 可视化配置文件生成器          | ✅ |
@@ -408,7 +396,7 @@ yatori-python-console/
 ├── main.py                # 主入口
 ├── config.yaml            # 用户配置（不入库，本地创建）
 ├── questions_answers.json # 本地题库缓存（运行时自动创建/回写）
-├── build_protected.py     # Windows 加固版流水线（Cython 编译 + PyInstaller 打包）
+├── build_protected.py     # 打包脚本
 ├── assets/                # 日志/人脸缓存等运行目录（首次运行自动生成）
 ├── 配置文件生成器.html      # 可视化配置生成器
 ├── config/                # 配置加载与模型定义

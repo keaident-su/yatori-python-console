@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-加固打包流水线 —— yatori-python刷课系统 V1.1.0 (Windows)
+打包流水线 —— yatori-python刷课系统 V1.1.0
 
 流程:
-  1. 复制自研源码到隔离的 build_stage 目录(不动原始源码树)
-  2. 用 Cython 将全部自研模块(config/logic/utils/dao/entity/global_state/web)
-     编译为原生 .pyd 机器码扩展
-  3. 删除已编译模块的 .py/.c 源文件 —— 发布产物中不再包含任何自研 Python 源码
-  4. 在 stage 内逐个 import 全量校验(确保 .pyd 可正常加载)
-  5. 用 PyInstaller 打包单文件 exe(内置 logo / tls 原生库 / OCR 模型)
+  1. 复制源码到隔离的 build_stage 目录(不动原始源码树)
+  2. 用 Cython 将全部模块(config/logic/utils/dao/entity/global_state/web)
+     编译为原生扩展
+  3. 清理已编译模块的 .py/.c 中间文件
+  4. 在 stage 内逐个 import 全量校验(确保扩展可正常加载)
+  5. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
   6. 产物输出到 dist/yatori-python刷课系统V1.1.0.exe
 
 用法: python build_protected.py
@@ -26,7 +26,7 @@ APP_NAME = "yatori-python刷课系统V1.1.0"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 
-# __init__.py 是否保持源码(打包兼容回退开关)。False=一并编译(保护更彻底)
+# __init__.py 是否保持源码(打包兼容回退开关)。False=一并编译
 KEEP_INIT_SOURCE = os.environ.get("YATORI_KEEP_INIT_SOURCE", "0") == "1"
 
 
@@ -85,7 +85,7 @@ def _setup_code(modules: list) -> str:
     # cythonize(nthreads>1) 内部用进程池, Windows spawn 子进程会重新执行本脚本,
     # 若无 __main__ 保护会直接报 "start a new process before bootstrap"。
     return '''# -*- coding: utf-8 -*-
-"""自动生成: Cython 加固编译配置"""
+"""自动生成: Cython 编译配置"""
 import os
 from setuptools import setup
 from Cython.Build import cythonize
@@ -153,7 +153,7 @@ def build_ext(modules: list) -> list:
 
 
 def prune_sources(compiled: list):
-    """删除已编译模块的 .py/.c, 确保产物不含自研源码"""
+    """清理已编译模块的 .py/.c 中间文件"""
     removed = 0
     for rel in compiled:
         py = STAGE / rel
@@ -215,7 +215,7 @@ def verify_imports(modules: list) -> bool:
 SPEC = STAGE / "yatori_build_protected.spec"
 
 SPEC_TEMPLATE = '''# -*- mode: python ; coding: utf-8 -*-
-"""加固版打包配置(由 build_protected.py 自动生成使用)"""
+"""打包配置(由 build_protected.py 自动生成使用)"""
 import glob
 import os
 import sys
@@ -248,8 +248,8 @@ for _f in glob.glob(os.path.join(_tls_dep, "*")):
 datas += collect_data_files("rapidocr_onnxruntime")
 
 # ---- 隐藏导入 ----
-# 自研模块已全部编译为 .pyd, PyInstaller 无法静态分析其 import,
-# 因此第三方依赖必须显式收集; 自研模块由文件扫描得出。
+# 模块已全部编译为原生扩展, PyInstaller 无法静态分析其 import,
+# 因此第三方依赖必须显式收集; 项目模块由文件扫描得出。
 THIRD_PARTY = [
     "fastapi", "starlette", "uvicorn", "pydantic", "pydantic_core", "anyio",
     "httpx", "httpcore", "h11", "h2", "certifi", "idna", "sniffio",

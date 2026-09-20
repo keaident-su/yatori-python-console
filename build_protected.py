@@ -230,10 +230,18 @@ APP_NAME = %r
 datas = [(os.path.join("config", "logo.txt"), "config")]
 
 # tls_client 原生库(运行时按 dirname(__file__)/dependencies 加载)
+# 必须按平台过滤: Win=.dll / Linux=.so / macOS=.dylib
+# (不能全收: macOS 上 PyInstaller 会把 Linux 的 ELF .so 当 Mach-O 解析而报错)
 import tls_client  # noqa: E402
 _tls_dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+if sys.platform == "win32":
+    _tls_ext = (".dll",)
+elif sys.platform == "darwin":
+    _tls_ext = (".dylib",)
+else:
+    _tls_ext = (".so",)
 for _f in glob.glob(os.path.join(_tls_dep, "*")):
-    if _f.lower().endswith((".dll", ".so", ".dylib")):
+    if _f.lower().endswith(_tls_ext):
         datas.append((_f, "tls_client/dependencies"))
 
 # 本地 OCR 模型与配置(rapidocr_onnxruntime wheel 内置)

@@ -177,35 +177,9 @@ class HttpClient:
                     )
                     if cookie_str:
                         req_headers["Cookie"] = cookie_str
-                # 调试: 对addStudentWorkNew请求输出请求头
-                if "addStudentWorkNew" in url:
-                    try:
-                        with open("_req_debug.txt", "a", encoding="utf-8") as f:
-                            f.write(f"\n=== URL: {url} ===\n")
-                            f.write(f"=== Body length: {len(body)} ===\n")
-                            for hk, hv in req_headers.items():
-                                f.write(f"  Header: {hk}: {hv}\n")
-                            # 输出body前 500 bytes
-                            f.write(f"=== Body preview ===\n")
-                            f.write(body[:500].decode(errors="replace"))
-                            f.write(f"\n=== END ===\n")
-                    except Exception:
-                        pass
                 resp = client.request(
                     method, url, content=body, headers=req_headers
                 )
-                # 调试: 记录响应头
-                if "addStudentWorkNew" in url:
-                    try:
-                        with open("_req_debug.txt", "a", encoding="utf-8") as f:
-                            f.write(
-                                f"=== Response status: {resp.status_code} ===\n")
-                            for hk, hv in resp.headers.items():
-                                f.write(f"  Resp Header: {hk}: {hv}\n")
-                            f.write(f"  Response body: {resp.text[:300]}\n")
-                            f.write(f"=== RESP END ===\n")
-                    except Exception:
-                        pass
             elif data is not None:
                 resp = client.request(
                     method, url, data=data, headers=req_headers

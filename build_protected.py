@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-打包流水线 —— yatori-python刷课系统 V1.1.0
+打包流水线 —— yatori-python刷课系统 V1.2.0
 
 流程:
   1. 复制源码到隔离的 build_stage 目录(不动原始源码树)
@@ -9,7 +9,7 @@
   3. 清理已编译模块的 .py/.c 中间文件
   4. 在 stage 内逐个 import 全量校验(确保扩展可正常加载)
   5. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
-  6. 产物输出到 dist/yatori-python刷课系统V1.1.0.exe
+  6. 产物输出到 dist/yatori-python刷课系统V1.2.0.exe
 
 用法: python build_protected.py
 """
@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 STAGE = ROOT / "build_stage"
-APP_NAME = "yatori-python刷课系统V1.1.0"
+APP_NAME = "yatori-python刷课系统V1.2.0"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 
@@ -96,7 +96,7 @@ MODULES = %r
 def main():
     setup(
         name="yatori-protected",
-        version="1.1.0",
+        version="1.2.0",
         ext_modules=cythonize(
             MODULES,
             language_level=3,
@@ -232,20 +232,28 @@ datas = [(os.path.join("config", "logo.txt"), "config")]
 # tls_client 原生库(运行时按 dirname(__file__)/dependencies 加载)
 # 必须按平台过滤: Win=.dll / Linux=.so / macOS=.dylib
 # (不能全收: macOS 上 PyInstaller 会把 Linux 的 ELF .so 当 Mach-O 解析而报错)
-import tls_client  # noqa: E402
-_tls_dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
-if sys.platform == "win32":
-    _tls_ext = (".dll",)
-elif sys.platform == "darwin":
-    _tls_ext = (".dylib",)
-else:
-    _tls_ext = (".so",)
-for _f in glob.glob(os.path.join(_tls_dep, "*")):
-    if _f.lower().endswith(_tls_ext):
-        datas.append((_f, "tls_client/dependencies"))
+# 守卫: 未安装 tls_client 时跳过(仅影响超星滑块风控伪装, 程序运行不受影响)
+try:
+    import tls_client  # noqa: E402
+    _tls_dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+    if sys.platform == "win32":
+        _tls_ext = (".dll",)
+    elif sys.platform == "darwin":
+        _tls_ext = (".dylib",)
+    else:
+        _tls_ext = (".so",)
+    for _f in glob.glob(os.path.join(_tls_dep, "*")):
+        if _f.lower().endswith(_tls_ext):
+            datas.append((_f, "tls_client/dependencies"))
+except Exception:
+    pass
 
 # 本地 OCR 模型与配置(rapidocr_onnxruntime wheel 内置)
-datas += collect_data_files("rapidocr_onnxruntime")
+# 守卫: 异形架构/轻量依赖环境可能未安装 OCR 包, 缺失时跳过(程序内已优雅降级)
+try:
+    datas += collect_data_files("rapidocr_onnxruntime")
+except Exception:
+    pass
 
 # ---- 隐藏导入 ----
 # 模块已全部编译为原生扩展, PyInstaller 无法静态分析其 import,

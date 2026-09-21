@@ -1,6 +1,6 @@
 name: release-build
 
-# 触发: 推送 V* tag(如 V1.1.0) / 手动触发
+# 触发: 推送 V* tag(如 V1.2.0) / 手动触发
 # 产物: Linux(x86_64/arm64) 单文件二进制、macOS(x86_64/arm64) ZIP+DMG
 # 构建: Cython 编译 + PyInstaller 单文件(与 build_protected.py 一致)
 # 说明: Release 附件真实文件名使用 ASCII(GitHub 不支持非 ASCII 文件名),
@@ -14,9 +14,9 @@ permissions:
   contents: write
 
 env:
-  APP_VERSION: V1.1.0
-  APP_BASE_ZH: "yatori-python刷课系统V1.1.0" # 程序/压缩包内中文名
-  APP_BASE: "yatori-python-console-V1.1.0" # Release 附件 ASCII 名
+  APP_VERSION: V1.2.0
+  APP_BASE_ZH: "yatori-python刷课系统V1.2.0" # 程序/压缩包内中文名
+  APP_BASE: "yatori-python-console-V1.2.0" # Release 附件 ASCII 名
 
 jobs:
   # ================= Linux: 各处理器架构二进制 =================

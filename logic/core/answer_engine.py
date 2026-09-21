@@ -28,7 +28,8 @@ from utils.log import (
 )
 
 from logic.core.tiku_client import (
-    EmmcyTikuClient, AxeTikuClient, _plain_options, log_debug_source
+    EmmcyTikuClient, AxeTikuClient, N1TikuClient, ZETikuClient,
+    EveryTikuClient, _plain_options, log_debug_source
 )
 
 # ============ 常量 ============
@@ -36,6 +37,9 @@ from logic.core.tiku_client import (
 # 答题源类型
 SOURCE_EMMCY = "emmcy"   # 言溪题库
 SOURCE_AXE = "axe"       # AVXE题库
+SOURCE_N1 = "n1"         # N1题库(无言题库/网课搜题助手)
+SOURCE_ZE = "ze"         # ZE题库(ZError)
+SOURCE_EVERY = "every"   # EveryAPI题库(AI问答型)
 SOURCE_AI = "ai"         # AI大模型
 SOURCE_LOCAL = "local"   # 本地题库缓存(独立答题源, 可参与顺序排序)
 
@@ -43,12 +47,43 @@ SOURCE_TYPE_ALIAS = {
     "emmcy": SOURCE_EMMCY, "yanxi": SOURCE_EMMCY, "言溪": SOURCE_EMMCY,
     "yanxi_tiku": SOURCE_EMMCY,
     "axe": SOURCE_AXE, "avxe": SOURCE_AXE, "AXE_tiku": SOURCE_AXE,
+    "n1": SOURCE_N1, "n1_tiku": SOURCE_N1, "n1题库": SOURCE_N1,
+    "n1screch": SOURCE_N1, "n1screch_tiku": SOURCE_N1,
+    "ze": SOURCE_ZE, "ze_tiku": SOURCE_ZE, "zerror": SOURCE_ZE,
+    "ze题库": SOURCE_ZE,
+    "every": SOURCE_EVERY, "everyapi": SOURCE_EVERY,
+    "every_api": SOURCE_EVERY, "every_tiku": SOURCE_EVERY,
     "ai": SOURCE_AI, "ai_model": SOURCE_AI, "model": SOURCE_AI,
     "local": SOURCE_LOCAL, "local_json": SOURCE_LOCAL, "cache": SOURCE_LOCAL,
     "本地题库缓存": SOURCE_LOCAL,
 }
 
 _ANSWER_PLACEHOLDER_KW = ("很抱歉", "未找到", "没有找到", "搜索不到", "无答案")
+
+
+def _answer_cacheable(ans: str, q_type: str) -> bool:
+    """判断答案是否允许写入本地题库缓存(防止异常长文本污染题库)
+
+    背景: 第三方题库/AI 偶发返回整段错误文本作为答案(如多选返回一整段文章),
+    若回写缓存会被后续查询命中, 污染答题正确率。
+    规则:
+      - 选择题/判断题: 正常答案应很短(如 A / ABCD / A,C,D / 对 / 错);
+        长度>20 或含句末标点(。；;!?!)即视为脏数据, 不缓存;
+      - 其它/未知题型: 答案天然可能较长, 仅拦截超长(>500)或含换行的恶劣数据。
+    """
+    a = (ans or "").strip()
+    if not a:
+        return False
+    if "\n" in a or "\r" in a:
+        return False
+    t = (q_type or "").lower()
+    if t in ("single_choice", "multiple_choice", "judge"):
+        if len(a) > 20:
+            return False
+        if re.search(r"[。；;!?！？]", a):
+            return False
+        return True
+    return len(a) <= 500
 
 
 # ============ 答题源 ============
@@ -87,6 +122,12 @@ class AnswerSource:
             return EmmcyTikuClient(self.url, self.token).check()
         if self.type == SOURCE_AXE:
             return AxeTikuClient(self.url, self.token).check()
+        if self.type == SOURCE_N1:
+            return N1TikuClient(self.url, self.token).check()
+        if self.type == SOURCE_ZE:
+            return ZETikuClient(self.url, self.token).check()
+        if self.type == SOURCE_EVERY:
+            return EveryTikuClient(self.url, self.token, self.model).check()
         if self.type == SOURCE_AI:
             from logic.core.ai_client import AIClient
             err = AIClient(self.url, self.model, self.token,
@@ -103,6 +144,13 @@ class AnswerSource:
                 self._client = EmmcyTikuClient(self.url, self.token)
             elif self.type == SOURCE_AXE:
                 self._client = AxeTikuClient(self.url, self.token)
+            elif self.type == SOURCE_N1:
+                self._client = N1TikuClient(self.url, self.token)
+            elif self.type == SOURCE_ZE:
+                self._client = ZETikuClient(self.url, self.token)
+            elif self.type == SOURCE_EVERY:
+                self._client = EveryTikuClient(
+                    self.url, self.token, self.model)
         return self._client
 
     def query(self, question: str, options: Optional[List[str]] = None,
@@ -115,7 +163,8 @@ class AnswerSource:
                 self.name, "处于连续失败冷却期, 本次跳过(冷却结束后自动恢复)")
             return ""
         try:
-            if self.type in (SOURCE_EMMCY, SOURCE_AXE):
+            if self.type in (SOURCE_EMMCY, SOURCE_AXE, SOURCE_N1,
+                             SOURCE_ZE, SOURCE_EVERY):
                 client = self._get_client()
                 ans = client.query(question, options, q_type)
                 if ans:
@@ -217,8 +266,17 @@ class LocalTikuCache:
         self._lock = threading.RLock()
         self._data: Dict[str, str] = {}
         self._norm_index: Dict[str, str] = {}
+        self._bucket: Dict[int, List[str]] = {}  # 长度分桶(大题库加速)
         self.loaded = False
         self._load_failed = False  # 读取失败时禁止写回(防止覆盖损坏文件)
+        self._disk_sig = None      # 磁盘文件签名(mtime_ns,size): 检测外部修改
+
+    def _disk_signature(self):
+        try:
+            st = os.stat(self.path)
+            return (st.st_mtime_ns, st.st_size)
+        except OSError:
+            return None
 
     def load(self):
         with self._lock:
@@ -234,6 +292,7 @@ class LocalTikuCache:
                     self._data = {str(k): str(v)
                                   for k, v in data.items() if str(k).strip()}
                     self._rebuild_index()
+                self._disk_sig = self._disk_signature()
             except Exception as e:
                 # 已存在但读取失败: 标记为禁止覆写, 避免清空原有题库
                 self._load_failed = True
@@ -244,10 +303,14 @@ class LocalTikuCache:
 
     def _rebuild_index(self):
         self._norm_index = {}
+        self._bucket = {}
         for k, v in self._data.items():
             nk = _norm_question(k)
             if nk and nk not in self._norm_index:
                 self._norm_index[nk] = v
+        # 长度分桶(每8字符一桶, 供包含/模糊匹配快速筛选)
+        for nk in self._norm_index:
+            self._bucket.setdefault(len(nk) // 8, []).append(nk)
 
     @property
     def count(self) -> int:
@@ -273,22 +336,24 @@ class LocalTikuCache:
                     return v, q
             if len(nq) < 6:
                 return "", ""
-            # 3. 包含匹配(双向, 长度接近时才算)
-            for k, v2 in self._norm_index.items():
-                if not k:
-                    continue
-                if len(k) >= 8 and (k in nq or nq in k):
-                    return v2, question
-            # 4. 相似度匹配(限定长度接近的候选, 控制开销)
+            nqlen = len(nq)
+            # 3. 包含匹配(双向, 仅扫相近长度桶, 避免大题库全量扫描)
+            for b in range(max(0, nqlen // 16 - 1), nqlen // 4 + 2):
+                for k in self._bucket.get(b, ()):
+                    if len(k) >= 8 and (k in nq or nq in k):
+                        return self._norm_index[k], question
+            # 4. 相似度匹配(仅扫长度接近的桶, 控制开销)
             best_v, best_score = "", 0.0
             candidates = []
-            for k in self._norm_index:
-                if not k:
-                    continue
-                ratio = len(k) / max(len(nq), 1)
-                if 0.6 <= ratio <= 1.6:
-                    candidates.append(k)
-            candidates.sort(key=lambda k: abs(len(k) - len(nq)))
+            for b in range(max(0, int(nqlen * 0.6) // 8 - 1),
+                           int(nqlen * 1.6) // 8 + 2):
+                for k in self._bucket.get(b, ()):
+                    if not k:
+                        continue
+                    ratio = len(k) / max(nqlen, 1)
+                    if 0.6 <= ratio <= 1.6:
+                        candidates.append(k)
+            candidates.sort(key=lambda k: abs(len(k) - nqlen))
             for k in candidates[:400]:
                 score = SequenceMatcher(None, nq, k).ratio()
                 if score > best_score:
@@ -309,12 +374,28 @@ class LocalTikuCache:
         if self._load_failed:
             return False
         with self._lock:
+            # 外部修改检测: 题库文件被其它程序/工具替换或更新时,
+            # 重新加载磁盘最新内容后再写入, 避免覆盖外部新数据(如大题库导入)
+            cur_sig = self._disk_signature()
+            if cur_sig is not None and self._disk_sig is not None and cur_sig != self._disk_sig:
+                old_count = len(self._data)
+                log_print(INFO, Yellow,
+                          f"[答题源] 检测到本地题库文件被外部修改({self.path}), "
+                          f"正在重新加载合并(内存{old_count}条 -> 磁盘最新)...")
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                if self._load_failed:
+                    return False
+                log_print(INFO, Green,
+                          f"[答题源] 已重新加载题目 {len(self._data)} 条")
             if q in self._data:
                 return False
             self._data[q] = a
             nq = _norm_question(q)
             if nq:
                 self._norm_index.setdefault(nq, a)
+                self._bucket.setdefault(len(nq) // 8, []).append(nq)
             try:
                 dir_name = os.path.dirname(os.path.abspath(self.path))
                 if dir_name:
@@ -323,6 +404,7 @@ class LocalTikuCache:
                 with open(tmp_path, "w", encoding="utf-8") as f:
                     json.dump(self._data, f, ensure_ascii=False, indent=4)
                 os.replace(tmp_path, self.path)
+                self._disk_sig = self._disk_signature()
                 return True
             except Exception as e:
                 log_print(INFO, BoldRed,
@@ -415,8 +497,14 @@ class AnswerEngine:
             if ans:
                 ans = ans.strip()
                 # 外部题库/AI 成功 -> 将题目与答案回写本地题库缓存
+                # 防污染(2026-09-21): 疑似异常答案(超长/含句末标点的脏数据)不写入
                 if use_cache:
-                    if self.cache.save(question, ans):
+                    if not _answer_cacheable(ans, q_type):
+                        log_debug_source(
+                            "本地题库缓存",
+                            f"本次未写入(答案疑似异常数据, 已拦截防污染): "
+                            f"{ans[:60]}")
+                    elif self.cache.save(question, ans):
                         log_debug_source(
                             "本地题库缓存",
                             f"已写入本地题库缓存: 题目: {question[:40]}... "

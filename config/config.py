@@ -27,6 +27,7 @@ class BasicSetting:
     web_model: int = 0             # Web模式
     web_port: int = 8080           # Web模式监听端口(多开时被占用会自动顺延到空闲端口)
     ocr_image_question: int = 1    # 图片题目OCR识别开关(0关闭,1开启)
+    notice_prefix: str = "Yatori"  # 通知开头名称(邮件主题/推送标题前缀, 留空则回退默认"Yatori")
 
 
 @dataclass
@@ -119,6 +120,12 @@ class CoursesCustom:
     auto_exam: int = 0                      # 是否自动考试
     exam_auto_submit: int = 0               # 是否自动提交试卷
     other_task_stay: int = 30               # 其它/文档类任务点处理后的停留秒数(知识结构/引导问题/单文字/PPT/文档文章等)
+    add_study_sw: int = 0                   # 【学习通】增加学习次数/学习时长开关(课程任务点全部完成后执行; 0关1开)
+    add_study_count: int = 0                # 【学习通】增加的学习次数(对齐yatori-free默认0=不增加; 上限400)
+    add_study_video_minutes: int = 0        # 【学习通】增加的视频观看时长(分钟, 对齐yatori-free默认0=不增加; 上限4000)
+    add_study_read_minutes: int = 0         # 【学习通】增加的阅读时长(分钟, 对齐yatori-free默认0=不增加; 上限4000)
+    add_study_delay: int = 30               # 【学习通】学习记录上报间隔秒数(建议≥30; 参照chaoxing_tool默认30)
+    brute_speed: float = 2.4                # 【学习公社】暴力模式倍速(最低2.4, 未填写默认2.4; 服务端单次封顶5分钟/25秒间隔, 有效上限12x)
     device_flag: str = ""                   # 设备特征码(学习通APP内获取, 用于考试客户端签名)
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
@@ -270,6 +277,8 @@ def _default_value(config: JSONDataForConfig):
     bs.web_model = _safe_int(bs.web_model, 0)
     bs.web_port = _safe_int(bs.web_port, 8080)
     bs.ocr_image_question = _safe_int(bs.ocr_image_question, 1)
+    # 通知开头名称: 去除首尾空白, 空值回退默认"Yatori", 超长截断防御
+    bs.notice_prefix = (str(bs.notice_prefix or "")).strip()[:30] or "Yatori"
 
     # ShowDoc推送 int 字段强制转换
     config.setting.showdoc_inform.sw = _safe_int(
@@ -310,6 +319,25 @@ def _default_value(config: JSONDataForConfig):
         cc.auto_exam = _safe_int(cc.auto_exam, 0)
         cc.exam_auto_submit = _safe_int(cc.exam_auto_submit, 0)
         cc.other_task_stay = _safe_int(cc.other_task_stay, 30)
+        cc.add_study_sw = _safe_int(cc.add_study_sw, 0)
+        # 三指标边界对齐 yatori-free 界面限制(次数<=400, 时长<=4000分钟); 默认0=不增加
+        cc.add_study_count = max(0, min(400, _safe_int(cc.add_study_count, 0)))
+        cc.add_study_video_minutes = max(
+            0, min(4000, _safe_int(cc.add_study_video_minutes, 0)))
+        cc.add_study_read_minutes = max(
+            0, min(4000, _safe_int(cc.add_study_read_minutes, 0)))
+        cc.add_study_delay = max(30, _safe_int(cc.add_study_delay, 30))
+        # 【学习公社】暴力模式倍速: 非法值默认2.4, 范围限制在 2.4 ~ 144
+        try:
+            cc.brute_speed = float(cc.brute_speed)
+        except (ValueError, TypeError):
+            cc.brute_speed = 2.4
+        if cc.brute_speed != cc.brute_speed or cc.brute_speed <= 0:  # NaN防护
+            cc.brute_speed = 2.4
+        if cc.brute_speed < 2.4:
+            cc.brute_speed = 2.4
+        elif cc.brute_speed > 144:
+            cc.brute_speed = 144.0
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)
@@ -354,6 +382,11 @@ def _parse_user_list(users_data: list) -> List[User]:
 _ANSWER_TYPE_ALIAS = {
     "emmcy": "emmcy", "yanxi": "emmcy", "yanxi_tiku": "emmcy", "言溪": "emmcy",
     "axe": "axe", "avxe": "axe", "axe_tiku": "axe",
+    "n1": "n1", "n1_tiku": "n1", "n1题库": "n1",
+    "n1screch": "n1", "n1screch_tiku": "n1",
+    "ze": "ze", "ze_tiku": "ze", "zerror": "ze", "ze题库": "ze",
+    "every": "every", "everyapi": "every", "every_api": "every",
+    "every_tiku": "every", "everyapi_tiku": "every",
     "ai": "ai", "ai_model": "ai", "model": "ai",
     "local": "local", "local_json": "local", "cache": "local",
     "本地题库缓存": "local",

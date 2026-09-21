@@ -89,6 +89,17 @@ def get_ua(ua_type: str = "mobile") -> str:
 # 初始为mobile UA，遇到"访问异常"时切换为iphone UA
 XXTEXAMUA: str = get_ua("mobile")
 
+# 作业拉题(翻页)专用UA - 完全复刻 Go core 的 GetUA("mobile")(MI 5X学习通客户端)
+# 关键: 作业翻题必须使用该客户端UA + 最小参数URL, 否则服务器会忽略 index
+# 参数而固定返回第1题(曾导致"作业提交成功但只有第1题有答案"的重大缺陷)
+_GO_WORK_UA = (
+    "Mozilla/5.0 (Linux; Android 8.1.0; MI 5X Build/OPM1.171019.019; wv) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/71.0.3578.99 "
+    "Mobile Safari/537.36 (schild:ce5175d20950c8ee955fb03246f762da) "
+    "(device:MI 5X) Language/zh_CN com.chaoxing.mobile/"
+    "ChaoXingStudy_3_6.7.2_android_phone_10936_311 (@Kalimdor)_"
+    "76c82452584d47e39ab79aa54ea86554")
+
 
 def _build_client(cache: XueXiTUserCache, ua: str = "mobile", custom_ua: str = "") -> HttpClient:
     """构建带学习通移动UA的HTTP客户端
@@ -562,6 +573,62 @@ def document_read_report_api(cache: XueXiTUserCache, job_id: str,
         return body, resp
     finally:
         client.close()
+
+
+def read_point_report_api(cache: XueXiTUserCache, course_id: str,
+                          knowledge_id: str, user_id: str = "",
+                          retry: int = 2) -> bool:
+    """提交累计阅读行为(模拟阅读/滑动到底部) - 对齐 Go ReadSubmitTimeLog
+
+    GET https://data-xxt.aichaoxing.com/analysis/ac_mark
+        ?&f=readPoint&u={userId}&d={d}&t={t}&enc={enc}
+    enc = md5(按key排序拼接的value + 固定盐"NrRzLDpWB2JkeodIVAn4")
+    作用: 上报阅读字数(wc)/滚动高度(h)等行为数据, 供服务端判定任务点
+         "真实阅读完成"(PPT/图文/PDF等文档类任务点变绿的辅助信号)
+    :return: 是否上报成功(失败不影响主流程)
+    """
+    import hashlib
+    import random
+    import httpx
+    from urllib.parse import quote as _q
+
+    if not user_id:
+        user_id = cache.cookie_dict.get("_uid", "") or cache.uid or ""
+    if not user_id:
+        return False
+    t = time.strftime("%Y%m%d%H%M%S") + "000"  # 伪造毫秒值
+    wc = random.randint(4000, 5000)  # 观看字数(模拟已阅读大量内容)
+    h = random.randint(4000, 4100)   # 滚动高度(模拟滑动到底部)
+    rand_hex = "%032x" % random.getrandbits(128)
+    d = ('{"a":null,"r":"%s,%s","t":"special","l":1,"f":0,'
+         '"wc":%d,"ic":0,"v":2,"s":2,"h":%d,"e":"",'
+         '"ext":"{\\"_from_\\":\\"%s_%s_%s_%s\\",'
+         '\\"rtag\\":\\"%s_read-%s\\"}"}'
+         % (course_id, knowledge_id, wc, h,
+            user_id, knowledge_id, course_id, rand_hex,
+            course_id, course_id))
+    d_esc = _q(d, safe="")
+    settings = {"f": "readPoint", "u": user_id, "s": "", "d": d_esc, "t": t}
+    concat = "".join(str(settings[k]) for k in sorted(settings))
+    enc = hashlib.md5(
+        (concat + "NrRzLDpWB2JkeodIVAn4").encode("utf-8")
+    ).hexdigest().lower()
+    url = (f"https://data-xxt.aichaoxing.com/analysis/ac_mark"
+           f"?&f=readPoint&u={user_id}&d={_q(d, safe='')}&t={t}&enc={enc}")
+    try:
+        resp = httpx.get(url, timeout=15, verify=False, headers={
+            "Accept": "*/*",
+            "User-Agent": cache.cookie_dict.get("xd", "") or
+            "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+            "Origin": "https://mooc1-1.chaoxing.com",
+            "Host": "data-xxt.aichaoxing.com",
+            "Connection": "keep-alive",
+        })
+        return resp.status_code == 200
+    except Exception:
+        return False
 
 
 def document_book_report_api(cache: XueXiTUserCache, job_id: str,
@@ -1817,22 +1884,41 @@ def pull_work_question_api(cache: XueXiTUserCache,
                            work_id: str, question_index: int,
                            cpi: str, work_answer_id: str = "",
                            enc: str = "", msg_id: str = "0",
-                           retry: int = 3) -> Tuple[str, Optional[Any]]:
-    """获取作业题目 - 对应 Go PullWorkQuestionApi
+                           retry: int = 3, entry: bool = False) -> Tuple[str, Optional[Any]]:
+    """获取作业题目(翻题) - 对齐Go PullWorkQuestionApi
     URL: https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doHomeWork
+
+    严重修复(2026-09-21): 原URL额外携带 &oldWorkId&msgId=xx&checkIntegrity=true
+    等参数, 会导致服务器忽略 index 参数——每次拉题都固定返回第1题,
+    最终造成"作业提交成功但只有第1题有答案"的重大缺陷。
+    现完全对齐 Go 原版的最小参数 URL + 手机学习通 UA/Referer, 实测翻页正常。
+
+    entry=True (2026-09-21 二次修复): 完整版URL进入作业(复刻浏览器 jump() 的
+    "开始/继续答题"请求)——必须先用它"建立/激活作答记录", 否则后续提交会报
+    "无效的作答记录"; 该请求不带 index, 返回当前应答题(无记录时=第1题)。
     """
-    url = (f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doHomeWork"
-           f"?courseId={course_id}&workId={work_id}&cpi={cpi}"
-           f"&workAnswerId={work_answer_id}&classId={class_id}"
-           f"&oldWorkId&mooc=1&msgId={msg_id}&source=0"
-           f"&checkIntegrity=true&enc={enc}"
-           f"&keyboardDisplayRequiresUserAction=1"
-           f"&index={question_index}")
+    if entry:
+        # 完整版进入URL(对应 enter 页 jump(): 带 oldWorkId/msgId/checkIntegrity,
+        # 无 index)——创建/激活作答记录, 提交前的必需步骤
+        url = (f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doHomeWork"
+               f"?courseId={course_id}&workId={work_id}&cpi={cpi}"
+               f"&workAnswerId={work_answer_id}&classId={class_id}"
+               f"&oldWorkId=&mooc=1&msgId={msg_id}&source=0"
+               f"&checkIntegrity=true&enc={enc}"
+               f"&keyboardDisplayRequiresUserAction=1")
+    else:
+        # 精简版翻题URL: index 生效(Go 原版结构)
+        url = (f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/doHomeWork"
+               f"?courseId={course_id}&workId={work_id}&cpi={cpi}"
+               f"&workAnswerId={work_answer_id}&classId={class_id}"
+               f"&mooc=1&source=0&enc={enc}"
+               f"&keyboardDisplayRequiresUserAction=1&index={question_index}")
     client = _build_client(cache)
     try:
         hdrs = {
-            "User-Agent": client._ua,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "User-Agent": _GO_WORK_UA,
+            "Accept": ("text/html,application/xhtml+xml,application/xml;q=0.9,"
+                       "image/webp,image/apng,*/*;q=0.8"),
             "Upgrade-Insecure-Requests": "1",
             "accept-language": "zh_CN",
             "Referer": (f"https://mooc1-api.chaoxing.com/mooc-ans/work/phone/task-work"

@@ -45,6 +45,14 @@ def init_console():
         except Exception:
             pass
 
+    # 控制台输出编码加固(Windows重定向GBK/跨平台兜底),
+    # 需在 LOGO 打印之前生效(logo 含非 ASCII 字符)
+    try:
+        from utils.log import setup_stdio_encoding
+        setup_stdio_encoding()
+    except Exception:
+        pass
+
     # 切换工作目录到主程序(exe/main.py)所在目录，确保所有相对路径正确
     os.chdir(BASE_DIR)
 

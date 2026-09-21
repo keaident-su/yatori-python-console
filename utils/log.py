@@ -43,6 +43,23 @@ _log_file_sw: bool = False
 _LEVEL_PRIORITY = {DEBUG: 0, INFO: 1, WARNING: 2, ERROR: 3}
 
 
+def setup_stdio_encoding():
+    """控制台/重定向输出编码加固(跨平台安全)
+
+    Windows 下 stdout 被重定向到文件/管道时会改用本地编码(如GBK),
+    打印非GBK字符(emoji/生僻字等)会抛 UnicodeEncodeError;
+    此处统一改为 errors=replace, 无法编码的字符替换为'?'而不崩溃。
+    Linux/macOS 原生UTF-8无影响。可重复调用。
+    """
+    for stream_name in ("stdout", "stderr"):
+        stream = getattr(sys, stream_name, None)
+        try:
+            if stream is not None and hasattr(stream, "reconfigure"):
+                stream.reconfigure(errors="replace")
+        except Exception:
+            pass
+
+
 def log_init(level: str = "INFO", log_file_sw: bool = True,
              color_log: bool = True, log_dir: str = "./assets/log"):
     """
@@ -57,6 +74,9 @@ def log_init(level: str = "INFO", log_file_sw: bool = True,
     _current_level = level.upper()
     _color_enabled = (color_log is True) or (color_log == 1)
     _log_file_sw = (log_file_sw is True) or (log_file_sw == 1)
+
+    # 控制台编码加固: 防 Windows 重定向(GBK)下生僻字符/emoji 打印崩溃
+    setup_stdio_encoding()
 
     if _log_file_sw:
         os.makedirs(log_dir, exist_ok=True)
@@ -116,7 +136,16 @@ def log_print(level: str, *args: Any):
     else:
         console_text = f"{timestamp} {level_tag} {_strip_ansi(raw_text)}"
 
-    print(console_text, flush=True)
+    try:
+        print(console_text, flush=True)
+    except UnicodeEncodeError:
+        # 兜底: 控制台编码无法表示的部分用'?'替代(不中断任务)
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        try:
+            print(console_text.encode(enc, errors="replace")
+                  .decode(enc, errors="replace"), flush=True)
+        except Exception:
+            pass
 
     # 写入文件日志（去除ANSI）
     if _log_file_sw and _file_logger:

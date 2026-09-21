@@ -45,9 +45,9 @@ cat > "${APP_NAME}.app/Contents/Info.plist" <<EOF
     <key>CFBundleIdentifier</key>
     <string>com.keaident.yatori.python.console</string>
     <key>CFBundleVersion</key>
-    <string>1.1.0</string>
+    <string>1.2.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>1.2.0</string>
     <key>CFBundleExecutable</key>
     <string>${APP_NAME}</string>
     <key>CFBundlePackageType</key>

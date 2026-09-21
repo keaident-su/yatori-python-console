@@ -46,7 +46,12 @@ assets/
 build_stage/
 build_log.txt
 protected_build_log.txt
-*.bak_*.html
+_merge_tiku.py
+
+# 备份、个人文档（不入库）
+backup/
+*.bak_*
+*.docx
 
 # 运行时数据缓存（程序自动创建/回写）
 questions_answers.json

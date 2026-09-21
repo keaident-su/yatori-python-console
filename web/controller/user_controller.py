@@ -80,3 +80,9 @@ async def stream_log(log_id: str):
             "Connection": "keep-alive",
         }
     )
+
+
+@router.post("/importConfig")
+async def import_config(request: Request):
+    """从程序目录 config.yaml 批量导入账号"""
+    return user_service.import_config_service()

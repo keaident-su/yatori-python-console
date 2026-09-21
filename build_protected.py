@@ -63,7 +63,8 @@ def copy_sources() -> list:
                 dst = STAGE / rel
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 # 只复制 .py 与必要数据文件(如 config/logo.txt), 跳过编译产物
-                if fn.endswith((".py", ".txt", ".yaml", ".yml", ".json")):
+                if fn.endswith((".py", ".txt", ".yaml", ".yml", ".json",
+                                ".html", ".css", ".js")):
                     shutil.copy2(src, dst)
                 if fn.endswith(".py"):
                     if KEEP_INIT_SOURCE and fn == "__init__.py":
@@ -228,6 +229,17 @@ APP_NAME = %r
 
 # ---- 内置数据 ----
 datas = [(os.path.join("config", "logo.txt"), "config")]
+
+# 内置 Web 管理界面静态文件(图形界面模式)
+_web_static = os.path.join("web", "static")
+if os.path.isdir(_web_static):
+    datas.append((_web_static, "web/static"))
+
+# 安全微伴登录验证码 CNN ONNX 模型
+# (captcha.py 冻结环境从 sys._MEIPASS 根目录加载, 缺失时验证码识别降级)
+_weban_captcha = os.path.join("logic", "weban", "captcha_model.onnx")
+if os.path.isfile(_weban_captcha):
+    datas.append((_weban_captcha, "."))
 
 # tls_client 原生库(运行时按 dirname(__file__)/dependencies 加载)
 # 必须按平台过滤: Win=.dll / Linux=.so / macOS=.dylib

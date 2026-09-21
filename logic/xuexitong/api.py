@@ -2056,9 +2056,29 @@ _CX_CAPTCHA_HDRS = {
 try:
     import tls_client as _tls_client_mod
     _HAS_TLS_CLIENT = True
-except ImportError:
+except Exception:  # ImportError / 原生库加载失败(Android/ppc64le/s390x 等无对应 so/dll)
     _tls_client_mod = None
     _HAS_TLS_CLIENT = False
+
+_tls_usable = None  # 原生库可用性懒探测缓存(None=未探测)
+
+
+def _tls_client_ok() -> bool:
+    """探测 tls_client 原生库是否真正可用
+
+    部分架构(Android/RISC-V/ppc64le/s390x 等)无对应原生库: 包可导入,
+    但创建 Session 时加载 so/dll 失败; 探测一次后永久缓存并降级 httpx 回退。
+    """
+    global _tls_usable
+    if not _HAS_TLS_CLIENT:
+        return False
+    if _tls_usable is None:
+        try:
+            _tls_client_mod.Session(client_identifier="chrome_120")
+            _tls_usable = True
+        except Exception:
+            _tls_usable = False
+    return _tls_usable
 
 
 def _tls_spoof_get(url: str, headers: Dict, proxy_ip: str = "",
@@ -2069,7 +2089,7 @@ def _tls_spoof_get(url: str, headers: Dict, proxy_ip: str = "",
     last_err = "未知错误"
     for _ in range(max(0, retry) + 1):
         try:
-            if _HAS_TLS_CLIENT:
+            if _tls_client_ok():
                 # 注意: 部分tls_client版本不支持timeout_seconds参数，
                 # 探针验证的成功写法仅传client_identifier与
                 # random_tls_extension_order，此处用try/except兼容

@@ -20,3 +20,9 @@ onnxruntime<=1.23.2; sys_platform == "darwin" and platform_machine == "x86_64"
 onnxruntime; sys_platform != "darwin" or platform_machine != "x86_64"
 # 注: 无完整轮子支持的异形架构(如 32位 armv7 等)请改用 requirements-lite.txt
 # (去掉 OCR 依赖, 程序内 OCR 会自动降级禁用, 其余功能不受影响)
+
+# 安全微伴(WeBan)刷课依赖: nodriver 驱动 Chrome/Chromium 完成验证码自动识别,
+# 其依赖 mss/websockets 会自动安装; pyaes 为登录请求 AES 加密所需;
+# 验证码图像处理复用上方 rapidocr-onnxruntime 带入的 opencv-python(cv2)
+nodriver>=0.50.3
+pyaes>=1.6.1

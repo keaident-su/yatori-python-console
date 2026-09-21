@@ -75,7 +75,10 @@ def lunch():
 
     # 6. Web 模式
     if config_data.setting.basic_setting.web_model == 1:
-        _start_web_service(config_data.setting.basic_setting.web_port)
+        _start_web_service(
+            config_data.setting.basic_setting.web_port,
+            auto_open_browser=(
+                config_data.setting.basic_setting.auto_open_browser == 1))
     else:
         # 7. 并发刷课
         brush_block(config_data)
@@ -253,7 +256,17 @@ def _pick_free_port(start_port: int, max_tries: int = 100) -> int:
     return start_port
 
 
-def _start_web_service(web_port: int = 8080):
+def _open_browser(url: str):
+    """打开系统默认浏览器(无桌面环境/失败时静默)"""
+    try:
+        import webbrowser
+        webbrowser.open(url)
+    except Exception:
+        pass
+
+
+def _start_web_service(web_port: int = 8080,
+                       auto_open_browser: bool = True):
     """启动 Web 服务 - 支持多开
 
     端口从配置 basicSetting.webPort 读取(默认8080)；若端口已被占用
@@ -289,6 +302,11 @@ def _start_web_service(web_port: int = 8080):
         log_print(INFO, Green,
                   f"Web服务已启动: http://127.0.0.1:{port} "
                   f"(局域网访问: http://<本机IP>:{port})")
+        if auto_open_browser:
+            _web_url = f"http://127.0.0.1:{port}/"
+            threading.Timer(1.5, _open_browser, args=(_web_url,)).start()
+            log_print(INFO, Green,
+                      f"正在打开浏览器界面: {_web_url}  (如未自动打开请手动访问)")
         try:
             uvicorn.run(app, host="0.0.0.0", port=port)
             return
@@ -312,6 +330,8 @@ def brush_block(config_data: JSONDataForConfig):
     from logic.qingshuxuetang import part as qsxt
     from logic.welearn import part as welearn
     from logic.haiqikeji import part as hqkj
+    from logic.weban import part as weban
+    from logic.zhihuishu import part as zhihuishu
 
     # 统一登录模块
     platforms = [
@@ -324,6 +344,8 @@ def brush_block(config_data: JSONDataForConfig):
         ("ICVE", icve),
         ("QSXT", qsxt),
         ("HQKJ", hqkj),
+        ("WEBAN", weban),
+        ("ZHIHUISHU", zhihuishu),
     ]
 
     platform_data = []

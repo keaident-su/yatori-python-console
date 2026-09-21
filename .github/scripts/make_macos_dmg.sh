@@ -26,12 +26,41 @@ BIN_NAME="$(basename "$BIN_PATH")"
 APP_NAME="${BIN_NAME%.exe}"
 
 # ---------- 1. 构造 .app bundle ----------
+# 设计: CFBundleExecutable = launcher(双击入口)
+#       launcher 通过 `open -a Terminal` 在终端窗口中运行 run-terminal.sh,
+#       用户双击 .app 即可看到实时日志(命令行程序不再"静默后台运行")。
+#       内核二进制更名为 <APP_NAME>-bin, 由 run-terminal.sh 执行。
+#       (不使用 AppleScript/osascript, 避免"自动化控制终端"权限弹窗)
 rm -rf "${APP_NAME}.app" dmg_stage
 mkdir -p "${APP_NAME}.app/Contents/MacOS"
 mkdir -p "${APP_NAME}.app/Contents/Resources"
 
-cp "$BIN_PATH" "${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
-chmod +x "${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
+# 内核二进制(实际程序体)
+cp "$BIN_PATH" "${APP_NAME}.app/Contents/MacOS/${APP_NAME}-bin"
+chmod +x "${APP_NAME}.app/Contents/MacOS/${APP_NAME}-bin"
+
+# 终端运行脚本(在 Terminal 窗口中运行内核, 实时显示日志)
+cat > "${APP_NAME}.app/Contents/MacOS/run-terminal.sh" <<SH
+#!/bin/bash
+# 在终端窗口中运行主程序(实时日志)。由 .app 双击入口(launcher)调用。
+DIR="\$(cd "\$(dirname "\$0")" && pwd)"
+cd "\$DIR"
+echo "============================================"
+echo " Yatori Python Console - 实时日志"
+echo " (按 Control+C 或直接关闭本窗口可停止程序)"
+echo "============================================"
+echo ""
+exec "\$DIR/${APP_NAME}-bin"
+SH
+chmod +x "${APP_NAME}.app/Contents/MacOS/run-terminal.sh"
+
+# 双击入口启动器(Terminal 执行 .sh 不会二次 Gatekeeper 拦截)
+cat > "${APP_NAME}.app/Contents/MacOS/launcher" <<'SH'
+#!/bin/bash
+DIR="$(cd "$(dirname "$0")" && pwd)"
+exec open -a Terminal "$DIR/run-terminal.sh"
+SH
+chmod +x "${APP_NAME}.app/Contents/MacOS/launcher"
 
 cat > "${APP_NAME}.app/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -49,7 +78,7 @@ cat > "${APP_NAME}.app/Contents/Info.plist" <<EOF
     <key>CFBundleShortVersionString</key>
     <string>1.2.0</string>
     <key>CFBundleExecutable</key>
-    <string>${APP_NAME}</string>
+    <string>launcher</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
@@ -63,10 +92,10 @@ EOF
 # ---------- 2. 可选签名 ----------
 if [ -n "$SIGN_IDENTITY" ]; then
   echo "==> codesign (identity: $SIGN_IDENTITY)"
-  # 先对内部可执行文件签名, 再对整个 .app 签名(由内到外)
+  # 先对内部二进制签名, 再对整个 .app 签名(由内到外; launcher/run-terminal.sh 为脚本无需签名)
   codesign --force --options runtime --timestamp \
            --sign "$SIGN_IDENTITY" \
-           "${APP_NAME}.app/Contents/MacOS/${APP_NAME}"
+           "${APP_NAME}.app/Contents/MacOS/${APP_NAME}-bin"
   codesign --force --options runtime --timestamp \
            --sign "$SIGN_IDENTITY" \
            "${APP_NAME}.app"

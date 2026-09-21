@@ -76,6 +76,13 @@ def main():
     from logic.core.cpu_topology import TOPOLOGY_DESC, SCHEDULE_STRATEGY
     print(f"[CPU拓扑] {TOPOLOGY_DESC} | 调度策略: {SCHEDULE_STRATEGY}")
 
+    # 2.6 打印平台与能力画像（多系统/多架构适配排查用）
+    try:
+        from utils.platform_info import platform_summary
+        print(f"[平台] {platform_summary()}")
+    except Exception:
+        pass
+
     # 3. 显示公告
     from utils.announcement import show_announcement
     show_announcement()

@@ -1,0 +1,22 @@
+# -*- 轻量依赖清单(无OCR) -*-
+# 适用场景: 无完整二进制轮子支持的处理器架构/系统(如 32位 ARMv7、RISC-V、LoongArch 等),
+#           或不需要本地图片OCR识别的部署环境。
+#
+# 说明:
+#   - 去掉了 rapidocr-onnxruntime / onnxruntime / opencv 等重依赖;
+#   - 程序内 OCR 会自动降级禁用(遇图片题会记录提示并跳过), 其余全部功能不受影响;
+#   - 如需 OCR, 请改用完整清单 requirements.txt(需要该平台有对应轮子支持);
+#   - tls-client 自带全平台原生库(Win/Linux/macOS, x86/x64/ARM64), 任意架构均可安装。
+fastapi>=0.104.0
+uvicorn>=0.24.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+pyyaml>=6.0
+httpx>=0.25.0
+jmespath>=1.0.0
+python-multipart>=0.0.6
+pycryptodome>=3.19.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+Pillow>=10.0.0
+tls-client>=1.0.0

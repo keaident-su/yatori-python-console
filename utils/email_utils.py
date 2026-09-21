@@ -72,7 +72,8 @@ def _build_email_html(title: str, content_html: str, as_plain_text: bool = False
 
 
 def send_mail(host: str, port: int, user_name: str, password: str,
-              to_mails: List[str], content: str):
+              to_mails: List[str], content: str,
+              title: str = "Yatori课程助手"):
     """
     发送邮件
     :param host: SMTP 服务器地址
@@ -81,14 +82,15 @@ def send_mail(host: str, port: int, user_name: str, password: str,
     :param password: 授权码/密码
     :param to_mails: 收件人列表
     :param content: 邮件正文内容（支持 HTML）
+    :param title: 邮件标题/发件人名称（默认 "Yatori课程助手", 可由通知开头名称配置覆盖）
     """
     try:
         msg = MIMEMultipart("alternative")
-        msg["From"] = f"Yatori课程助手 <{user_name}>"
+        msg["From"] = f"{title} <{user_name}>"
         msg["To"] = ", ".join(to_mails)
-        msg["Subject"] = "Yatori课程助手通知"
+        msg["Subject"] = f"{title}通知"
 
-        email_html = _build_email_html("Yatori课程助手", content, False)
+        email_html = _build_email_html(title, content, False)
         msg.attach(MIMEText(email_html, "html", "utf-8"))
 
         context = ssl.create_default_context()

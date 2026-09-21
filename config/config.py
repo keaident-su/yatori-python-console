@@ -28,6 +28,10 @@ class BasicSetting:
     web_port: int = 8080           # Web模式监听端口(多开时被占用会自动顺延到空闲端口)
     ocr_image_question: int = 1    # 图片题目OCR识别开关(0关闭,1开启)
     notice_prefix: str = "Yatori"  # 通知开头名称(邮件主题/推送标题前缀, 留空则回退默认"Yatori")
+    browser_path: str = ""        # 浏览器可执行文件路径(安全微伴验证码自动识别用; 留空自动检测Chrome/Chromium/Edge)
+    cdp_host: str = ""            # CDP远程调试地址(安全微伴连接已有浏览器实例用, 可留空)
+    cdp_port: int = 0              # CDP远程调试端口(0=不使用, 与cdpHost同时填写才生效)
+    auto_open_browser: int = 1     # Web模式下启动后自动打开浏览器界面(0关闭,1开启)
 
 
 @dataclass
@@ -127,6 +131,20 @@ class CoursesCustom:
     add_study_delay: int = 30               # 【学习通】学习记录上报间隔秒数(建议≥30; 参照chaoxing_tool默认30)
     brute_speed: float = 2.4                # 【学习公社】暴力模式倍速(最低2.4, 未填写默认2.4; 服务端单次封顶5分钟/25秒间隔, 有效上限12x)
     device_flag: str = ""                   # 设备特征码(学习通APP内获取, 用于考试客户端签名)
+    # ===== 安全微伴(WEBAN) =====
+    wb_tenant: str = ""                     # 【安全微伴】学校全称(必填, 需与登录页显示的学校名称完全一致)
+    wb_user_id: str = ""                    # 【安全微伴】Token登录用户ID(可留空; 填写后password视为token)
+    wb_study_mode: int = 1                  # 【安全微伴】学习模式: 0=不学习 1=正常学习 2=强制重新学习
+    wb_exam_mode: int = 1                   # 【安全微伴】考试模式: 0=不考试 1=正常 2=追求满分 3=强制重考
+    wb_random_answer: int = 1               # 【安全微伴】题库外题目随机作答: 1=随机(单选随机/多选全选) 0=终端手动输入
+    wb_study_time: int = 20                 # 【安全微伴】每门课学习时长(秒, 随机追加0~10秒)
+    wb_video_speed: float = 1.0             # 【安全微伴】视频课程倍速: 0=不按时长等待 1=原速等待 2=半速等待(视频时长/倍速)
+    wb_exam_question_time: int = 3          # 【安全微伴】每道考试题答题等待时长(秒, 随机追加0~3秒)
+    wb_exam_submit_match_rate: int = 90     # 【安全微伴】允许交卷的最低题库匹配率(%)
+    wb_jupiter_fallback: int = 0            # 【安全微伴】未加载apicenext.js的课程是否补发翻页轨迹: 0=否 1=是(个别学校需要)
+    wb_debug: int = 0                       # 【安全微伴】调试日志开关: 0关 1开
+    # ===== 智慧树(ZHIHUISHU) =====
+    zhs_speed: float = 1.5                  # 【智慧树】刷课速度倍率(默认1.5, 越大越快; 范围0.3~20)
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)
@@ -279,6 +297,11 @@ def _default_value(config: JSONDataForConfig):
     bs.ocr_image_question = _safe_int(bs.ocr_image_question, 1)
     # 通知开头名称: 去除首尾空白, 空值回退默认"Yatori", 超长截断防御
     bs.notice_prefix = (str(bs.notice_prefix or "")).strip()[:30] or "Yatori"
+    # 浏览器/CDP设置(安全微伴验证码用): 字符串去空白, 端口非负
+    bs.browser_path = str(bs.browser_path or "").strip()
+    bs.cdp_host = str(bs.cdp_host or "").strip()
+    bs.cdp_port = max(0, _safe_int(bs.cdp_port, 0))
+    bs.auto_open_browser = _safe_int(bs.auto_open_browser, 1)
 
     # ShowDoc推送 int 字段强制转换
     config.setting.showdoc_inform.sw = _safe_int(
@@ -338,6 +361,37 @@ def _default_value(config: JSONDataForConfig):
             cc.brute_speed = 2.4
         elif cc.brute_speed > 144:
             cc.brute_speed = 144.0
+
+        # 【安全微伴】设置边界修正(向下兼容: 旧配置无这些字段时使用默认值)
+        cc.wb_tenant = str(cc.wb_tenant or "").strip()
+        cc.wb_user_id = str(cc.wb_user_id or "").strip()
+        cc.wb_study_mode = max(0, min(2, _safe_int(cc.wb_study_mode, 1)))
+        cc.wb_exam_mode = max(0, min(3, _safe_int(cc.wb_exam_mode, 1)))
+        cc.wb_random_answer = 1 if _safe_int(cc.wb_random_answer, 1) != 0 else 0
+        cc.wb_study_time = max(0, _safe_int(cc.wb_study_time, 20))
+        try:
+            cc.wb_video_speed = float(cc.wb_video_speed)
+        except (ValueError, TypeError):
+            cc.wb_video_speed = 1.0
+        if cc.wb_video_speed != cc.wb_video_speed or cc.wb_video_speed < 0:  # NaN防护
+            cc.wb_video_speed = 1.0
+        if cc.wb_video_speed > 60:
+            cc.wb_video_speed = 60.0
+        cc.wb_exam_question_time = max(0, _safe_int(cc.wb_exam_question_time, 3))
+        cc.wb_exam_submit_match_rate = max(0, min(100, _safe_int(cc.wb_exam_submit_match_rate, 90)))
+        cc.wb_jupiter_fallback = 1 if _safe_int(cc.wb_jupiter_fallback, 0) != 0 else 0
+        cc.wb_debug = 1 if _safe_int(cc.wb_debug, 0) != 0 else 0
+        # 【智慧树】速度倍率: 非法值回退1.5, 范围 0.3 ~ 20
+        try:
+            cc.zhs_speed = float(cc.zhs_speed)
+        except (ValueError, TypeError):
+            cc.zhs_speed = 1.5
+        if cc.zhs_speed != cc.zhs_speed or cc.zhs_speed <= 0:  # NaN/非正数防护
+            cc.zhs_speed = 1.5
+        if cc.zhs_speed < 0.3:
+            cc.zhs_speed = 0.3
+        elif cc.zhs_speed > 20:
+            cc.zhs_speed = 20.0
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)

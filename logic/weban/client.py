@@ -10,10 +10,12 @@ from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
 from uuid import uuid4
 
-from loguru import logger
+from logic.platform_common import get_simple_logger
 
-from api import WeBanAPI
-from captcha import CaptchaHandler, LoginCaptchaSolver, is_non_interactive
+logger=get_simple_logger('[安全微伴]')
+
+from logic.weban.api import WeBanAPI
+from logic.weban._deps import is_non_interactive, load_captcha_module
 
 if getattr(sys, "frozen", False):
     base_path = os.path.dirname(os.path.abspath(sys.executable))
@@ -269,6 +271,8 @@ class WeBanClient:
         else:
             raise ValueError("学校代码获取失败，请检查学校全称是否正确")
         self._captcha_handler = None
+        self.on_event = None
+        self.browser_disabled = False  # yatori集成: 浏览器不可用时置True跳过验证码环节
 
     # ---- properties / helpers ------------------------------------------------
 
@@ -277,8 +281,11 @@ class WeBanClient:
         """延迟初始化 CaptchaHandler（需要 login 后才有 token）
         :return: CaptchaHandler 实例
         """
+        if getattr(self, "browser_disabled", False):
+            raise RuntimeError(
+                "浏览器验证码已被禁用(无可用浏览器或系统限制调起), 已跳过该环节")
         if self._captcha_handler is None:
-            self._captcha_handler = CaptchaHandler(
+            self._captcha_handler = load_captcha_module().CaptchaHandler(
                 tenant_code=self.tenant_code,
                 user_id=self.api.user["userId"],
                 token=self.api.user["token"],
@@ -288,6 +295,10 @@ class WeBanClient:
                 cdp_port=self.cdp_port,
             )
         return self._captcha_handler
+
+    def _emit_event(self, kind, line):
+        try: self.on_event(kind, line)
+        except Exception: pass
 
     @staticmethod
     def _format_duration(seconds: float) -> str:
@@ -596,6 +607,10 @@ class WeBanClient:
         """
         if self.api.user.get("userId"):
             return self.api.user
+        if not load_captcha_module().LoginCaptchaSolver.is_available(self.log):
+            self.log.error(
+                "登录验证码识别组件不可用(缺少 opencv 或模型文件), 无法自动登录")
+            return None
         retry_limit = 10
         # 前 10 次 OCR 自动识别，后 3 次手动输入
         for i in range(retry_limit + 3):
@@ -604,7 +619,7 @@ class WeBanClient:
             verify_time = self.api.get_timestamp(13, 0)
             verify_image = self.api.rand_letter_image(verify_time)
             if i < retry_limit:
-                verify_code = LoginCaptchaSolver.recognize(verify_image, self.log)
+                verify_code = load_captcha_module().LoginCaptchaSolver.recognize(verify_image, self.log)
                 if not verify_code:
                     continue
             elif is_non_interactive():
@@ -638,7 +653,7 @@ class WeBanClient:
             if self.api.user.get("userId"):
                 return self.api.user
             self.log.error(
-                f"登录出错，请检查 config.toml 内账号密码，或删除文件后重试: {res}"
+                f"登录出错，请检查配置文件中的账号/密码，或核对学校全称: {res}"
             )
             break
         return None
@@ -1224,6 +1239,7 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
             return not self._is_account_blocked(res)
 
         self.log.success(f"{course_prefix} 完成")
+        self._emit_event('course', '课程已完成: ' + course_prefix)
         return True
 
     def _finish_course(
@@ -1624,6 +1640,7 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                 self.log.success(
                     f"试卷提交成功，考试完成，成绩：{submit_res['data']['score']} 分"
                 )
+                self._emit_event('exam', '考试已交卷, 成绩: ' + str(submit_res['data'].get('score', '')))
                 self._update_exam_eta(time.time() - plan_start_ts)
 
     def _update_exam_eta(self, elapsed: float) -> None:

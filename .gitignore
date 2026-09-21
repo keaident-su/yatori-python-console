@@ -57,5 +57,7 @@ backup/
 questions_answers.json
 questions.json
 
-# 第三方题库 SDK 资料（不入库）
+# 第三方 SDK / 参考资料（不入库）
 *tiku_python_sdk/
+*_sdk/
+logic/weban/answer/

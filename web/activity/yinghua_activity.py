@@ -129,7 +129,8 @@ class YingHuaActivity(UserActivityBase):
 
     def _build_setting(self) -> Setting:
         """构建默认 Setting（Web模式使用全局配置时可扩展）"""
-        return Setting()
+        from web.service.user_service import load_web_setting
+        return load_web_setting()
 
 
 """

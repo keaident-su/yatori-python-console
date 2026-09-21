@@ -21,6 +21,8 @@ _PLATFORM_MODULE_MAP = {
     "ICVE":    "logic.icve.part",
     "QSXT":    "logic.qingshuxuetang.part",
     "HQKJ":    "logic.haiqikeji.part",
+    "WEBAN":   "logic.weban.part",
+    "ZHIHUISHU": "logic.zhihuishu.part",
 }
 
 # 平台显示名
@@ -32,6 +34,8 @@ _PLATFORM_DISPLAY = {
     "ICVE":    "智慧职教",
     "QSXT":    "青书学堂",
     "HQKJ":    "海旗科技",
+    "WEBAN":   "安全微伴",
+    "ZHIHUISHU": "智慧树",
 }
 
 
@@ -122,7 +126,8 @@ class GenericActivity(UserActivityBase):
             mod = self._load_part_module()
             if not mod:
                 return
-            setting = Setting()
+            from web.service.user_service import load_web_setting
+            setting = load_web_setting()
             users = [self.user]
             mod.run_brush_operation(setting, users, self._caches)
         except Exception as e:

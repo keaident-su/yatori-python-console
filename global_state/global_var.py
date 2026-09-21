@@ -20,6 +20,8 @@ ACCOUNT_TYPE_STR: Dict[str, str] = {
     "QSXT": "青书学堂",
     "WELEARN": "WeLearn",
     "HQKJ": "海旗科技",
+    "WEBAN": "安全微伴",
+    "ZHIHUISHU": "智慧树",
 }
 
 # 用户活动映射 (key: uid)

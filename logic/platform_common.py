@@ -8,7 +8,10 @@ import threading
 from typing import List, Any
 
 from config.config import User, Setting, JSONDataForConfig
-from utils.log import log_print, INFO, Green, Red, Default, Purple, Yellow, BoldRed
+from utils.log import (
+    log_print, INFO, DEBUG, WARNING, ERROR,
+    Green, Red, Default, Purple, Yellow, DarkGray, BoldRed, BoldGreen
+)
 from global_state.global_var import ACCOUNT_TYPE_STR
 from utils.email_utils import send_mail
 from utils.showdoc_utils import send_showdoc
@@ -148,3 +151,63 @@ def send_user_event_notice(setting: Setting, user: User,
             _send_notice_via_channels(setting, user, content)
     except Exception:
         pass
+
+
+# ============ 轻量日志适配(供移植平台模块复用) ============
+
+class SimpleLogger:
+    """轻量日志适配器 - 将 logging/loguru 风格的调用转发到项目统一日志体系
+
+    供从外部 SDK 移植的平台模块使用(智慧树/安全微伴等):
+    - 支持 debug / info / success / warning / error / exception / critical;
+    - 消息兼容 f-string(直接拼好)与 %-style(printf 参数)两种写法;
+    - 构造时可带统一前缀(如 "[智慧树]"), 输出与其它平台日志风格一致。
+    """
+
+    def __init__(self, prefix: str = ""):
+        self._prefix = prefix
+
+    def _emit(self, level: str, color: str, msg, args: tuple):
+        text = str(msg)
+        if args:
+            try:
+                text = text % args
+            except (TypeError, ValueError):
+                text = " ".join([text, *[str(a) for a in args]])
+        if self._prefix:
+            log_print(level, color, self._prefix, " ", Default, text)
+        else:
+            log_print(level, color, text)
+
+    def debug(self, msg, *args):
+        """调试日志"""
+        self._emit(DEBUG, DarkGray, msg, args)
+
+    def info(self, msg, *args):
+        """普通信息"""
+        self._emit(INFO, Default, msg, args)
+
+    def success(self, msg, *args):
+        """成功信息(绿色)"""
+        self._emit(INFO, Green, msg, args)
+
+    def warning(self, msg, *args):
+        """警告信息(黄色)"""
+        self._emit(WARNING, Yellow, msg, args)
+
+    def error(self, msg, *args):
+        """错误信息(红色)"""
+        self._emit(ERROR, Red, msg, args)
+
+    def exception(self, msg, *args):
+        """异常信息(红色, 与 error 相同的输出通道)"""
+        self._emit(ERROR, Red, msg, args)
+
+    def critical(self, msg, *args):
+        """严重错误(加粗红色)"""
+        self._emit(ERROR, BoldRed, msg, args)
+
+
+def get_simple_logger(prefix: str = "") -> SimpleLogger:
+    """获取带前缀的轻量日志适配器"""
+    return SimpleLogger(prefix)

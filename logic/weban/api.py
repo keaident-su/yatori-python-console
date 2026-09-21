@@ -8,8 +8,11 @@ from uuid import uuid4
 
 import pyaes
 import requests
-from loguru import logger
 from requests.adapters import HTTPAdapter
+
+from logic.platform_common import get_simple_logger
+
+logger=get_simple_logger('[安全微伴]')
 from urllib3.util.retry import Retry
 
 

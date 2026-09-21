@@ -20,3 +20,6 @@ beautifulsoup4>=4.12.0
 requests>=2.31.0
 Pillow>=10.0.0
 tls-client>=1.0.0
+
+# 注: 安全微伴(WeBan)平台需额外依赖(nodriver/pyaes, 见 requirements.txt);
+#     本轻量清单未含, 使用该平台时会提示缺少依赖并自动跳过, 其余功能不受影响。

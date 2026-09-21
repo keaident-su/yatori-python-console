@@ -10,6 +10,8 @@
     4. 输出 3 个按顺序的点击坐标 (相对主图像素)
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import os
@@ -22,18 +24,28 @@ import time
 from pathlib import Path
 from typing import Any, ClassVar
 
-import cv2
-import nodriver
-import numpy as np
+try: import cv2
+except ImportError: cv2 = None
+try: import numpy as np
+except ImportError: np = None
+try:
+    import nodriver
+except ImportError:
+    nodriver = None
 import requests
-from nodriver import cdp
-from nodriver.cdp.runtime import DeepSerializedValue
+try:
+    from nodriver import cdp
+    from nodriver.cdp.runtime import DeepSerializedValue
+except ImportError:
+    cdp = None
+    DeepSerializedValue = None
 
 # 限制 OpenCV 线程数（默认 1）：1-2 核小服务器上，验证码识别（OpenCV
 # 全核多线程）与 headless-shell 渲染并发会把 CPU 抢满，CDP 命令被饿死
 # （实测 2 核机器每步从 4s 拖到 55s）。1 线程对识别耗时影响小（单张图
 # 也就几秒），但能保证 headless-shell 有 CPU 可用。WB_CV_THREADS 可覆盖。
-cv2.setNumThreads(int(os.environ.get("WB_CV_THREADS", "1") or 1))
+if cv2 is not None:
+    cv2.setNumThreads(int(os.environ.get("WB_CV_THREADS", "1") or 1))
 
 
 # 无交互模式判定（client/main 共用，放本模块避免循环导入）：
@@ -52,9 +64,22 @@ def is_non_interactive() -> bool:
     return False
 
 
+def browser_automation_available() -> bool:
+    """当前环境浏览器自动化(nodriver)是否可用"""
+    return nodriver is not None
+
+
+def require_browser_automation() -> None:
+    """浏览器自动化能力守卫(Android/无桌面浏览器环境属正常降级)"""
+    if nodriver is None:
+        raise RuntimeError(
+            "浏览器自动化不可用(nodriver 缺失): Android/无桌面浏览器环境将跳过浏览器验证码; "
+            "桌面端请安装依赖(pip install -r requirements.txt)")
+
+
 def _dsv_to_py(dsv):
     """将 nodriver 的 DeepSerializedValue 递归转换为 Python 原生类型。"""
-    if isinstance(dsv, DeepSerializedValue):
+    if DeepSerializedValue is not None and isinstance(dsv, DeepSerializedValue):
         if dsv.type_ == "object" and isinstance(dsv.value, list):
             return {k: _dsv_to_py(v) for k, v in dsv.value}
         if dsv.type_ == "array" and isinstance(dsv.value, list):
@@ -574,6 +599,11 @@ class LoginCaptchaSolver:
         if not cls._initialized:
             with cls._lock:
                 if not cls._initialized:
+                    if cv2 is None or np is None:
+                        log.warning("缺少 opencv/numpy, 登录验证码自动识别不可用")
+                        cls._ocr = False
+                        cls._initialized = True
+                        return None
                     try:
                         if getattr(sys, "frozen", False):
                             model_path = Path(sys._MEIPASS) / "captcha_model.onnx"  # type: ignore[attr-defined]
@@ -591,6 +621,11 @@ class LoginCaptchaSolver:
                         cls._ocr = False
                     cls._initialized = True
         return cls._ocr if cls._ocr is not False else None
+
+    @classmethod
+    def is_available(cls, log) -> bool:
+        """登录验证码自动识别是否可用(opencv 与模型文件就绪)"""
+        return cls.get_ocr(log) is not None
 
     @classmethod
     def recognize(cls, image: bytes, log) -> str | None:
@@ -815,8 +850,9 @@ def check_browser_health(
     :param cdp_host: CDP 远程调试地址
     :param cdp_port: CDP 远程调试端口
     :return: 浏览器路径或 CDP 地址
-    :raises RuntimeError: 无可用浏览器时
+    :raises RuntimeError: 无可用浏览器时/环境不支持浏览器自动化时
     """
+    require_browser_automation()
     if cdp_host and cdp_port:
         return f"{cdp_host}:{cdp_port}"
 
@@ -827,8 +863,8 @@ def check_browser_health(
         if not resolved:
             raise RuntimeError(
                 "未找到 Chrome / Chromium / Edge 浏览器。请通过以下方式之一提供：\n"
-                "  1. 在 config.toml 中配置 cdp_host 和 cdp_port 连接远程浏览器\n"
-                "  2. 在 config.toml 中配置 browser_path 指定浏览器路径\n"
+                "  1. 在配置文件(basicSetting)中配置 cdpHost 和 cdpPort 连接远程浏览器\n"
+                "  2. 在配置文件(basicSetting)中配置 browserPath 指定浏览器路径\n"
                 "  3. 安装 Playwright: pip install playwright && playwright install chromium\n"
                 "  4. 安装 Chrome、Chromium 或 Edge"
             )
@@ -920,7 +956,7 @@ class CaptchaHandler:
             return res
         return None
 
-    async def _create_browser(self, headless: bool = False) -> nodriver.Browser:
+    async def _create_browser(self, headless: bool = False) -> "nodriver.Browser":
         """创建 nodriver 浏览器实例。
 
         :param headless: True 时以无头模式运行（无需用户交互）
@@ -928,6 +964,7 @@ class CaptchaHandler:
 
         窗口尺寸 428x818 模拟移动端以匹配腾讯验证码的移动版 UI。
         """
+        require_browser_automation()
         # CDP 模式优先，不需要本地浏览器
         if self.cdp_host and self.cdp_port:
             browser_path = self.browser_path or "cdp"
@@ -965,7 +1002,7 @@ class CaptchaHandler:
                             f"无法连接 CDP 浏览器 ({self.cdp_host}:{self.cdp_port})。"
                             "请检查：\n"
                             "  1. 远程浏览器是否已启动并开放调试端口\n"
-                            "  2. config.toml 中 cdp_host 和 cdp_port 是否正确"
+                            "  2. 配置文件(basicSetting)中 cdpHost 和 cdpPort 是否正确"
                         ) from e
                     # nodriver 失败不清理已启动的 Chrome 子进程，清理后重试
                     await kill_stray_browsers()
@@ -975,8 +1012,8 @@ class CaptchaHandler:
                     raise RuntimeError(
                         f"无法启动浏览器 ({browser_path or '自动检测'})。"
                         "请尝试以下解决方案：\n"
-                        "  1. 在 config.toml 中配置 browser_path 指定浏览器路径\n"
-                        "  2. 在 config.toml 中配置 cdp_host 和 cdp_port 连接远程浏览器\n"
+                        "  1. 在配置文件(basicSetting)中配置 browserPath 指定浏览器路径\n"
+                        "  2. 在配置文件(basicSetting)中配置 cdpHost 和 cdpPort 连接远程浏览器\n"
                         "  3. 安装最新版 Chrome 或 Chromium"
                     ) from e
                 # 非连接类异常：不重试，直接抛
@@ -1290,7 +1327,7 @@ class CaptchaHandler:
 
     # ── 公开方法 ────────────────────────────────────────
 
-    async def _quit_browser(self, browser: nodriver.Browser, label: str = "") -> None:
+    async def _quit_browser(self, browser: "nodriver.Browser", label: str = "") -> None:
         """关闭 websocket、Chrome 进程和 asyncio subprocess transport。"""
         proc = getattr(browser, "_process", None)
         transport = getattr(proc, "_transport", None) if proc is not None else None
@@ -1342,6 +1379,7 @@ class CaptchaHandler:
 
     async def handle_exam_captcha_async(self, user_exam_plan_id: str) -> dict[str, str]:
         """处理考试前的无感验证码（异步版本）。"""
+        require_browser_automation()
         self.log.info("正在处理无感验证码")
         browser, tab = await self._build_page(EXAM_ENTRY_URL, headless=True)
         try:
@@ -1377,6 +1415,7 @@ class CaptchaHandler:
         自动识别阶段最多 3 轮、每轮 6 次；浏览器连接异常会重建无头页面继续，
         全部失败后才转手动。
         """
+        require_browser_automation()
         entry_url = course_url or COURSE_ENTRY_URL
         # 自动识别重试上限（环境变量可调，小核服务器每次尝试很慢）：
         # WB_CAPTCHA_ROUNDS 轮数、WB_CAPTCHA_ATTEMPTS 每轮次数。

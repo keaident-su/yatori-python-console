@@ -36,6 +36,15 @@ def _get_pool():
     if getattr(sys, "frozen", False):
         _pool_disabled = True
         return None
+    # Android(APK) 等受限环境 multiprocessing 不可用/不稳定 → 内联执行;
+    # 亦可用环境变量 YATORI_DISABLE_CPU_POOL=1 强制禁用(排查口子)
+    try:
+        from utils.platform_info import supports_process_pool
+        if not supports_process_pool():
+            _pool_disabled = True
+            return None
+    except Exception:
+        pass
     with _pool_lock:
         if _pool is None and not _pool_disabled:
             try:

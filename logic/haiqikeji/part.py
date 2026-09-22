@@ -246,3 +246,45 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
         t.start()
     for t in threads:
         t.join()
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def web_course_list(cache: HqkjUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度(按节点 progress>=100 统计任务点完成数)"""
+    body, _ = hqkj_api.course_list_api(cache, retry=8)
+    data = safe_json_parse(body)
+    result = []
+    if not data:
+        return result
+    for item in json_get(data, "data", "list", default=[]):
+        if not isinstance(item, dict):
+            continue
+        cid = str(item.get("courseId", ""))
+        cname = item.get("courseName", "")
+        fin, total, has = 0, 0, False
+        try:
+            nbody, _ = hqkj_api.node_list_api(cache, cid, retry=3)
+            ndata = safe_json_parse(nbody)
+            for n in json_get(ndata or {}, "data", "list", default=[]):
+                if not isinstance(n, dict):
+                    continue
+                total += 1
+                has = True
+                if float(n.get("progress", 0) or 0) >= 100:
+                    fin += 1
+        except Exception:
+            pass
+        rate = round(fin / total * 100, 1) if total else 0.0
+        result.append({
+            "courseId": cid,
+            "courseName": cname,
+            "teacher": "",
+            "jobFinishCount": fin,
+            "jobCount": total,
+            "jobRate": rate,
+            "hasProgress": has,
+            "statusText": ("已完成" if (total and fin >= total)
+                           else ("进行中" if has else "")),
+        })
+    return result

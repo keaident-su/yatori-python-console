@@ -90,38 +90,18 @@ class XXTActivity(UserActivityBase):
         return None
 
     def pull_course_list(self) -> List[dict]:
-        """拉取课程列表 - 调用学习通课程 API"""
+        """拉取课程列表+总进度 - 复用 part.web_course_list(统一结构)"""
         if self._cache is None:
             err = self.login()
             if err:
                 return []
-
-        body, _ = xxt_api.course_list_api(self._cache, retry=8)
-        data = safe_json_parse(body)
-        if not data:
+        try:
+            from logic.xuexitong import part as xxt_part
+            return xxt_part.web_course_list(self._cache, self.user) or []
+        except Exception as e:
+            log_print(INFO, "[", Green, self.user.account, Default, "] ",
+                      Red, f"拉取课程列表失败: {e}")
             return []
-
-        result = []
-        channel_list = json_get(data, "channelList", default=[])
-        for ch in channel_list:
-            if not isinstance(ch, dict):
-                continue
-            content = ch.get("content", {})
-            if not isinstance(content, dict):
-                continue
-            course_info = content.get("course", {})
-            if not isinstance(course_info, dict):
-                continue
-            data_list = course_info.get("data", [])
-            if isinstance(data_list, list) and data_list:
-                c = data_list[0]
-                result.append({
-                    "courseId": str(c.get("id", "")),
-                    "courseName": c.get("name", ""),
-                    "teacher": c.get("teacherfactor", ""),
-                    "classId": str(ch.get("id", "")),
-                })
-        return result
 
     def _brush_loop(self):
         """后台刷课主循环"""

@@ -51,7 +51,8 @@ def user_login_operation(users: List[User]) -> List[ZhsUserCache]:
     for user in users:
         if user.account_type != PLATFORM_TYPE:
             continue
-        log = get_simple_logger(f"[{_DISPLAY}][{display_account(user.account)}]")
+        log = get_simple_logger(
+            f"[{_DISPLAY}][{display_account(user.account)}]")
         if not (user.account or "").strip():
             log.error("账号为空, 已跳过")
             continue
@@ -269,7 +270,8 @@ def _polymas_video(api, course, node: dict, speed: float,
         rate = None
         for attempt in range(3):
             try:
-                rate = api.report_progress(rid, course.id, curr, nxt, nxt - curr)
+                rate = api.report_progress(
+                    rid, course.id, curr, nxt, nxt - curr)
                 break
             except Exception as e:
                 if attempt < 2:
@@ -421,9 +423,69 @@ def _watch_video_init(api, video_id: str) -> None:
             )
             match = _re.match(r"^result\((.*)\)$", r.text)
             if match:
-                url = _json.loads(match.group(1))["result"]["lines"][0]["lineUrl"]
+                url = _json.loads(match.group(1))[
+                    "result"]["lines"][0]["lineUrl"]
                 api._session.get(url, timeout=5)
         except Exception:
             pass
 
     threading.Thread(target=_do, daemon=True).start()
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def _count_zhs_tree(nodes) -> tuple:
+    """递归统计智慧树目录树节点完成度(兼容多种完成标记)"""
+    fin = total = 0
+    for n in (nodes or []):
+        if not isinstance(n, dict):
+            continue
+        children = (n.get("children") or n.get("childList")
+                    or n.get("resourceList") or [])
+        if isinstance(children, list) and children:
+            f2, t2 = _count_zhs_tree(children)
+            fin += f2
+            total += t2
+            continue
+        total += 1
+        try:
+            v = float(n.get("studyProgress", 0) or 0)
+        except (TypeError, ValueError):
+            v = 0.0
+        if (v >= 100 or n.get("completeRate") in (100, "100")
+                or n.get("finished") in (1, True)
+                or n.get("studyStatus") in (2, "2")):
+            fin += 1
+    return fin, total
+
+
+def web_course_list(cache: ZhsUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度 - 智慧树(遍历课程目录树统计节点完成度)"""
+    import logging as _lg
+    log = _lg.getLogger("zhs-web")
+    courses = _fetch_all_courses(cache, log)
+    result = []
+    for c in courses:
+        fin, total, has = 0, 0, False
+        try:
+            if c.course_type == CourseType.POLYMAS_AI and c.class_id:
+                poly = PolymasAPIClient(cache.session)
+                poly.ensure_token(expected_user_id=cache.cas_user_id)
+                tree, _lib = poly.get_course_structure(c.id, c.class_id)
+                fin, total = _count_zhs_tree(tree)
+                has = total > 0
+        except Exception:
+            pass
+        rate = round(fin / total * 100, 1) if total else 0.0
+        result.append({
+            "courseId": str(c.id),
+            "courseName": c.name,
+            "teacher": "",
+            "jobFinishCount": fin,
+            "jobCount": total,
+            "jobRate": rate,
+            "hasProgress": has,
+            "statusText": ("已完成" if (total and fin >= total)
+                           else ("进行中" if has else "")),
+        })
+    return result

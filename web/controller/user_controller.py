@@ -86,3 +86,9 @@ async def stream_log(log_id: str):
 async def import_config(request: Request):
     """从程序目录 config.yaml 批量导入账号"""
     return user_service.import_config_service()
+
+
+@router.get("/logTail")
+async def log_tail(lines: int = 200, date: str = ""):
+    """读取日志尾部 N 行(外部分离前端轮询用)"""
+    return user_service.log_tail_service(lines=lines, date=date)

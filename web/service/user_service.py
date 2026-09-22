@@ -431,3 +431,24 @@ def import_config_service() -> dict:
                   "total": len(cfg.users)}).to_dict()
     finally:
         session.close()
+
+
+def log_tail_service(lines: int = 200, date: str = "") -> dict:
+    """读取日志文件尾部 N 行(外部分离前端轮询用; 加密通道下与 SSE 等效)"""
+    try:
+        lines = max(1, min(int(lines or 200), 2000))
+    except (TypeError, ValueError):
+        lines = 200
+    log_id = (date or time.strftime("%Y-%m-%d")).strip()
+    log_path = f"./assets/logs/{log_id}.log"
+    if not os.path.exists(log_path):
+        return Response(code=200, message="ok",
+                        data={"lines": [], "date": log_id}).to_dict()
+    try:
+        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+            all_lines = f.readlines()
+        tail = [ln.rstrip("\r\n") for ln in all_lines[-lines:]]
+    except OSError as e:
+        return Response(code=500, message=f"读取日志失败: {e}").to_dict()
+    return Response(code=200, message="ok",
+                    data={"lines": tail, "date": log_id}).to_dict()

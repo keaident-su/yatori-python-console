@@ -210,3 +210,75 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
         t.start()
     for t in threads:
         t.join()
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def _web_iter_list(data):
+    """兼容 data.list / list / data(数组) 多种列表结构"""
+    if isinstance(data, list):
+        return data
+    if not isinstance(data, dict):
+        return []
+    node = data.get("data")
+    if isinstance(node, list):
+        return node
+    if isinstance(node, dict):
+        inner = node.get("list")
+        if isinstance(inner, list):
+            return inner
+    inner = data.get("list")
+    return inner if isinstance(inner, list) else []
+
+
+def _web_node_progress(item: dict) -> float:
+    """兼容多平台的节点完成度字段(0-100)"""
+    for k in ("progress", "studyProgress", "completeRate", "schedule"):
+        try:
+            v = float(item.get(k, 0) or 0)
+            if v > 0:
+                return v
+        except (TypeError, ValueError):
+            continue
+    if item.get("finished") in (1, True, "1"):
+        return 100.0
+    if item.get("completeStatus") in (1, "1", "finished"):
+        return 100.0
+    return 0.0
+
+
+def web_course_list(cache: QsxtUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度(按节点完成度统计)"""
+    body, _ = qsxt_api.course_list_api(cache, retry=8)
+    data = safe_json_parse(body)
+    result = []
+    for item in _web_iter_list(data):
+        if not isinstance(item, dict):
+            continue
+        cid = str(item.get("courseId", "") or item.get("id", ""))
+        fin, total, has = 0, 0, False
+        try:
+            nbody, _ = qsxt_api.node_list_api(cache, cid, retry=3)
+            ndata = safe_json_parse(nbody)
+            for n in _web_iter_list(ndata):
+                if not isinstance(n, dict):
+                    continue
+                total += 1
+                has = True
+                if _web_node_progress(n) >= 100:
+                    fin += 1
+        except Exception:
+            pass
+        rate = round(fin / total * 100, 1) if total else 0.0
+        result.append({
+            "courseId": cid,
+            "courseName": item.get("courseName", "") or item.get("name", ""),
+            "teacher": "",
+            "jobFinishCount": fin,
+            "jobCount": total,
+            "jobRate": rate,
+            "hasProgress": has,
+            "statusText": ("已完成" if (total and fin >= total)
+                           else ("进行中" if has else "")),
+        })
+    return result

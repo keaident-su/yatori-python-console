@@ -92,10 +92,20 @@ class YingHuaActivity(UserActivityBase):
 
         result = []
         for course in course_list:
+            try:
+                rate = round(float(course.progress or 0), 1)
+            except (TypeError, ValueError):
+                rate = 0.0
             result.append({
                 "courseId": course.id,
                 "courseName": course.name,
-                "progress": course.progress,
+                "teacher": "",
+                "jobFinishCount": int(rate >= 100),
+                "jobCount": 1,
+                "jobRate": rate,
+                "hasProgress": True,
+                "statusText": ("已完成" if rate >= 100 else "进行中"),
+                "progress": course.progress,  # 兼容旧前端字段
                 "startDate": str(course.start_date) if course.start_date else "",
             })
         return result

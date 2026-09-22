@@ -33,7 +33,7 @@ try:
     _DEPS_IMPORT_ERROR = ""
 except ImportError as _e:  # pragma: no cover - 依赖缺失场景
     WeBanClient = None  # type: ignore[assignment]
-    _is_non_interactive = lambda: False  # type: ignore[assignment]
+    def _is_non_interactive(): return False  # type: ignore[assignment]
     _DEPS_IMPORT_ERROR = str(_e)
 
 # 多账号同步题库串行锁(对齐原 SDK main.py 的 sync_lock)
@@ -72,7 +72,8 @@ def _resolve_browser_options(setting: Setting) -> dict:
             cdp_port = int(getattr(bs, "cdp_port", 0) or 0)
         except (TypeError, ValueError):
             cdp_port = 0
-    browser_path = browser_path or os.environ.get("YATORI_BROWSER_PATH", "").strip()
+    browser_path = browser_path or os.environ.get(
+        "YATORI_BROWSER_PATH", "").strip()
     return {
         "browser_path": browser_path or None,
         "cdp_host": cdp_host or None,
@@ -123,7 +124,8 @@ def user_login_operation(users: List[User]) -> List[WebanUserCache]:
         if user.account_type != PLATFORM_TYPE:
             continue
         cc = user.courses_custom
-        log = get_simple_logger(f"[{_DISPLAY}][{display_account(user.account)}]")
+        log = get_simple_logger(
+            f"[{_DISPLAY}][{display_account(user.account)}]")
         tenant = (cc.wb_tenant or "").strip()
         if not tenant:
             log.error("未配置学校全称(wbTenant), 请在配置文件生成器中填写后重试, 已跳过")
@@ -139,7 +141,8 @@ def user_login_operation(users: List[User]) -> List[WebanUserCache]:
             if cc.wb_user_id:
                 # Token 登录(密码栏填 token)
                 client = WeBanClient(
-                    tenant, user={"userId": cc.wb_user_id, "token": user.password},
+                    tenant, user={"userId": cc.wb_user_id,
+                                  "token": user.password},
                     **common_kw)
             else:
                 # 密码登录(密码留空时默认与账号相同, 对齐原 SDK)
@@ -165,7 +168,8 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
     """执行刷课(每账号一个线程并发)"""
     threads = []
     for cache in user_caches:
-        t = threading.Thread(target=_user_block, args=(setting, cache), daemon=True)
+        t = threading.Thread(target=_user_block, args=(
+            setting, cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
@@ -213,8 +217,10 @@ def _user_block(setting: Setting, cache: WebanUserCache):
         log.warning(f"题库同步异常(不影响学习): {e}")
 
     # 学习+考试(按项目交替; 浏览器不可用时跳过考试环节)
-    study_mode = {0: "false", 1: "true", 2: "force"}.get(int(cc.wb_study_mode), "true")
-    exam_mode = {0: "false", 1: "true", 2: "perfect", 3: "force"}.get(int(cc.wb_exam_mode), "true")
+    study_mode = {0: "false", 1: "true", 2: "force"}.get(
+        int(cc.wb_study_mode), "true")
+    exam_mode = {0: "false", 1: "true", 2: "perfect",
+                 3: "force"}.get(int(cc.wb_exam_mode), "true")
     if not browser_usable and exam_mode != "false":
         log.info("考试需要浏览器无感验证码, 降级模式下已自动跳过考试环节")
         exam_mode = "false"
@@ -242,3 +248,38 @@ def _user_block(setting: Setting, cache: WebanUserCache):
 
     log.success("所有待学习课程执行完毕")
     generic_user_block(setting, user, _DISPLAY, brush_func=None)
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def web_course_list(cache: WebanUserCache, user: User) -> List[dict]:
+    """Web端课程(项目)列表+总进度 - 安全微伴以"项目"为课程粒度
+
+    list_my_project 返回每个项目的 progressPet(完成百分比) 与
+    studyStateLabel(未完成/已完成), 直接作为进度展示。
+    """
+    result = []
+    try:
+        client = cache.client
+        res = client.api.list_my_project(ended=2)
+    except Exception:
+        return result
+    for item in (res.get("data") or []):
+        if not isinstance(item, dict):
+            continue
+        try:
+            rate = float(item.get("progressPet", 0) or 0)
+        except (TypeError, ValueError):
+            rate = 0.0
+        result.append({
+            "courseId": str(item.get("userProjectId", "")),
+            "courseName": item.get("projectName", ""),
+            "teacher": "",
+            "jobFinishCount": int(rate >= 100),
+            "jobCount": 1,
+            "jobRate": round(rate, 1),
+            "hasProgress": True,
+            "statusText": (item.get("studyStateLabel")
+                           or ("已完成" if rate >= 100 else "进行中")),
+        })
+    return result

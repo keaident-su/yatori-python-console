@@ -5702,3 +5702,39 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                                      "成绩可在学习通查看）")
                 send_user_event_notice(
                     setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE], _notice_line)
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度 - 供前端控制台查询
+
+    复用刷课流程的拉课动作 _pull_course_action(内置任务点进度拉取
+    _fetch_course_status), 转换为统一结构:
+    {courseId, courseName, teacher, jobFinishCount, jobCount,
+     jobRate, hasProgress, statusText}
+    """
+    courses = _pull_course_action(cache)
+    if not courses:
+        return []
+    result = []
+    for c in courses:
+        if not c.is_start:
+            status_str = "未开课"
+        elif c.job_rate >= 100:
+            status_str = "已完成"
+        elif c.state == 1:
+            status_str = "已结束"
+        else:
+            status_str = "进行中"
+        result.append({
+            "courseId": str(c.course_id),
+            "courseName": c.course_name,
+            "teacher": c.teacher or "",
+            "jobFinishCount": int(c.job_finish_count or 0),
+            "jobCount": int(c.job_count or 0),
+            "jobRate": round(float(c.job_rate or 0), 1),
+            "hasProgress": True,
+            "statusText": status_str,
+        })
+    return result

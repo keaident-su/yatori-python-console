@@ -459,3 +459,42 @@ def _video_action(setting: Setting, user: User, cache: EnaeaUserCache,
         time.sleep(25)  # 每隔25s进行一次学时提交(对齐Go)
         if node.study_progress >= 100:
             break
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def web_course_list(cache: EnaeaUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度 - 学习公社: 项目→课程两层, 逐项目聚合
+
+    study_progress 来自 studyCenterDTO.studyProgress(0-100)。
+    课程名展示为 "项目名/课程名" 以便前端区分。
+    """
+    result = []
+    proj_body, _ = enaea_api.project_list_api(cache, retry=8)
+    proj_data = safe_json_parse(proj_body)
+    for item in json_get(proj_data or {}, "result", "list", default=[]):
+        if not isinstance(item, dict):
+            continue
+        try:
+            circle_id = str(int(item.get("circleId", 0) or 0))
+        except (ValueError, TypeError):
+            circle_id = str(item.get("circleId", ""))
+        cluster_name = str(item.get("clusterName", "") or "")
+        try:
+            courses = _pull_courses(cache, circle_id)
+        except Exception:
+            courses = []
+        for c in courses:
+            rate = round(float(getattr(c, "study_progress", 0) or 0), 1)
+            title = getattr(c, "course_title", "") or ""
+            result.append({
+                "courseId": str(getattr(c, "course_id", "")),
+                "courseName": ((cluster_name + "/") if cluster_name else "") + title,
+                "teacher": "",
+                "jobFinishCount": int(rate >= 100),
+                "jobCount": 1,
+                "jobRate": rate,
+                "hasProgress": True,
+                "statusText": ("已完成" if rate >= 100 else "进行中"),
+            })
+    return result

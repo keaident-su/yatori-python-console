@@ -112,13 +112,28 @@ class GenericActivity(UserActivityBase):
         return None
 
     def pull_course_list(self) -> List[dict]:
+        """拉取课程列表+进度
+
+        分发到平台 part 模块的 web_course_list(cache, user) 实现;
+        平台未实现时返回空列表并提示。
         """
-        拉取课程列表
-        通用平台不单独实现课程拉取 API，返回提示信息
-        """
-        log_print(INFO, "[", Green, self.user.account, Default, "] ",
-                  Yellow, f"{self._display_name} 暂不支持Web端拉取课程列表，请使用刷课模式")
-        return []
+        mod = self._load_part_module()
+        fn = getattr(mod, "web_course_list", None) if mod else None
+        if fn is None:
+            log_print(INFO, "[", Green, self.user.account, Default, "] ",
+                      Yellow, f"{self._display_name} 暂不支持Web端拉取课程列表，请使用刷课模式")
+            return []
+        if not self._caches:
+            err = self.login()
+            if err:
+                return []
+        cache = self._caches[0] if self._caches else None
+        try:
+            return fn(cache, self.user) or []
+        except Exception as e:
+            log_print(INFO, "[", Green, self.user.account, Default, "] ",
+                      Red, f"拉取课程列表失败: {e}")
+            return []
 
     def _brush_loop(self):
         """后台刷课主循环"""

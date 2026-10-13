@@ -285,13 +285,7 @@ users:                            # 账号列表，支持多账号
 - **失败处理**：若账号从未录入过人脸（提示"没有历史人脸"），需先在手机学习通 APP 完成一次人脸识别录入
 - **PC端视频人脸**：视频 403 触发时走 PC 端流程（updateqrstatus/getqrstatus 轮询验证）
 
-### 10. 启动方式
-
-```bash
-python main.py
-```
-
-### 11. 常用场景示例
+### 10. 常用场景示例
 
 ```yaml
 # 示例：学习通账号，多任务点并发刷课 + AI 自动考试 + 章测/作业
@@ -312,7 +306,7 @@ users:
         - '古代汉语'
 ```
 
-### 12. 本地图片 OCR（可选，离线）
+### 11. 本地图片 OCR（可选，离线）
 
 部分课程的题目/选项以**图片**形式给出，程序内置本地 OCR 自动识别为文本后再交给答题源作答：
 
@@ -529,7 +523,11 @@ python build_protected.py
 ### 拉取镜像
 
 ```bash
+# 最新版(多架构，自动适配当前处理器)
 docker pull ghcr.io/keaident-su/yatori-python-console:latest
+
+# 指定版本
+docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.4-beta8
 ```
 
 ### 运行（挂载本地 config.yaml）
@@ -557,11 +555,6 @@ docker logs -f yatori   # 实时查看运行日志
 | latest       | 最新版本（多架构，自动适配处理器） |
 | V2.0.4-beta8       | 版本标签（自动从 logo.txt 解析，多架构） |
 
-```bash
-# amd64/arm64 自动分发，无需指定架构
-docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.4-beta8
-```
-
 ## 💻 跨平台支持与部署矩阵
 
 程序为纯 Python + 全平台预期依赖，官方构建/CI 覆盖以下平台：
@@ -573,12 +566,15 @@ docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.4-beta8
 | macOS 13+ | Apple Silicon arm64 | ZIP / DMG | 同上 |
 | Linux | x86_64 | 单文件二进制 | 或源码运行 |
 | Linux | arm64 (aarch64) | 单文件二进制 | 含树莓派64位系统、ARM 服务器等 |
-| Docker | linux/amd64 + linux/arm64 | 多架构镜像 | `docker pull` 自动按当前架构拉取 |
+| Docker | linux/amd64 + linux/arm64 | 多架构镜像 | `docker pull` 自动按当前架构拉取；镜像内置 Chromium 供安全微伴验证码使用 |
+| Linux 异形架构（armv7 / RISC-V / LoongArch 等） | 任意 | 源码运行 | 轻量模式：用 requirements-lite.txt 安装（自动禁用本地 OCR，其余功能正常） |
+| Docker 异形架构（arm/v7、ppc64le、s390x 等） | 多架构 | 镜像 | Dockerfile 按 TARGETARCH 自动切换轻量依赖并跳过 Chromium |
+| Android（APK） | arm64-v8a / armeabi-v7a / x86_64 | APK（适配底座） | 本地 OCR 登录可用、浏览器类验证码自动降级跳过；依赖子集见 requirements-android.txt |
 
 ### 源码运行（Windows / macOS / Linux 通用）
 
 ```bash
-# 需要 Python 3.10+（推荐 3.13）
+# 需要 Python 3.13+
 pip install -r requirements.txt   # Windows
 # macOS/Linux 建议: python3 -m pip install -r requirements.txt
 python main.py                    # macOS/Linux 用 python3 main.py
@@ -605,6 +601,8 @@ python main.py
 | CPU 拓扑（大小核） | Windows/Linux/macOS 分别探测（EFI 类/频率/性能级）；探测不到自动降级同构，绝不报错 |
 | 可选依赖缺失 | OCR / tls_client 等缺失时优雅降级并提示，不中断刷课 |
 | Docker 系统库 | 预装 libgomp1（onnxruntime）/libgl1（OpenCV）/tzdata（时区） |
+
+> 程序启动时会打印 `[平台]`（系统/架构/容器 + OCR 与浏览器验证码能力状态）与 `[CPU拓扑]` 画像，便于确认当前运行环境与降级状态；加 `--gpu-check` 参数可打印含 GPU/推理后端在内的完整硬件自检报告。
 
 ## 🎯 功能/特性
 
@@ -654,23 +652,16 @@ python main.py
 > [!TIP]
 > 英华"限制性暴力模式"指：如果你学校英华平台的课程视频没有前置视频观看限制就可以开。前置视频观看限制 = 一个章节的视频必须先把前面章节的视频看完才能看。重庆工程学院 CQIE 可以做到真正意义上的秒刷，使用暴力模式即可。
 
-## 🖥 运行环境支持（多系统 / 多处理器架构）
-
-| 环境 | 支持情况 |
-|------|----------|
-| Windows x86_64 | ✅ 完整功能（单文件 exe 免安装） |
-| macOS Intel (x86_64) / Apple Silicon (arm64) | ✅ 完整功能（ZIP/DMG；首次打开需右键 → 打开） |
-| Linux x86_64 / arm64 | ✅ 完整功能（单文件二进制） |
-| Docker（linux/amd64、linux/arm64） | ✅ 完整功能（镜像内置 Chromium 供安全微伴验证码使用） |
-| Linux 异形架构（armv7 / RISC-V / LoongArch 等） | ⚙️ 轻量模式：使用 requirements-lite.txt 安装（自动禁用本地 OCR，其余功能正常） |
-| Docker 异形架构（linux/arm/v7、ppc64le、s390x 等） | ⚙️ 轻量模式：Dockerfile 按 TARGETARCH 自动切换轻量依赖并跳过 Chromium |
-| Android（APK：arm64-v8a / armeabi-v7a / x86_64） | 🧪 适配底座已就绪：本地 OCR 登录可用、浏览器类验证码自动降级跳过；打包依赖子集见 requirements-android.txt |
-
-> 程序启动时会打印 `[平台]`（系统/架构/容器 + OCR 与浏览器验证码能力状态）与 `[CPU拓扑]` 画像，便于确认当前运行环境与降级状态；加 `--gpu-check` 参数可打印含 GPU/推理后端在内的完整硬件自检报告。
-
 ## 📋 更新与修复记录
 
 最近的版本更新与问题修复摘要（**详细记录见根目录 [CHANGELOG.md](./CHANGELOG.md)**）：
+
+**V2.0.4-beta8（2026-10-13晚）— AI修复 + 拟人化升级 + 协议体系扩展**
+
+- 【学习通】人类化节奏引擎：对数正态分布、相邻题自相关、每账号固定行为画像、疲劳曲线，章测/考试全链路接入
+- 【学习通】学习次数/时长升级为账号级门禁（全部课程完成前不执行，完成后统一执行）
+- 【智慧树】协议秒刷接入主流程 + 考试域协议客户端固化；【题库】三方合并超 60 万条
+- 【AI 答题源】修复配置保存丢失 / 在线测试按钮错位 / 非 JSON 数组误判三处关键问题
 
 **V2.0.4-beta6（2026-10-13）— 智慧树协议秒刷 + 全系采集 + 题库体系升级**
 
@@ -678,11 +669,6 @@ python main.py
 - **学习通题库采集全模式**：考试采集（进考拉卷归档）/ 指定考试采集 / 采集填充策略；新增"考试提交正确率(%)"参数
 - **题库"一键并入"新增投票清洗模式**（多源投票 + AI 复核 + 无法判定隔离）；学习次数/时长上限提升至 1000 次 / 10000 分钟
 - 题库全功能六层体检全部通过
-
-**V2.0.4-beta5（2026-10-12）— 学习通互动测验全链路**
-
-- 互动测验（视频弹题）自动补齐：课程完成后拉取未完成清单、双接口轮换扫描、多源答题提交
-- 课程进度卡片新增"互动测验 x/y"显示；5 账号 540 题实测全部通过
 
 ## 📁 项目结构
 

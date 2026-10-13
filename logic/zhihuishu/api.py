@@ -904,7 +904,7 @@ class StuOnlineClient:
     - load_stu_habit:    学习习惯(平时分/学习天数/课程起止时间)
     - load_course_forum: 互动数据(有效问答数)
 
-    实测记录(账号18286610553/从课堂走出来的创新):
+    实测记录(账号138****0553/从课堂走出来的创新):
     - recruitId=课程ID本身(如 1000125370), 与 courseId 相同; 431867 仅用于考试域URL;
     - 四接口均 200 返回完整 JSON;
     - 播放器域(studyservice studyvideoh5)同一课程返回 421"该账号无权限"/"参数解码错误"

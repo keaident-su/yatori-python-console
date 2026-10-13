@@ -127,6 +127,9 @@ backup/
 *.bak_*
 *.docx
 
+# 本地调试脚本（写死本机路径/劫持 stdout, 不入库不打包）
+logic/zhihuishu/video_brush.py
+
 # 运行时数据缓存（程序自动创建/回写）
 questions_answers.json
 questions.json

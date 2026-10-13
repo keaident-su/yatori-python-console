@@ -12,12 +12,13 @@ initializer 绑定 P 核（优先吃满高性能核，探测失败自动降级�
 任何异常都会优雅降级为当前进程内联执行，绝不影响主流程。
 """
 import atexit
+import os
 import sys
 import threading
 from concurrent.futures import ProcessPoolExecutor
 from typing import Callable, Iterable, List, Any
 
-from logic.core.parallel import CPU_POOL_WORKERS
+from logic.core import parallel as _par
 from logic.core.cpu_topology import (
     P_CPUS, IS_HETEROGENEOUS, BIND_POSSIBLE, pool_worker_init)
 
@@ -48,11 +49,13 @@ def _get_pool():
     with _pool_lock:
         if _pool is None and not _pool_disabled:
             try:
+                # worker 数动态取值(默认 n-1 基准 / 全速开关吃满; 见 parallel.cpu_pool_workers)
+                _workers = _par.cpu_pool_workers()
                 # 异构CPU且平台支持亲和性时，worker 进程初始化即绑定P核；
                 # 同构/探测降级时 do_bind=False，行为与原有一致
                 _bind = IS_HETEROGENEOUS and BIND_POSSIBLE
                 _pool = ProcessPoolExecutor(
-                    max_workers=CPU_POOL_WORKERS,
+                    max_workers=_workers,
                     initializer=pool_worker_init,
                     initargs=(P_CPUS if _bind else [], _bind))
             except Exception:

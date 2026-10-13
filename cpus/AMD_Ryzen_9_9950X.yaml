@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— AMD Ryzen 9 9950X
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "AMD Ryzen 9 9950X"
+aliases:
+  - "Ryzen 9 9950X"
+logicalCores: 32
+physicalCores: 16
+tier: ultra
+
+loginWorkers: 46
+workConcurrency: 31
+aiConcurrency: 16
+fastVideoWorkers: 23
+nodeStartInterval: 0.065
+httpMaxConnections: 496
+cpuPoolWorkers: 15

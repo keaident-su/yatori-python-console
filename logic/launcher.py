@@ -54,6 +54,19 @@ def lunch():
     # 2. 读取配置文件
     config_data = read_config("./config.yaml")
 
+    # 2.5 性能策略注入(全速开关/档位→环境变量, 供 parallel 惰性读取) + 运行期微调器启动
+    try:
+        _bs = config_data.setting.basic_setting
+        os.environ["YATORI_FULL_CPU"] = "1" if _bs.full_cpu_mode == 1 else "0"
+        os.environ["YATORI_PERF_GEAR"] = str(
+            _bs.performance_gear or "aggressive")
+        from logic.core import perf_tuner
+        perf_tuner.start()
+        from logic.core.parallel import perf_summary
+        log_print(INFO, perf_summary())
+    except Exception:
+        pass
+
     # 3. 初始化日志配置
     bs = config_data.setting.basic_setting
     log_init(
@@ -265,6 +278,49 @@ def _open_browser(url: str):
         pass
 
 
+def _ensure_self_signed_cert(cert_cfg: str, key_cfg: str):
+    """准备 HTTPS 证书: 配置路径优先; 否则 openssl 生成自签并持久化
+
+    返回 (cert_path, key_path); 失败返回 (None, None)(调用方回退HTTP)。
+    自签证书首次访问时浏览器/客户端需手动信任。
+    """
+    if cert_cfg and key_cfg and os.path.isfile(cert_cfg) \
+            and os.path.isfile(key_cfg):
+        return cert_cfg, key_cfg
+    d = os.path.join("assets", "web_ssl")
+    cert = os.path.join(d, "server.crt")
+    key = os.path.join(d, "server.key")
+    if os.path.isfile(cert) and os.path.isfile(key):
+        return cert, key
+    try:
+        import shutil
+        import subprocess
+        exe = shutil.which("openssl")
+        if not exe:
+            for c in (r"C:\Program Files\Git\usr\bin\openssl.exe",
+                      r"C:\Program Files\Git\mingw64\bin\openssl.exe",
+                      "/usr/bin/openssl", "/usr/local/bin/openssl"):
+                if os.path.isfile(c):
+                    exe = c
+                    break
+        if not exe:
+            raise FileNotFoundError("未找到 openssl")
+        os.makedirs(d, exist_ok=True)
+        subprocess.run(
+            [exe, "req", "-x509", "-newkey", "rsa:2048",
+             "-keyout", key, "-out", cert, "-days", "3650", "-nodes",
+             "-subj", "/CN=Yatori-Console"],
+            check=True, capture_output=True, timeout=60)
+        log_print(INFO, Green,
+                  f"已自动生成自签HTTPS证书: {cert} "
+                  f"(首次访问需在浏览器中手动信任)")
+        return cert, key
+    except Exception as e:
+        log_print(INFO, Red,
+                  f"自动生成自签证书失败({e}); 请安装 openssl 或在配置中指定 webSslCert/webSslKey")
+        return None, None
+
+
 def _start_web_service(web_port: int = 8080,
                        auto_open_browser: bool = True):
     """启动 Web 服务 - 支持多开
@@ -283,6 +339,21 @@ def _start_web_service(web_port: int = 8080,
     import uvicorn
     from web.server import create_app
 
+    # 通信加密密钥初始化(config 优先 → assets/web_secret.txt → 自动生成)
+    # 必须在 create_app 之前: 认证/加密模块会读取密钥并缓存, 提前统一来源
+    try:
+        from web.service.user_service import load_web_setting
+        _bs = load_web_setting().basic_setting
+    except Exception:
+        _bs = None
+    try:
+        from web.crypto_channel import get_web_secret
+        _sec = get_web_secret(getattr(_bs, "web_secret", "") or "")
+        log_print(INFO, Green,
+                  "通信加密已启用(AES-256-GCM); 前后端可同密钥加密传输")
+    except Exception as _e:
+        log_print(INFO, Red, f"通信加密初始化失败: {_e}")
+
     app = create_app()
 
     try:
@@ -292,6 +363,17 @@ def _start_web_service(web_port: int = 8080,
     if not (0 < base_port <= 65535):
         base_port = 8080
 
+    # HTTPS 证书准备(webSsl=1 时; 未配置证书则自动生成自签并持久化)
+    ssl_kw = {}
+    if _bs is not None and getattr(_bs, "web_ssl", 0) == 1:
+        _cert, _key = _ensure_self_signed_cert(
+            getattr(_bs, "web_ssl_cert", ""),
+            getattr(_bs, "web_ssl_key", ""))
+        if _cert and _key:
+            ssl_kw = {"ssl_certfile": _cert, "ssl_keyfile": _key}
+        else:
+            log_print(INFO, Red, "HTTPS 启用失败(无证书且无法自动生成), 已回退 HTTP")
+
     # 端口占用自动顺延 + 启动重试, 避免多开时第二个实例直接崩溃退出
     for _ in range(50):
         port = _pick_free_port(base_port)
@@ -299,21 +381,72 @@ def _start_web_service(web_port: int = 8080,
             log_print(INFO, Yellow,
                       f"端口 {base_port} 已被占用(可能已有多开实例在运行)，"
                       f"已自动改用空闲端口 {port} 启动")
+        _scheme = "https" if ssl_kw else "http"
         log_print(INFO, Green,
-                  f"Web服务已启动: http://127.0.0.1:{port} "
-                  f"(局域网访问: http://<本机IP>:{port})")
+                  f"Web服务已启动: {_scheme}://127.0.0.1:{port} "
+                  f"(局域网访问: {_scheme}://<本机IP>:{port})")
+        try:
+            from web import auth as _auth
+            _entry = _auth.secret_entry()
+            log_print(INFO, Green,
+                      f"管理界面入口(秘密路径,勿外传): "
+                      f"{_scheme}://<本机IP>:{port}/{_entry}/ "
+                      f"(访问口令 = webSecret；默认路径已隐藏)")
+        except Exception:
+            pass
         if auto_open_browser:
-            _web_url = f"http://127.0.0.1:{port}/"
+            try:
+                from web import auth as _auth2
+                _web_url = (f"{_scheme}://127.0.0.1:{port}/"
+                            f"{_auth2.secret_entry()}/")
+            except Exception:
+                _web_url = f"{_scheme}://127.0.0.1:{port}/"
             threading.Timer(1.5, _open_browser, args=(_web_url,)).start()
             log_print(INFO, Green,
                       f"正在打开浏览器界面: {_web_url}  (如未自动打开请手动访问)")
         try:
-            uvicorn.run(app, host="0.0.0.0", port=port)
+            _run_uvicorn(app, port, ssl_kw,
+                         getattr(_bs, "web_ssl_cert", "") if _bs else "",
+                         getattr(_bs, "web_ssl_key", "") if _bs else "")
             return
         except (OSError, SystemExit) as e:
             log_print(INFO, Yellow,
                       f"端口 {port} 启动失败({e})，正在尝试下一个端口...")
             base_port = port + 1
+
+
+def _run_uvicorn(app, port: int, ssl_kw: dict,
+                 cfg_cert: str = "", cfg_key: str = ""):
+    """启动 uvicorn; HTTPS 时挂载多证书 SNI(按访问域名自动选择证书)
+
+    uvicorn 内部会在 serve→load 阶段创建 SSLContext(单证书),
+    这里在 load 完成后注入 SNI 回调: 客户端用哪个域名访问,
+    就自动匹配证书库中对应的证书; 未匹配到时用默认证书。
+    """
+    import uvicorn
+    # uvicorn 访问/错误日志接入全局日志文件(一条不漏, 跨天自动切换)
+    # 与业务日志同一 assets/logs/{日期}.log
+    from utils.log import build_uvicorn_log_config
+    _log_cfg = build_uvicorn_log_config(os.path.join("assets", "logs"))
+    if not ssl_kw:
+        uvicorn.run(app, host="0.0.0.0", port=port, log_config=_log_cfg)
+        return
+    config = uvicorn.Config(app, host="0.0.0.0", port=port, **ssl_kw,
+                            log_config=_log_cfg)
+    try:
+        from web import cert_manager
+        # 预加载(幂等): serve 时会跳过已 load, ssl context 就绪后挂载 SNI 回调
+        config.load()
+        _sctx = getattr(config, "ssl", None)
+        if _sctx is not None:
+            n = cert_manager.attach_sni(_sctx, cfg_cert, cfg_key)
+            if n >= 1:
+                log_print(INFO, Green,
+                          f"多证书已启用: {n} 张证书按访问域名自动匹配(SNI)")
+    except Exception as _e:
+        log_print(INFO, Yellow, f"多证书 SNI 初始化跳过: {_e}")
+    server = uvicorn.Server(config)
+    server.run()
 
 
 def brush_block(config_data: JSONDataForConfig):

@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— AMD Ryzen 7 9800X3D
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "AMD Ryzen 7 9800X3D"
+aliases:
+  - "Ryzen 7 9800X3D"
+logicalCores: 16
+physicalCores: 8
+tier: high
+
+loginWorkers: 22
+workConcurrency: 15
+aiConcurrency: 8
+fastVideoWorkers: 11
+nodeStartInterval: 0.133
+httpMaxConnections: 240
+cpuPoolWorkers: 7

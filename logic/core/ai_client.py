@@ -14,10 +14,10 @@ from typing import Any, List, Optional
 import httpx
 
 from utils.log import log_print, INFO, BoldRed
-from logic.core.parallel import AI_CONCURRENCY
+from logic.core import parallel as _par
 
-# AI 并发限制（对齐 Go AiSem 基础上按 CPU 核心数扩展，多核并行优化）
-_AI_SEM = threading.Semaphore(AI_CONCURRENCY)
+# AI 并发限制（对齐 Go AiSem 基础上按 CPU 核心数/性能档位动态取值）
+_AI_SEM = threading.Semaphore(_par.ai_concurrency())
 
 # ============ 各 AI 类型官方端点（对齐 Go AggregationAIApi 各实现） ============
 _AI_ENDPOINTS = {
@@ -27,12 +27,17 @@ _AI_ENDPOINTS = {
     "ZHIPU": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
     "XINGHUO": "https://spark-api-open.xf-yun.com/v1/chat/completions",
     "DOUBAO": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-    "OPENAI": "https://api.openai.com/v1/responses",
+    "OPENAI": "https://api.openai.com/v1/chat/completions",
+    "MOONSHOT": "https://api.moonshot.cn/v1/chat/completions",
     "SILICON": "https://api.siliconflow.cn/v1/chat/completions",
     "SILICONFLOW": "https://api.siliconflow.cn/v1/chat/completions",
     "METAAI": "https://metaso.cn/api/v1/chat/completions",
     "OPENROUTER": "https://openrouter.ai/api/v1/chat/completions",
 }
+
+# 填了 aiUrl/url 则一律优先使用(OpenAI 格式中转/聚合 API 场景)，
+# 留空才回退内置官方端点。覆盖所有 AI 类型：答题源/aiSetting 里填了
+# 自定义地址就一定生效，避免选错 aiType 时被硬编码官方端点劫持。
 
 # 默认模型（对齐 Go 各 API 中 model == "" 时的默认值）
 _AI_DEFAULT_MODELS = {
@@ -41,6 +46,7 @@ _AI_DEFAULT_MODELS = {
     "CHATGLM": "glm-4",
     "ZHIPU": "glm-4",
     "XINGHUO": "generalv3.5",
+    "MOONSHOT": "moonshot-v1-8k",
     "SILICON": "Qwen/Qwen2.5-7B-Instruct",
     "SILICONFLOW": "Qwen/Qwen2.5-7B-Instruct",
     "METAAI": "fast",
@@ -117,6 +123,15 @@ _Q_TYPE_MAP = {
     'essay': ('论述题', _SYSTEM_PROMPT_ESSAY),
     'term_explanation': ('名词解释', _SYSTEM_PROMPT_ESSAY),
     'matching': ('连线题', _SYSTEM_PROMPT_DEFAULT),
+    # 中文题型别名(部分调用方如在线测试直接传中文题型)
+    '单选题': ('单选题', _SYSTEM_PROMPT_SINGLE),
+    '多选题': ('多选题', _SYSTEM_PROMPT_MULTI),
+    '判断题': ('判断题', _SYSTEM_PROMPT_JUDGE),
+    '填空题': ('填空题', _SYSTEM_PROMPT_FILL),
+    '简答题': ('简答题', _SYSTEM_PROMPT_SHORT),
+    '论述题': ('论述题', _SYSTEM_PROMPT_ESSAY),
+    '名词解释': ('名词解释', _SYSTEM_PROMPT_ESSAY),
+    '连线题': ('连线题', _SYSTEM_PROMPT_DEFAULT),
 }
 
 _LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -188,6 +203,20 @@ def _parse_json_array_answer(raw: str) -> str:
                 return ','.join(parts)
             # JSON数组但元素全为空(如[""]): 返回空串由调用方兜底
             return ""
+        # 2026-10-13 兼容: 单个对象如 {"answer": "X"}/{"content": "X"}/单键对象
+        if isinstance(parsed, dict):
+            for _k in ("answer", "content", "value", "result", "text", "name"):
+                _v = parsed.get(_k)
+                if _v is not None and not isinstance(_v, (dict, list)):
+                    _s = str(_v).strip()
+                    if _s:
+                        return _s
+            if len(parsed) == 1:
+                _v = list(parsed.values())[0]
+                if not isinstance(_v, (dict, list)):
+                    _s = str(_v).strip()
+                    if _s:
+                        return _s
     except (ValueError, _json.JSONDecodeError):
         pass
     # 非JSON数组: 去除JSON外壳符号后返回原文
@@ -211,12 +240,35 @@ class AIClient:
         self.config_url = (ai_url or "").strip().rstrip("/")
         self.api_key = api_key or ""
         self.ai_type = (ai_type or "").strip().upper()
-        # 端点解析：内置类型用硬编码端点，OTHER 用配置 url
-        if self.ai_type in _AI_ENDPOINTS:
+        # 端点解析：填了 aiUrl 则优先用 aiUrl(OpenAI 格式中转站场景)，
+        # 留空才回退内置官方端点；未知类型必须填 aiUrl
+        if self.config_url:
+            u = self.config_url
+            # 2026-10-13 防呆加固: 未写协议则补 https:// ; 仅写官方域名时
+            # 智能补全路径(deepseek官方支持 /chat/completions 与 /v1/chat/completions)
+            if not u.startswith("http://") and not u.startswith("https://"):
+                u = "https://" + u
+            _host = u.split("/")[2] if u.count("/") >= 2 else ""
+            _is_official = _host in (
+                "api.deepseek.com", "dashscope.aliyuncs.com",
+                "open.bigmodel.cn", "api.moonshot.cn", "api.openai.com",
+                "api.siliconflow.cn", "ark.cn-beijing.volces.com",
+                "spark-api-open.xf-yun.com")
+            if _host and _is_official and u.rstrip("/") == "https://" + _host:
+                # 只写了官方域名: 按类型补全官方标准路径
+                u = _AI_ENDPOINTS.get(self.ai_type, "").rstrip("/") or (
+                    u + "/v1/chat/completions")
+            elif ("/chat/completions" not in u and "/v1" not in u
+                    and "/v3" not in u and "/v4" not in u):
+                u = u + "/v1/chat/completions"
+            self.endpoint = u
+        elif self.ai_type in _AI_ENDPOINTS:
             self.endpoint = _AI_ENDPOINTS[self.ai_type]
         else:
-            # OTHER 或未知类型：使用配置的 url（补全 chat/completions 路径）
+            # 未知类型：使用配置的 url（补全 chat/completions 路径）
             u = self.config_url
+            if u and not u.startswith("http"):
+                u = "https://" + u
             if u and "/chat/completions" not in u and "/v1" not in u and "/v3" not in u and "/v4" not in u:
                 u = u + "/v1/chat/completions"
             self.endpoint = u
@@ -298,14 +350,7 @@ class AIClient:
             return "", Exception("AI重试次数已用完")
 
         try:
-            if self.ai_type == "OPENAI":
-                # OpenAI Responses API：用 input 字段（对齐 Go OpenAiReplyApi）
-                payload = {
-                    "model": self.model,
-                    "temperature": 0.2,
-                    "input": messages,
-                }
-            elif self.ai_type == "METAAI":
+            if self.ai_type == "METAAI":
                 # 秘塔AI特殊格式（对齐 Go MetaAIReplyApi）
                 last_user = ""
                 for m in reversed(messages):
@@ -319,6 +364,8 @@ class AIClient:
                     "scope": "online",
                 }
             else:
+                # 统一 OpenAI 兼容 chat/completions 协议
+                # (含 OPENAI/中转站/各厂商，兼容性最佳)
                 payload = {
                     "model": self.model,
                     "temperature": 0.2,
@@ -376,10 +423,25 @@ class AIClient:
 
             # 401/403 鉴权失败直接返回，不重试
             if resp.status_code in (401, 403):
-                return "", Exception("API Key invalid (status=%d): %s" % (
-                    resp.status_code, body[:200]))
+                return "", Exception(
+                    "API Key 无效或无权限(status=%d): %s"
+                    % (resp.status_code, body[:200]))
 
-            # 非2xx业务错误(如模型不存在/限流)：带上服务器消息重试
+            # 404 多为地址/路径错误(常见于中转站地址填错)，不重试
+            if resp.status_code == 404:
+                return "", Exception(
+                    "AI 接口地址不存在(404)，请检查「AI地址」是否正确"
+                    "（示例：https://中转站域名/v1 或完整到 /chat/completions）: %s"
+                    % body[:150])
+
+            # 429 限流：携带服务端消息重试
+            if resp.status_code == 429:
+                time.sleep(0.5)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1,
+                    f"请求过于频繁(429): {body[:150]}")
+
+            # 非2xx业务错误(如模型不存在)：带上服务器消息重试
             if resp.status_code >= 400:
                 err_detail = (body or "")[:200]
                 time.sleep(0.1)
@@ -399,6 +461,11 @@ class AIClient:
 
             # JSON 格式检查（对齐 Go：失败追加纠正消息重试）
             if expect_json and not _is_valid_json_array(content):
+                # 2026-10-13 宽松兜底: 非数组但可提取答案(如 {"answer":"X"}/单键对象)
+                # 直接接受, 避免可用模型因输出格式差异被重试耗尽误判失败
+                _loose = _parse_json_array_answer(content)
+                if _loose and _loose != content.strip():
+                    return _loose, None
                 messages.append({"role": "system", "content": content})
                 messages.append({"role": "user", "content": _JSON_FIX_PROMPT})
                 return self._request_chat_inner(
@@ -409,7 +476,7 @@ class AIClient:
         except httpx.TimeoutException as e:
             time.sleep(0.1)
             return self._request_chat_inner(
-                messages, expect_json, retry - 1, f"请求超时: {e}")
+                messages, expect_json, retry - 1, f"请求超时(60s): {e}")
         except httpx.HTTPError as e:
             time.sleep(0.1)
             return self._request_chat_inner(

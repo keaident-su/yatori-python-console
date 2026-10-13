@@ -25,6 +25,14 @@ class ZhsCaptchaError(ZhsError):
     """服务端要求人机验证(验证码)"""
 
 
+class ZhsSmsRequired(ZhsAuthError):
+    """服务端要求短信验证码"""
+
+
+class ZhsExtraAuthRequired(ZhsAuthError):
+    """服务端要求额外安全验证"""
+
+
 class ZhsAPIError(ZhsError):
     """接口返回非预期错误码"""
 
@@ -39,11 +47,14 @@ class CourseType(Enum):
     """智慧树课程类型(不同课程用不同 API 体系)"""
     HIKE = "hike"               # 共享课(SPOC)
     POLYMAS_AI = "polymas_ai"   # 新版 Polymas AI 课
+    SHARE = "share"             # 新版共享课(shareCourse, studyvideoh5 网页播放页;
+    # 协议接口不适用, 待实现浏览器刷课)
 
     @classmethod
     def from_str(cls, s: str) -> "CourseType":
         """解析字符串为课程类型"""
-        mapping = {"hike": cls.HIKE, "polymas_ai": cls.POLYMAS_AI}
+        mapping = {"hike": cls.HIKE, "polymas_ai": cls.POLYMAS_AI,
+                   "share": cls.SHARE}
         if s not in mapping:
             raise ValueError(f"Unknown course type: {s!r}")
         return mapping[s]
@@ -56,6 +67,10 @@ class ZhsCourse:
     name: str = ""                              # 课程名称
     course_type: CourseType = CourseType.HIKE   # 课程类型
     class_id: Optional[str] = None              # 班级ID(Polymas AI 课需要)
+    # recruitId(共享课协议刷课需要, 2026-10-13)
+    recruit_id: Optional[str] = None
+    # recruitAndCourseId(origenParam.secret, 共享课协议秒刷必需, 2026-10-13)
+    rid: Optional[str] = None
 
 
 @dataclass
@@ -63,6 +78,22 @@ class ZhsUserCache(UserCacheBase):
     """智慧树用户缓存 - 持有登录后的 HTTP 会话"""
     session: Any = None                 # ManagedSession(登录后的会话)
     cas_user_id: str = ""               # CAS userId(用于 Polymas token 归属校验)
+
+
+@dataclass
+class ZhsLoginResult:
+    """智慧树登录状态，不携带密码、Cookie 或 token 原文。"""
+    status: str
+    message: str = ""
+    user_id: str = ""
+
+
+@dataclass
+class ZhsSessionValidation:
+    """会话检查结果，不携带 Cookie/token 原文。"""
+    status: str
+    message: str = ""
+    user_id: str = ""
 
 
 @dataclass

@@ -1,3 +1,4 @@
+from urllib3.util.retry import Retry
 import hashlib
 import json
 import time
@@ -12,8 +13,7 @@ from requests.adapters import HTTPAdapter
 
 from logic.platform_common import get_simple_logger
 
-logger=get_simple_logger('[安全微伴]')
-from urllib3.util.retry import Retry
+logger = get_simple_logger('[安全微伴]')
 
 
 def pkcs7_pad(data: bytes, block_size: int = 16) -> bytes:
@@ -25,15 +25,30 @@ def handle_response(response: requests.Response) -> dict[str, Any]:
     """处理接口响应"""
     if response.status_code != 200:
         if response.status_code == 403:
+            # 2026-10-08 增强: 异地/重复登录冲突结构化状态日志(便于运行日志排查)
+            logger.warning(
+                "事件=异地或重复登录冲突 状态=403被拒 "
+                "说明=Token 无效，不允许同时登录(账号可能在手机APP/网页等其他端登录) "
+                f"url={response.url}")
             raise PermissionError("Token 无效，不允许同时登录，请重试")
         if response.status_code == 401:
+            logger.warning(
+                "事件=Token失效 状态=401未授权 "
+                "说明=需重新登录或账号信息有误 "
+                f"url={response.url}")
             raise PermissionError("Token 无效，请检查账号信息")
-        print(f"请求失败：{response.status_code} {response.text}")
+        # 2026-10-08 增强: print 改入项目日志系统, 便于日志检索与追溯
+        logger.error(
+            "事件=接口请求失败 "
+            f"状态=HTTP {response.status_code} "
+            f"body={response.text[:200]} url={response.url}")
         return {}
     try:
         return response.json()
     except json.JSONDecodeError:
-        print(f"响应内容不是有效的 JSON：{response.text}")
+        logger.error(
+            "事件=响应解析失败 状态=非JSON响应 "
+            f"body={response.text[:200]} url={response.url}")
         return {}
 
 
@@ -148,7 +163,7 @@ class WeBanAPI:
         """
         t = str(time.time_ns())
         return (
-            f"{t[:int_len]}.{t[int_len : int_len + frac_len]}"
+            f"{t[:int_len]}.{t[int_len: int_len + frac_len]}"
             if frac_len
             else t[:int_len]
         )
@@ -164,7 +179,7 @@ class WeBanAPI:
         padded = pkcs7_pad(data.encode())
         aes = pyaes.AESModeOfOperationECB(key)
         encrypted = b"".join(
-            aes.encrypt(padded[i : i + 16]) for i in range(0, len(padded), 16)
+            aes.encrypt(padded[i: i + 16]) for i in range(0, len(padded), 16)
         )
         return urlsafe_b64encode(encrypted).decode()
 
@@ -322,7 +337,8 @@ class WeBanAPI:
         }
         """
         return self._post(
-            "/pharos/login/getHelp.do", {"tenantCode": tenant_code or self.tenant_code}
+            "/pharos/login/getHelp.do", {
+                "tenantCode": tenant_code or self.tenant_code}
         )
 
     def rand_letter_image(self, verify_time: str | None) -> bytes:
@@ -588,7 +604,8 @@ class WeBanAPI:
         }
         """
         return self._post(
-            "/pharos/project/showProgress.do", {"userProjectId": user_project_id}
+            "/pharos/project/showProgress.do", {
+                "userProjectId": user_project_id}
         )
 
     def list_valve(self) -> dict[str, Any]:
@@ -597,7 +614,8 @@ class WeBanAPI:
         """
         return self._post(
             "/pharos/index/listValve.do",
-            {"tenantCode": self.tenant_code, "userId": self.user.get("userId", "")},
+            {"tenantCode": self.tenant_code,
+                "userId": self.user.get("userId", "")},
         )
 
     def get_next_task(self, user_project_id: str) -> dict[str, Any]:
@@ -606,7 +624,8 @@ class WeBanAPI:
         :return: 下一步状态 dict
         """
         return self._post(
-            "/pharos/project/getNextTask.do", {"userProjectId": user_project_id}
+            "/pharos/project/getNextTask.do", {
+                "userProjectId": user_project_id}
         )
 
     def get_project_simple(self, user_project_id: str) -> dict[str, Any]:
@@ -807,7 +826,8 @@ class WeBanAPI:
         {"code":"0","detailCode":"0"}
         """
         return self._post(
-            "/pharos/usercourse/initIndex.do", {"userProjectId": user_project_id}
+            "/pharos/usercourse/initIndex.do", {
+                "userProjectId": user_project_id}
         )
 
     def study(self, course_id: str, user_project_id: str) -> dict[str, Any]:
@@ -861,7 +881,8 @@ class WeBanAPI:
             "userId": self.user["userId"],
             "tenantCode": self.tenant_code,
         }
-        response = self.session.get(fetch_url, params=params, timeout=self.timeout)
+        response = self.session.get(
+            fetch_url, params=params, timeout=self.timeout)
         params["questionId"] = (
             handle_response(response).get("captcha", {}).get("questionId", "")
         )
@@ -940,7 +961,7 @@ class WeBanAPI:
             text = response.text
             s, e = text.find("("), text.rfind(")")
             if s != -1 and e != -1:
-                text = text[s + 1 : e]
+                text = text[s + 1: e]
             try:
                 result = json.loads(text)
             except json.JSONDecodeError:
@@ -1011,7 +1032,8 @@ class WeBanAPI:
         }
         """
         return self._post(
-            "/pharos/exam/beforePaper.do", {"userExamPlanId": user_exam_plan_id}
+            "/pharos/exam/beforePaper.do", {
+                "userExamPlanId": user_exam_plan_id}
         )
 
     def exam_prepare_paper(self, user_exam_plan_id: str) -> dict[str, Any]:
@@ -1031,7 +1053,8 @@ class WeBanAPI:
         }
         """
         return self._post(
-            "/pharos/exam/preparePaper.do", {"userExamPlanId": user_exam_plan_id}
+            "/pharos/exam/preparePaper.do", {
+                "userExamPlanId": user_exam_plan_id}
         )
 
     def exam_check(
@@ -1046,7 +1069,8 @@ class WeBanAPI:
         """
         return self._post(
             "/pharos/exam/check.do",
-            {"userExamPlanId": user_exam_plan_id, "randstr": randstr, "ticket": ticket},
+            {"userExamPlanId": user_exam_plan_id,
+                "randstr": randstr, "ticket": ticket},
         )
 
     def course_check(
@@ -1225,7 +1249,8 @@ class WeBanAPI:
         }
         """
         return self._post(
-            "/pharos/exam/submitPaper.do", {"userExamPlanId": user_exam_plan_id}
+            "/pharos/exam/submitPaper.do", {
+                "userExamPlanId": user_exam_plan_id}
         )
 
     def exam_fresh_paper(self, user_exam_plan_id: str) -> dict[str, Any]:
@@ -1419,7 +1444,7 @@ class WeBanAPI:
         padded = pkcs7_pad(json.dumps(data, separators=(",", ":")).encode())
         aes = pyaes.AESModeOfOperationCBC(key, iv=iv)
         encrypted = b"".join(
-            aes.encrypt(padded[i : i + 16]) for i in range(0, len(padded), 16)
+            aes.encrypt(padded[i: i + 16]) for i in range(0, len(padded), 16)
         )
         # 双重 Base64：仿 JS 前端 CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(Base64(ciphertext)))
         # 后端先做 atob 再 AES-CBC 解密，因此需要两次编码

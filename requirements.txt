@@ -20,6 +20,12 @@ onnxruntime<=1.23.2; sys_platform == "darwin" and platform_machine == "x86_64"
 onnxruntime; sys_platform != "darwin" or platform_machine != "x86_64"
 # 注: 无完整轮子支持的异形架构(如 32位 armv7 等)请改用 requirements-lite.txt
 # (去掉 OCR 依赖, 程序内 OCR 会自动降级禁用, 其余功能不受影响)
+#
+# GPU 加速(Windows 可选; 发布 exe 已内置): 装 onnxruntime-directml 可启用全厂商
+# GPU 加速(NVIDIA/AMD/Intel), 无 GPU 时自动回落 CPU。注意 rapidocr-onnxruntime
+# 会以依赖形式带入 CPU 版 onnxruntime 并覆盖它, 需补一次:
+#   pip install --force-reinstall onnxruntime-directml
+# 验证是否生效: python main.py --gpu-check
 
 # 安全微伴(WeBan)刷课依赖: nodriver 驱动 Chrome/Chromium 完成验证码自动识别,
 # 其依赖 mss/websockets 会自动安装; pyaes 为登录请求 AES 加密所需;

@@ -21,7 +21,7 @@ from logic.platform_common import (
     generic_filter_account, generic_user_block, get_simple_logger,
     send_user_event_notice, run_stats_bump,
 )
-from utils.log import log_print, INFO, Red, Yellow
+from utils.log import log_print, with_log_account, INFO, Red, Yellow
 
 PLATFORM_TYPE = "WEBAN"
 _DISPLAY = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
@@ -168,8 +168,10 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
     """执行刷课(每账号一个线程并发)"""
     threads = []
     for cache in user_caches:
-        t = threading.Thread(target=_user_block, args=(
-            setting, cache), daemon=True)
+        t = threading.Thread(
+            target=with_log_account(
+                cache.user.account, cache.user.remark_name)(_user_block),
+            args=(setting, cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
@@ -181,6 +183,13 @@ def _user_block(setting: Setting, cache: WebanUserCache):
     user = cache.user
     client = cache.client
     cc = user.courses_custom
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
     log = get_simple_logger(f"[{_DISPLAY}][{display_account(user.account)}]")
 
     # 注入全局浏览器/CDP设置并重置验证码处理器(登录阶段未传)
@@ -209,10 +218,11 @@ def _user_block(setting: Setting, cache: WebanUserCache):
 
     client.on_event = _on_event
 
-    # 题库同步(试题回溯合并; 多账号串行)
+    # 题库同步(试题回溯合并; 多账号串行; 受"答题后核对"开关控制 cxVerifyAnswer)
     try:
+        _do_review = int(getattr(cc, "cx_verify_answer", 1) or 0) == 1
         with _sync_lock:
-            client.sync_answers()
+            client.sync_answers(do_review=_do_review)
     except Exception as e:
         log.warning(f"题库同步异常(不影响学习): {e}")
 
@@ -235,14 +245,18 @@ def _user_block(setting: Setting, cache: WebanUserCache):
             exam_submit_match_rate=int(cc.wb_exam_submit_match_rate),
         )
     except PermissionError as e:
-        log.error(f"Token失效或账号被锁定: {e}")
+        # 2026-10-08 增强: 结构化输出Token失效事件+排查建议(入运行日志)
+        log.error(
+            f"Token失效或账号被锁定: {e} | 事件=异地或重复登录冲突 "
+            f"建议=关闭手机APP/网页等其他端的安全微伴登录后重新运行")
     except Exception as e:
         log.error(f"执行异常: {e}")
 
-    # 最终同步
+    # 最终同步(同样受"答题后核对"开关控制)
     try:
         with _sync_lock:
-            client.sync_answers()
+            client.sync_answers(do_review=int(
+                getattr(cc, "cx_verify_answer", 1) or 0) == 1)
     except Exception:
         pass
 

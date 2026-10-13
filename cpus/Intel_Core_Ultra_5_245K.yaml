@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— Intel Core Ultra 5 245K
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "Intel Core Ultra 5 245K"
+aliases:
+  - "Core Ultra 5 245K"
+logicalCores: 14
+physicalCores: 14
+tier: high
+
+loginWorkers: 20
+workConcurrency: 13
+aiConcurrency: 6
+fastVideoWorkers: 10
+nodeStartInterval: 0.154
+httpMaxConnections: 208
+cpuPoolWorkers: 13

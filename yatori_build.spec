@@ -9,6 +9,7 @@ PyInstaller 打包配置 —— yatori-python刷课系统
 import os
 import glob
 import tls_client
+from PyInstaller.utils.hooks import collect_submodules
 
 block_cipher = None
 
@@ -60,6 +61,8 @@ hiddenimports = [
     'bs4',
     'jmespath',
     'tls_client',
+    'nodriver',
+    'websockets',
     'aiosqlite',
     'sqlalchemy.dialects.sqlite',
     'sqlalchemy.sql.default_comparator',
@@ -74,6 +77,10 @@ hiddenimports = [
     'logic.welearn.part',
     'logic.haiqikeji.part',
     'logic.core.cpu_topology',
+    'logic.zhihuishu.part',
+    'logic.zhihuishu.api',
+    'logic.zhihuishu.models',
+    'logic.zhihuishu.auth_state',
     # 多答题源引擎(函数内 import, 防静态分析遗漏)
     'logic.core.answer_engine',
     'logic.core.tiku_client',

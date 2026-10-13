@@ -3,7 +3,7 @@
 WeLearn平台逻辑 - 对应 Go 项目的 logic/welearn/WeLearnPart.go
 两种模式：模式1累计学时（60秒间隔），模式2完成度
 """
-from utils.log import log_print, INFO, Green, Yellow, Default
+from utils.log import log_print, with_log_account, INFO, Green, Yellow, Default
 from config.config import User, Setting, JSONDataForConfig
 from typing import List, Any
 import random
@@ -62,8 +62,9 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
     for i, cache in enumerate(user_caches):
         if i >= len(users):
             break
-        t = threading.Thread(target=_user_block, args=(
-            setting, users[i], cache), daemon=True)
+        t = threading.Thread(
+            target=with_log_account(users[i].account, users[i].remark_name)(_user_block),
+            args=(setting, users[i], cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
@@ -72,6 +73,13 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
 
 def _user_block(setting: Setting, user: User, cache: WeLearnUserCache):
     body, _ = welearn_api.course_list_api(cache, retry=8)
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
     data = safe_json_parse(body)
     courses = []
     if data:
@@ -85,6 +93,13 @@ def _user_block(setting: Setting, user: User, cache: WeLearnUserCache):
 
     cc = user.courses_custom
     for course in courses:
+        # 夜间休息检查(2026-10-10 修复: 课程级——刷课中途到点即停,恢复后继续)
+        try:
+            from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+            _pub_rest_wait(user.account, user.courses_custom,
+                           ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+        except Exception:
+            pass
         if cc.exclude_courses and cmp_course(course.course_name, cc.exclude_courses):
             continue
         if cc.include_courses and not cmp_course(course.course_name, cc.include_courses):

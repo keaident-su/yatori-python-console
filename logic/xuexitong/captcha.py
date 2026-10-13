@@ -27,6 +27,38 @@ try:
 except ImportError:
     _HAS_PIL = False
 
+# cv2 x点识别(2026-10实测: 比NCC降采样准, 脚本同款算法)
+try:
+    import cv2 as _cv2
+    import numpy as _np
+    _HAS_CV2 = True
+except ImportError:
+    _HAS_CV2 = False
+
+
+def detect_slide_offset_cv2(shade_bytes: bytes, cutout_bytes: bytes) -> int:
+    """cv2模板匹配识别x偏移(2026-10实测验证真机/脚本同款)
+
+    流程: cutout灰度→轮廓定位bbox→裁上边缘区域作模板→
+          在shade同y行带内匹配→max_loc[0]-5
+    实测: 比NCC降采样准(同一张图 196 vs 187, 差9像素直接决定check成败)
+    """
+    shade = _cv2.imdecode(_np.frombuffer(shade_bytes, _np.uint8),
+                          _cv2.IMREAD_COLOR)
+    cutout = _cv2.imdecode(_np.frombuffer(cutout_bytes, _np.uint8),
+                           _cv2.IMREAD_COLOR)
+    cutout_gray = _cv2.cvtColor(cutout, _cv2.COLOR_BGR2GRAY)
+    contours, _ = _cv2.findContours(cutout_gray, _cv2.RETR_EXTERNAL,
+                                    _cv2.CHAIN_APPROX_SIMPLE)
+    box = _cv2.boundingRect(contours[0])
+    cutout_y = box[1]
+    cutout_teil = cutout[cutout_y + 2:cutout_y + 44, 8:48]
+    shade_teil = shade[cutout_y - 2:cutout_y + 50]
+    result = _cv2.matchTemplate(shade_teil, cutout_teil,
+                                _cv2.TM_CCOEFF_NORMED)
+    _, _, min_loc, max_loc = _cv2.minMaxLoc(result)
+    return int(max_loc[0]) - 5
+
 
 # ============ PNG 解码（纯标准库，支持 8位 color_type 0/2/3/4/6） ============
 
@@ -295,7 +327,11 @@ def _pass_slider_once(cache, captcha_id: str, referer: str,
     # 第三步: 下载双图 → 识别偏移 → 提交校验
     shade = xxt_api.pull_cx_slider_img_api(cache, shade_url, retry=5)
     cutout = xxt_api.pull_cx_slider_img_api(cache, cutout_url, retry=5)
-    x = detect_slide_offset(shade, cutout) + offset_delta
+    # x点识别: 优先cv2模板匹配(2026-10实测更准), 无cv2时回退NCC降采样
+    if _HAS_CV2:
+        x = detect_slide_offset_cv2(shade, cutout) + offset_delta
+    else:
+        x = detect_slide_offset(shade, cutout) + offset_delta
     # 拟人延时: 真人滑动从拉图到提交至少间隔数百毫秒，立即提交易触发风控
     time.sleep(random.uniform(0.8, 1.8))
     pass_body = xxt_api.pass_cx_slider_api(

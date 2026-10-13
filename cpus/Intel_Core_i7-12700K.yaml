@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— Intel Core i7-12700K
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "Intel Core i7-12700K"
+aliases:
+  - "Core i7-12700K"
+logicalCores: 20
+physicalCores: 12
+tier: high
+
+loginWorkers: 28
+workConcurrency: 19
+aiConcurrency: 10
+fastVideoWorkers: 14
+nodeStartInterval: 0.105
+httpMaxConnections: 304
+cpuPoolWorkers: 11

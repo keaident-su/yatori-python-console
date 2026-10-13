@@ -23,6 +23,65 @@ from utils.object_utils import struct_to_map
 from utils.log import log_print, INFO
 
 
+def _zhihuishu_session_service(body: dict) -> dict:
+    """导入并校验用户主动提交的智慧树 Cookie/token。"""
+    from logic.zhihuishu.api import ManagedSession, validate_session_detail
+    from logic.zhihuishu.auth_state import (
+        parse_user_cookies, save_session, session_key,
+    )
+
+    uid = str(body.get("uid", "")).strip()
+    if not uid:
+        return Response(code=400, message="UID 不能为空").to_dict()
+    db = get_session()
+    try:
+        user = user_mapper.query_user(db, uid=uid)
+        if not user:
+            return Response(code=400, message="该账号不存在").to_dict()
+        if user.account_type != "ZHIHUISHU":
+            return Response(code=400, message="该接口仅支持智慧树账号").to_dict()
+        raw_cookies = body.get("cookies", body.get("cookie", ""))
+        token = str(body.get("token", "") or "").strip()
+        if not raw_cookies:
+            return Response(code=400,
+                            message="请主动提交智慧树 Cookie；token 需与 Cookie 一并提交").to_dict()
+        try:
+            jar = parse_user_cookies(raw_cookies)
+        except ValueError as exc:
+            return Response(code=400, message=f"Cookie 格式无效: {exc}").to_dict()
+        candidate = ManagedSession(cookies=jar)
+        validation = validate_session_detail(candidate)
+        if validation.status != "LOGIN_SUCCESS":
+            return Response(code=400, message=validation.message or
+                            "会话校验失败或已过期，请提交当前有效的智慧树会话",
+                            data=validation.__dict__).to_dict()
+        save_session(session_key(user.account), candidate.cookies, token=token)
+        return Response(code=200, message="智慧树会话已校验并加密保存",
+                        data={"status": "LOGIN_SUCCESS",
+                              "cookieCount": len(candidate.cookies)}).to_dict()
+    finally:
+        db.close()
+
+
+def _clear_zhihuishu_session_service(body: dict) -> dict:
+    """清理指定智慧树账号的加密会话。"""
+    from logic.zhihuishu.auth_state import delete_session, session_key
+    uid = str(body.get("uid", "")).strip()
+    if not uid:
+        return Response(code=400, message="UID 不能为空").to_dict()
+    db = get_session()
+    try:
+        user = user_mapper.query_user(db, uid=uid)
+        if not user:
+            return Response(code=400, message="该账号不存在").to_dict()
+        if user.account_type != "ZHIHUISHU":
+            return Response(code=400, message="该接口仅支持智慧树账号").to_dict()
+        delete_session(session_key(user.account))
+        return Response(code=200, message="智慧树加密会话已清理").to_dict()
+    finally:
+        db.close()
+
+
 def user_list_service() -> dict:
     """拉取账号列表"""
     session = get_session()
@@ -88,6 +147,12 @@ def add_user_service(body: dict) -> dict:
         if err:
             return Response(code=400, message=err).to_dict()
 
+        # ★ 2026-10-08 修复: 新增账号后清理同名残留缓存(防御性; 新uid理论无缓存)
+        try:
+            global_var.remove_user_activity(uid)
+        except Exception:
+            pass
+
         return Response(
             code=200,
             message="添加账号成功",
@@ -104,6 +169,25 @@ def delete_user_service(body: dict) -> dict:
     url = body.get("url", "")
     account = body.get("account", "")
 
+    # 运行中拦截: 删除运行中的账号会导致刷课线程异常
+    if uid and _is_account_running(uid):
+        return Response(
+            code=400,
+            message="账号正在刷课中，无法删除，请先停止刷课").to_dict()
+
+    zhs_session_id = ""
+    if account_type == "ZHIHUISHU" or uid:
+        from logic.zhihuishu.auth_state import session_key
+        lookup = get_session()
+        try:
+            existing = user_mapper.query_user(
+                lookup, uid=uid, account_type=account_type,
+                url=url, account=account)
+            if existing and existing.account_type == "ZHIHUISHU":
+                zhs_session_id = session_key(existing.account)
+        finally:
+            lookup.close()
+
     session = get_session()
     try:
         if uid:
@@ -118,9 +202,31 @@ def delete_user_service(body: dict) -> dict:
         if err:
             return Response(code=400, message="删除失败").to_dict()
 
+        if zhs_session_id:
+            from logic.zhihuishu.auth_state import delete_session
+            delete_session(zhs_session_id)
+
+        # ★ 2026-10-08 修复: 删除账号后同步清理内存中的 Activity 缓存,
+        # 避免僵尸活动对象残留(与"编辑后不同步"同类问题的防御性修复)
+        if uid:
+            try:
+                global_var.remove_user_activity(uid)
+            except Exception:
+                pass
+
         return Response(code=200, message="删除成功").to_dict()
     finally:
         session.close()
+
+
+def _is_account_running(uid: str) -> bool:
+    """账号是否正在刷课中(基于内存活动状态)"""
+    try:
+        activity = global_var.get_user_activity(uid)
+        return bool(activity is not None and
+                    getattr(activity, "is_running", False))
+    except Exception:
+        return False
 
 
 def update_user_service(body: dict) -> dict:
@@ -128,6 +234,13 @@ def update_user_service(body: dict) -> dict:
     uid = body.get("uid", "")
     if not uid:
         return Response(code=400, message="UID 不能为空").to_dict()
+
+    # 运行中拦截: 运行中的账号修改配置不会影响本次刷课,
+    # 必须停止后再修改，避免"改了不生效"的困惑
+    if _is_account_running(uid):
+        return Response(
+            code=400,
+            message="账号正在刷课中，无法修改配置信息，请先停止刷课").to_dict()
 
     update_map = {}
     if body.get("accountType"):
@@ -139,17 +252,18 @@ def update_user_service(body: dict) -> dict:
     if body.get("password"):
         update_map["password"] = body["password"]
 
-    # 扩展配置(备注名/课程自定义等)合并进 user_config_json
-    if ("coursesCustom" in body) or ("remarkName" in body):
+    # 扩展配置(备注名/课程自定义/通知邮箱/推送/代理)合并进 user_config_json
+    _EXT_KEYS = ("coursesCustom", "remarkName", "informEmails",
+                 "showdocSw", "showdocUrls", "isProxy")
+    if any(_k in body for _k in _EXT_KEYS):
         _s0 = get_session()
         try:
             _po = user_mapper.query_user(_s0, uid=uid)
             if _po:
                 _cfgj = _po.user_config_turn_entity()
-                if "coursesCustom" in body:
-                    _cfgj["coursesCustom"] = body["coursesCustom"]
-                if "remarkName" in body:
-                    _cfgj["remarkName"] = body["remarkName"]
+                for _k in _EXT_KEYS:
+                    if _k in body:
+                        _cfgj[_k] = body[_k]
                 update_map["user_config_json"] = json.dumps(
                     _cfgj, ensure_ascii=False)
         finally:
@@ -163,6 +277,14 @@ def update_user_service(body: dict) -> dict:
         err = user_mapper.update_user(session, uid, update_map)
         if err:
             return Response(code=500, message=err).to_dict()
+        # ★ 2026-10-08 修复"编辑账号不同步到刷课"BUG:
+        # 写库成功后必须失效内存中缓存的 Activity(内含构建时的旧User快照),
+        # 否则 startBrush 会复用旧 Activity 跑旧配置(停止再启动也无效,
+        # 只有重启后端才恢复)。移除后下次启动会按最新库数据懒重建。
+        try:
+            global_var.remove_user_activity(uid)
+        except Exception:
+            pass
         return Response(code=200, message="更新成功").to_dict()
     finally:
         session.close()
@@ -217,10 +339,25 @@ def account_course_list_service(uid: str) -> dict:
 
         if activity and hasattr(activity, 'pull_course_list'):
             course_list = activity.pull_course_list()
+            # 2026-10-13: 附带账号的"只刷/排除课程"配置(供进度页过滤显示)
+            _inc, _exc = [], []
+            try:
+                _cc = getattr(user, "courses_custom", None)
+                if _cc is not None:
+                    _inc = [str(x) for x in
+                            (getattr(_cc, "include_courses", []) or [])
+                            if str(x).strip()]
+                    _exc = [str(x) for x in
+                            (getattr(_cc, "exclude_courses", []) or [])
+                            if str(x).strip()]
+            except Exception:
+                pass
             return Response(
                 code=200,
                 message="拉取信息成功",
-                data={"courseList": course_list}
+                data={"courseList": course_list,
+                      "includeCourses": _inc,
+                      "excludeCourses": _exc}
             ).to_dict()
 
         return Response(code=200, message="拉取信息成功",
@@ -229,13 +366,57 @@ def account_course_list_service(uid: str) -> dict:
         session.close()
 
 
-def start_brush_service(uid: str) -> dict:
-    """启动刷课"""
+def course_detail_stat_service(uid: str, course_id: str) -> dict:
+    """课程详情统计(作业x/y+考试x/y, 2026-10-13 进度页懒加载)"""
     session = get_session()
     try:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
+            return Response(code=400, message="该账号不存在").to_dict()
+        activity = global_var.get_user_activity(user.uid)
+        if activity is None:
+            from web.activity.base_activity import UserActivityBase
+            activity = _build_user_activity(user)
+            if activity:
+                global_var.put_user_activity(user.uid, activity)
+    finally:
+        session.close()
+    if not activity or not hasattr(activity, "course_detail_stat"):
+        return Response(code=200, message="该平台暂不支持",
+                        data={"supported": False}).to_dict()
+    try:
+        data = activity.course_detail_stat(str(course_id))
+    except Exception as e:
+        return Response(code=500, message=f"统计失败: {str(e)[:120]}").to_dict()
+    data["courseId"] = str(course_id)
+    return Response(code=200, message="OK", data=data).to_dict()
+
+
+def start_brush_service(uid: str) -> dict:
+    """启动刷课(2026-09-28: 全链路日志 + 明确成败语义)
+
+    排查"启动没反应"时看以下日志定位卡在哪一步:
+    收到请求 → 查库取用户 → 构建活动 → 已运行检查 → 线程下发
+    """
+    from utils.log import log_print, INFO, Green, Yellow, Red, BoldRed
+    _u8 = str(uid)[:8]
+    log_print(INFO, "[Web]", Green, f"收到启动刷课请求 uid={_u8}..")
+    session = get_session()
+    try:
+        user = user_mapper.query_user(session, uid=uid)
+        if not user:
+            log_print(INFO, "[Web]", Red, f"启动失败: 用户不存在 uid={_u8}..")
             return Response(code=400, message="用户不存在").to_dict()
+        account = user.account
+        # 账号日志上下文用: 备注名(可能为空)
+        try:
+            _cd = user.user_config_turn_entity()
+            _remark = str(_cd.get("remarkName", "") or "")
+        except Exception:
+            _remark = ""
+    except Exception as e:
+        log_print(INFO, "[Web]", Red, f"启动失败: 查询用户异常 {type(e).__name__}: {e}")
+        return Response(code=500, message=f"查询用户异常: {e}").to_dict()
     finally:
         session.close()
 
@@ -244,12 +425,40 @@ def start_brush_service(uid: str) -> dict:
         # 未点过"课程列表"时直接启动: 懒构建活动
         activity = _build_user_activity(user)
         if activity is None:
+            log_print(INFO, "[Web]", Red,
+                      f"启动失败: {account} 该平台暂不支持Web模式")
             return Response(code=400, message="该平台暂不支持Web模式").to_dict()
         global_var.put_user_activity(uid, activity)
+        log_print(INFO, "[Web]", f"账号 {account} 活动对象已构建")
 
-    t = threading.Thread(target=activity.start, daemon=True)
-    t.start()
+    # 已运行检查(明确提示, 避免"点了没反应"的困惑)
+    if getattr(activity, "is_running", False):
+        log_print(INFO, "[Web]", Yellow,
+                  f"启动被忽略: {account} 刷课已在运行中(如需重启请先停止)")
+        return Response(
+            code=400,
+            message="该账号刷课已在运行中，请先停止再启动").to_dict()
 
+    # 账号日志上下文(2026-09-30): 刷课线程内日志自动带 [账号|备注] 前缀,
+    # 并同时写入独立文件 assets/logs/accounts/{账号}_{备注}/{日期}.log
+    def _runner():
+        from utils.log import set_log_account, clear_log_account
+        set_log_account(account, _remark)
+        try:
+            activity.start()
+        finally:
+            clear_log_account()
+
+    try:
+        t = threading.Thread(target=_runner, daemon=True,
+                             name=f"start-{_u8}")
+        t.start()
+    except Exception as e:
+        log_print(INFO, "[Web]", BoldRed, f"启动线程失败: {account} {e}")
+        return Response(code=500, message=f"启动线程失败: {e}").to_dict()
+
+    log_print(INFO, "[Web]", Green,
+              f"已下发启动指令: {account} (后台线程执行登录与刷课)")
     return Response(code=200, message="启动成功").to_dict()
 
 
@@ -356,22 +565,47 @@ def load_web_setting():
 
     优先读取程序目录 config.yaml 的 setting 段(与控制台模式行为一致),
     并顺带把配置注入多答题源引擎(幂等), 确保题库/AI/本地缓存生效。
+
+    注意: read_config() 在配置异常时会 sys.exit(1)(抛 SystemExit),
+    Web 场景绝不能让服务退出 —— 此处显式捕获并回退默认设置。
     """
     setting = None
     try:
         if os.path.exists("./config.yaml"):
             from config.config import read_config
             setting = read_config("./config.yaml").setting
-    except Exception:
+        else:
+            from utils.log import log_print, INFO, BoldRed
+            log_print(INFO, BoldRed,
+                      "[Web配置] 未找到程序目录 config.yaml, 使用默认设置")
+    except SystemExit:
         setting = None
+        from utils.log import log_print, INFO, BoldRed
+        log_print(INFO, BoldRed,
+                  "[Web配置] config.yaml 解析失败, 已回退默认设置(服务不退出)")
+    except Exception as e:
+        setting = None
+        from utils.log import log_print, INFO, BoldRed
+        log_print(INFO, BoldRed,
+                  f"[Web配置] config.yaml 读取异常({e}), 已回退默认设置")
     if setting is None:
         from config.config import Setting
         setting = Setting()
+    # 性能策略热更新: 同步环境变量(front端保存 fullCpuMode/performanceGear 后即时生效)
+    try:
+        _bs = setting.basic_setting
+        os.environ["YATORI_FULL_CPU"] = "1" if _bs.full_cpu_mode == 1 else "0"
+        os.environ["YATORI_PERF_GEAR"] = str(
+            _bs.performance_gear or "aggressive")
+    except Exception:
+        pass
     try:
         from logic.core.answer_engine import configure_answer_engine
         configure_answer_engine(setting)
-    except Exception:
-        pass
+    except Exception as e:
+        from utils.log import log_print, INFO, BoldRed
+        log_print(INFO, BoldRed,
+                  f"[Web配置] 答题引擎注入失败(重启后生效): {e}")
     return setting
 
 
@@ -433,21 +667,76 @@ def import_config_service() -> dict:
         session.close()
 
 
-def log_tail_service(lines: int = 200, date: str = "") -> dict:
-    """读取日志文件尾部 N 行(外部分离前端轮询用; 加密通道下与 SSE 等效)"""
+def log_accounts_service() -> dict:
+    """列出账号日志目录清单(前端下拉用)
+
+    扫描 assets/logs/accounts/* 目录, 返回账号目录名与可用日志文件。
+    """
+    base = os.path.join(".", "assets", "logs", "accounts")
+    items = []
+    try:
+        if os.path.isdir(base):
+            for name in sorted(os.listdir(base)):
+                p = os.path.join(base, name)
+                if not os.path.isdir(p):
+                    continue
+                try:
+                    files = sorted(
+                        [f for f in os.listdir(p) if f.endswith(".log")],
+                        reverse=True)
+                except OSError:
+                    files = []
+                items.append({"name": name, "files": files[:60]})
+    except OSError as e:
+        return Response(code=500, message=f"读取账号日志目录失败: {e}").to_dict()
+    return Response(code=200, message="ok",
+                    data={"accounts": items,
+                          "today": time.strftime("%Y-%m-%d")}).to_dict()
+
+
+def log_tail_service(lines: int = 200, date: str = "", account: str = "") -> dict:
+    """读取日志文件尾部 N 行(外部分离前端轮询用; 加密通道下与 SSE 等效)
+
+    account 为空=全局日志(assets/logs/{date}.log);
+    指定=账号独立日志(assets/logs/accounts/{account}/{date}.log)
+
+    性能(2026-09-28): 旧实现 f.readlines() 每次读整个文件——高强度刷课时
+    日志可达数百MB, 加上路由阻塞事件循环, 前端轮询会拖垮整个后端。
+    现改为 deque 流式尾读(内存只占 N 行), 当前文件不足时向前回溯轮转备份。
+    """
     try:
         lines = max(1, min(int(lines or 200), 2000))
     except (TypeError, ValueError):
         lines = 200
     log_id = (date or time.strftime("%Y-%m-%d")).strip()
-    log_path = f"./assets/logs/{log_id}.log"
+    if account:
+        # 目录穿越防护: 账号名仅允许单层目录
+        safe = str(account).replace("\\", "/").strip("/")
+        if "/" in safe or ".." in safe:
+            return Response(code=400, message="非法账号名").to_dict()
+        log_path = f"./assets/logs/accounts/{safe}/{log_id}.log"
+    else:
+        log_path = f"./assets/logs/{log_id}.log"
     if not os.path.exists(log_path):
         return Response(code=200, message="ok",
                         data={"lines": [], "date": log_id}).to_dict()
     try:
+        from collections import deque
         with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-            all_lines = f.readlines()
-        tail = [ln.rstrip("\r\n") for ln in all_lines[-lines:]]
+            tail = list(deque(f, maxlen=lines))
+        # 当前文件不够时, 向前回溯轮转备份(.log.1 是最新备份)
+        if len(tail) < lines:
+            for i in range(1, 6):
+                backup = f"{log_path}.{i}"
+                if not os.path.exists(backup):
+                    break
+                with open(backup, "r", encoding="utf-8",
+                          errors="replace") as f:
+                    prev = list(deque(f, maxlen=lines - len(tail)))
+                tail = prev + tail
+                if len(tail) >= lines:
+                    break
+        tail = [ln.rstrip("\r\n") for ln in tail]
     except OSError as e:
         return Response(code=500, message=f"读取日志失败: {e}").to_dict()
     return Response(code=200, message="ok",

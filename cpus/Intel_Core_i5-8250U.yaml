@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— Intel Core i5-8250U
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "Intel Core i5-8250U"
+aliases:
+  - "Core i5-8250U"
+logicalCores: 8
+physicalCores: 4
+tier: low
+
+loginWorkers: 10
+workConcurrency: 7
+aiConcurrency: 4
+fastVideoWorkers: 5
+nodeStartInterval: 0.286
+httpMaxConnections: 128
+cpuPoolWorkers: 3

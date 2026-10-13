@@ -15,7 +15,7 @@ from logic.platform_common import generic_filter_account, generic_user_block
 from logic.core.ai_client import ai_check, ai_problem_message, AIClient
 from logic.core.external_que import check_api_que_request, search_api_que
 from utils.log import (
-    log_print, model_print, INFO, DEBUG,
+    log_print, model_print, with_log_account, INFO, DEBUG,
     Green, Yellow, Red, Blue, Purple, Default, BoldRed, BoldGreen, DarkGray
 )
 from global_state.global_var import ACCOUNT_TYPE_STR
@@ -114,7 +114,7 @@ def run_brush_operation(setting: Setting, users: List[User],
         if i >= len(users):
             break
         t = threading.Thread(
-            target=_user_block,
+            target=with_log_account(users[i].account, users[i].remark_name)(_user_block),
             args=(setting, users[i], cache),
             daemon=True,
         )
@@ -129,6 +129,13 @@ def run_brush_operation(setting: Setting, users: List[User],
 def _user_block(setting: Setting, user: User, cache: YingHuaUserCache):
     """用户刷课基本块 - 对应 userBlock"""
     course_list, err = yinghua.course_list_action(cache)
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
     if err:
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[", Green, cache.account, Default, "] ",
@@ -141,6 +148,13 @@ def _user_block(setting: Setting, user: User, cache: YingHuaUserCache):
 
     node_threads = []
     for course in course_list:
+        # 夜间休息检查(2026-10-10 修复: 课程级——刷课中途到点即停,恢复后继续)
+        try:
+            from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+            _pub_rest_wait(user.account, user.courses_custom,
+                           ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+        except Exception:
+            pass
         t = threading.Thread(
             target=_node_list_study_wrapper,
             args=(setting, user, cache, course),

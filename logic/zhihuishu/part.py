@@ -21,13 +21,16 @@ from logic.platform_common import (
     send_user_event_notice, run_stats_bump,
 )
 from logic.zhihuishu.api import (
-    HikeAPIClient, ManagedSession, PolymasAPIClient, login_password,
+    HikeAPIClient, ManagedSession, PolymasAPIClient, ShareCourseAPIClient,
+    login_password, validate_session,
 )
 from logic.zhihuishu.models import (
     CourseType, StudyProgress, ZhsAuthError, ZhsCaptchaError, ZhsCourse,
+    ZhsExtraAuthRequired, ZhsSmsRequired,
     ZhsError, ZhsUserCache,
 )
-from utils.log import log_print, INFO, Red, Yellow
+from logic.zhihuishu.auth_state import load_session, save_session, session_key
+from utils.log import log_print, with_log_account, INFO, Red, Yellow
 
 PLATFORM_TYPE = "ZHIHUISHU"
 _DISPLAY = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
@@ -46,7 +49,7 @@ def filter_account(config_data: JSONDataForConfig) -> List[User]:
 
 
 def user_login_operation(users: List[User]) -> List[ZhsUserCache]:
-    """批量登录(单账号失败仅跳过, 不影响其他账号与其他平台)"""
+    """批量登录(纯 HTTP，会话优先，单账号失败仅跳过)。"""
     user_caches: List[ZhsUserCache] = []
     for user in users:
         if user.account_type != PLATFORM_TYPE:
@@ -56,23 +59,58 @@ def user_login_operation(users: List[User]) -> List[ZhsUserCache]:
         if not (user.account or "").strip():
             log.error("账号为空, 已跳过")
             continue
-        if not (user.password or "").strip():
-            log.error("密码为空(智慧树暂仅支持密码登录), 已跳过")
-            continue
+
+        session = None
+        session_id = session_key(user.account)
         try:
-            session = ManagedSession()
-            login_password(session, user.account.strip(), user.password)
-        except (ZhsAuthError, ZhsCaptchaError) as e:
-            log.error(f"登录失败: {e}")
-            continue
+            stored = load_session(session_id)
+            if stored:
+                candidate = ManagedSession(cookies=stored[0])
+                if validate_session(candidate):
+                    session = candidate
+                    log.success("已复用加密保存的智慧树会话")
         except Exception as e:
-            log.error(f"登录异常: {e}")
-            continue
+            log.warning(f"缓存会话不可用，将重新执行协议登录: {e}")
+
+        if session is None:
+            try:
+                if not (user.password or "").strip():
+                    log.error("没有有效会话且密码为空, 已跳过")
+                    continue
+                session = ManagedSession()
+                login_password(session, user.account.strip(), user.password)
+                save_session(session_id, session.cookies)
+                log.success("协议登录成功")
+            except ZhsCaptchaError as e:
+                # 滑块已由 login_password 内置纯协议求解器自动处理;
+                # 到这里说明求解未通过(小概率), 重试一次后跳过
+                log.warning(f"易盾滑块未通过, 重试一次: {e}")
+                try:
+                    session = ManagedSession()
+                    login_password(session, user.account.strip(),
+                                   user.password)
+                    save_session(session_id, session.cookies)
+                    log.success("协议登录成功(重试)")
+                except Exception as e2:
+                    log.error(f"重试仍失败, 已跳过: {e2}")
+                    continue
+            except ZhsSmsRequired as e:
+                log.error(f"登录状态 SMS_REQUIRED: {e}")
+                continue
+            except ZhsExtraAuthRequired as e:
+                log.error(f"登录状态 EXTRA_AUTH_REQUIRED: {e}")
+                continue
+            except ZhsAuthError as e:
+                log.error(f"登录状态 INVALID_CREDENTIALS: {e}")
+                continue
+            except Exception as e:
+                log.error(f"登录异常: {e}")
+                continue
+
         cache = ZhsUserCache(
             account=user.account, password=user.password,
             session=session, cas_user_id=session.get_cas_user_id(),
         )
-        log.success("登录成功")
         user_caches.append(cache)
     return user_caches
 
@@ -88,8 +126,10 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
                 break
         if matched is None:
             continue
-        t = threading.Thread(target=_user_block,
-                             args=(setting, matched, cache), daemon=True)
+        t = threading.Thread(
+            target=with_log_account(
+                matched.account, matched.remark_name)(_user_block),
+            args=(setting, matched, cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
@@ -107,7 +147,21 @@ def _user_block(setting: Setting, user: User, cache: ZhsUserCache):
     if not courses:
         log.warning("没有找到可学习的课程")
     cc = user.courses_custom
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
     for course in courses:
+        # 夜间休息检查(2026-10-10 修复: 课程级——刷课中途到点即停,恢复后继续)
+        try:
+            from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+            _pub_rest_wait(user.account, user.courses_custom,
+                           ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+        except Exception:
+            pass
         if cc.exclude_courses and cmp_course(course.name, cc.exclude_courses):
             continue
         if cc.include_courses and not cmp_course(course.name, cc.include_courses):
@@ -155,6 +209,17 @@ def _fetch_all_courses(cache: ZhsUserCache, log) -> List[ZhsCourse]:
                         id=cid, name=c.get("courseName", "unknown"),
                         course_type=CourseType.HIKE))
                     seen_ids.add(cid)
+                elif ctype == "shareCourse":
+                    # 新版共享课(studyvideoh5): 2026-10-13 升级协议级秒刷
+                    # 三元组全部来自本响应: ccCourseId=courseId / recruitId / rid=origenParam.secret
+                    _op = c.get("origenParam") or {}
+                    courses.append(ZhsCourse(
+                        id=cid, name=c.get("courseName", "unknown"),
+                        course_type=CourseType.SHARE,
+                        recruit_id=str(c.get("recruitId")
+                                       or _op.get("recruitId") or ""),
+                        rid=str(_op.get("secret") or "")))
+                    seen_ids.add(cid)
     except ZhsError as e:
         log.warning(f"Polymas 课程获取失败: {e}")
     except Exception as e:
@@ -181,6 +246,8 @@ def _brush_course(cache: ZhsUserCache, user: User, course: ZhsCourse,
     """按课程类型分发刷课"""
     if course.course_type == CourseType.POLYMAS_AI:
         return _brush_polymas_course(cache, user, course, speed, log)
+    if course.course_type == CourseType.SHARE:
+        return _brush_share_course(cache, user, course, speed, log)
     return _brush_hike_course(cache, user, course, speed, log)
 
 
@@ -489,3 +556,172 @@ def web_course_list(cache: ZhsUserCache, user: User) -> List[dict]:
                            else ("进行中" if has else "")),
         })
     return result
+
+
+# ============ 新版共享课(studyvideoh5) 刷课 ============
+
+def _brush_share_course(cache: ZhsUserCache, user: User, course: ZhsCourse,
+                        speed: float, log) -> StudyProgress:
+    """新版共享课(studyvideoh5)刷课
+    2026-10-13 升级: "协议级秒刷优先"(实测24/24全绿, 借助热心人士资料);
+    三元组: ccCourseId=course.id, recruitId=course.recruit_id, rid=学堂解析;
+    任一步失败自动回退旧逐秒上报流程(下方保留)。
+    """
+    api = ShareCourseAPIClient(cache.session)
+    api.ensure_session()
+    # ---- 协议级秒刷优先 ----
+    try:
+        _cc = int(str(course.id or "0").strip() or 0)
+        _rec_s = str(course.recruit_id or "").strip()
+        _rec = int(_rec_s) if _rec_s else 0
+        if _cc and _rec:
+            from logic.zhihuishu.share_proto import brush_share_protocol, resolve_rid
+            # 2026-10-13: rid优先取课程响应自带(origenParam.secret), 兜底学堂解析
+            _rid = str(getattr(course, "rid", "")
+                       or "").strip() or resolve_rid(api, _cc)
+            if _rid:
+                log.info(f"课程【{course.name}】协议级秒刷: rid={_rid[:12]}...")
+                _st = brush_share_protocol(
+                    cache, _rid, _cc, _rec, log=log.info)
+                _prog = StudyProgress()
+                _prog.total_videos = int(_st.get("total", 0) or 0)
+                _prog.completed_videos = int(_st.get("full", 0) or 0)
+                _prog.elapsed_seconds = float(_st.get("elapsed", 0) or 0)
+                log.success(
+                    f"课程【{course.name}】协议秒刷完成: "
+                    f"{_prog.completed_videos}/{_prog.total_videos}")
+                return _prog
+            log.warning(f"课程【{course.name}】rid解析为空, 回退旧流程")
+        else:
+            log.info(f"课程【{course.name}】缺 recruitId/ccCourseId, 回退旧流程")
+    except Exception as _e:
+        log.warning(f"课程【{course.name}】协议秒刷异常, 回退: {str(_e)[:120]}")
+    # ---- 旧逐秒上报流程(回退保留) ----
+    rid = str(course.id or "")
+    if not rid:
+        log.warning(f"课程【{course.name}】缺少 recruitAndCourseId, 跳过")
+        return StudyProgress()
+    qc = api.query_course(rid)
+    if not _share_ok(qc):
+        msg = (qc or {}).get("message", "")
+        log.warning(
+            f"课程【{course.name}】共享课接口校验失败({msg})，可能会话未建立或平台限制，已跳过(可重登后重试)")
+        return StudyProgress()
+    vl = api.video_list(rid)
+    if not _share_ok(vl):
+        log.warning(
+            f"课程【{course.name}】videolist 获取失败({(vl or {}).get('message', '')})，已跳过")
+        return StudyProgress()
+    videos = _extract_share_videos(vl.get("data") or {})
+    if not videos:
+        log.info(f"课程【{course.name}】无可学习视频或已全部完成")
+        return StudyProgress()
+    log.info(f"正在学习课程(新版共享课): {course.name} (视频 {len(videos)} 个)")
+    begin = time.time()
+    progress = StudyProgress()
+    for v in videos:
+        try:
+            _share_video(api, course, rid, v, speed, progress, log)
+        except ZhsError as e:
+            log.error(f"课程【{course.name}】刷课失败: {e}")
+            break
+    progress.elapsed_seconds = time.time() - begin
+    log.success(
+        f"课程【{course.name}】学习完毕(视频 {progress.completed_videos}/{progress.total_videos}, 耗时 {progress.elapsed_seconds:.0f}s)")
+    return progress
+
+
+def _share_ok(resp) -> bool:
+    """共享课网关响应是否有效(code==0 或 200)"""
+    if not isinstance(resp, dict):
+        return False
+    return resp.get("code") in (0, 200, "0", "200")
+
+
+def _extract_share_videos(data) -> list:
+    """解析 videolist 响应中的视频数组(容错嵌套)"""
+    videos = []
+
+    def _walk(node):
+        if isinstance(node, list):
+            for item in node:
+                _walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+        vid = node.get("videoId") or node.get("id") or node.get("fileId")
+        if vid is not None and (node.get("videoName") or node.get("name") or node.get("duration") is not None):
+            videos.append(node)
+            return
+        for child in node.values():
+            _walk(child)
+    _walk(data)
+    seen = set()
+    out = []
+    for v in videos:
+        key = str(v.get("videoId") or v.get("id") or v.get("fileId"))
+        if key not in seen:
+            seen.add(key)
+            out.append(v)
+    return out
+
+
+def _share_video(api, course, rid: str, video: dict, speed: float,
+                 progress: StudyProgress, log) -> None:
+    """单个共享课视频: 模拟播放 + 周期上报进度(91%完成)"""
+    vid = str(video.get("videoId") or video.get("id") or video.get("fileId"))
+    name = str(video.get("videoName") or video.get("name") or vid)
+    duration = int(video.get("duration") or video.get("videoDuration") or 0)
+    studied = int(video.get("studiedTime") or video.get("studyTime") or 0)
+    if duration and studied >= duration * _END_THRESHOLD:
+        return
+    progress.bump_total()
+    log.info(f"视频任务点: {name} ({duration // 60}分{duration % 60:02d}秒)")
+    end_time = max(duration * _END_THRESHOLD, 1.0)
+    played = studied
+    watchdog = int(time.time() * 1000)
+    max_iters = int(end_time / _REPORT_STEP) + 120
+    try:
+        api.save_cache_time(_share_payload(
+            rid, vid, 0, studied, duration, watchdog))
+    except Exception:
+        pass
+    while played <= end_time and max_iters > 0:
+        max_iters -= 1
+        time.sleep(1 / max(speed, 0.1))
+        played = min(played + _REPORT_STEP, end_time)
+        payload = _share_payload(rid, vid, int(
+            played - studied), int(played), duration, watchdog)
+        res = api.save_cache_time(payload)
+        if not _share_ok(res):
+            res = api.save_database_time(payload)
+            if not _share_ok(res):
+                log.error(
+                    f"共享课进度上报失败: {name} ({(res or {}).get('message', '')})")
+                return
+        data = res.get("data") or {}
+        if isinstance(data, dict):
+            total = data.get("studyTotalTime") or data.get("studiedTime")
+            if isinstance(total, (int, float)) and total > played:
+                played = int(total)
+    if max_iters > 0:
+        progress.bump_completed()
+        log.success(f"视频完成: {name}")
+    else:
+        log.warning(f"视频未播完(超时): {name}")
+
+
+def _share_payload(rid: str, vid: str, interval: int, total: int,
+                   duration: int, watchdog: int) -> dict:
+    """构造进度上报参数(对齐页面字段命名)"""
+    return {
+        "recruitAndCourseId": str(rid),
+        "videoId": str(vid),
+        "intervalTime": int(interval),
+        "cacheIntervalTime": int(total),
+        "studyTotalTime": int(total),
+        "watcVideoTime": int(total),
+        "videoDuration": int(duration),
+        "startWatchTime": watchdog,
+        "clientType": "Windows",
+    }

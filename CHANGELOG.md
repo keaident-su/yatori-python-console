@@ -1,6 +1,326 @@
 # 📋 更新与修复记录（Changelog）
 
-> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V1.2.0 系列）。
+> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V2.0.4-beta8）。
+
+---
+
+## V2.0.4-beta8 版本发布（2026-10-13晚，AI修复 + 拟人化升级 + 协议体系扩展）
+
+### 新增功能
+- 【学习通】"增加学习次数/视频学习/阅读时长"升级为**账号级门禁**：该账号（按只刷/排除过滤后）全部课程完成前不执行，全部完成后统一执行（降低"刷完立即三指标"的节奏特征）。
+- 【学习通】**人类化节奏引擎**（新模块 `logic/xuexitong/human_pace.py`，A+B+C+D）：对数正态分布+相邻题自相关（告别均匀随机）、每账号固定"行为画像"（个体习惯）、疲劳曲线+深夜时段降速、低概率"回看上一题"行为轨迹。作业/章测/考试全链路接入；模式0/1/2兼容（0=旧行为）。
+- 【智慧树】协议秒刷**接入主流程**：共享课刷课自动"协议优先"（三元组全部来自课程列表响应），失败自动回退旧流程；实测24节约10秒完成+复核。
+- 【智慧树】考试域协议客户端固化（`logic/zhihuishu/exam_proto.py`）：固定密钥 AES-CBC 加密的 POST 体系；已定型 getCourseName / getSingleRecruit / getStuProgressRule / getStudentHomework（作业章测列表）/ getExamType / getStudentFinalExam 骨架 / lookHomework 骨架；附 54 接口全谱与三态判别法文档。
+- 【题库】三方合并超集 604752 条（本机+家机+采集库，自动备份）。
+
+### 修复与优化
+- 【AI 答题源】修复三处关键问题：①配置保存丢失 AI 类型字段（后端自动兜底继承）②"在线测试"按钮索引错位恒测本地题库 ③AI 返回非 JSON 数组（对象包裹答案）被误判失败——现全部宽松解析；端点解析防呆加固（未写协议自动补全、官方域名智能补路径）。
+- 【题库】四史专项缺失题补采：685 条平台正确答案入库。
+
+### 说明
+- 本版含热心人士提供的参考资料助力；Web 控制台插件（1.3.7）配套。
+
+---
+
+---
+
+## V2.0.4-beta6 版本发布（2026-10-13，智慧树协议秒刷 + 全系采集 + 题库体系升级）
+
+### 新增功能
+- 【智慧树】协议级秒刷全链路：登录（验证码协议自动处理）→ 课程树 → 逐节取学习记录主键 → 缓存/数据库双通道进度上报 → 自动突破"学习总时长下降"服务端限制。实战：24 节课程约 10 分钟全部完成并变绿（借助热心人士提供的参考资料完成攻克）。固化入口：`logic/zhihuishu/share_proto.py`（支持命令行/代码调用，附完整技术文档）。
+- 【学习通】题库采集全模式：新增"考试采集"（进考试拉卷 → 题库+AI 作答 → 可按正确率提交 → 题目归档）、"指定考试采集"（勾选特定考试）、"采集填充"策略（现役库未命中时查询采集库，控制台可开关）。
+- 【学习通】题目采集新增"考试提交正确率(%)"参数（默认 100=满分作答；低于 100 时按比例随机降级答案，降低"完美卷"特征）。
+- 【题库】"一键并入现役库"新增**投票清洗模式**：冲突题逐源投票多数决 + AI 复核仲裁 + 无法判定隔离；后台异步执行+进度轮询。
+- 【学习通】学习次数/学习时长上限提升至 1000 次 / 10000 分钟（原 400/4000，2.5 倍）。
+- 【Web 控制台】进度大屏升级：按账号"只刷/排除课程"配置过滤显示；无任务点课程显示"当前课程无任务点"；新增人脸照片管理面板；作业/考试完成度行。
+
+### 修复与优化
+- 【Web 控制台】"加载课程列表（勾选）"按钮点击无反应（历史遗留：按钮无事件处理），已修复并可正常加载/预勾选/双向同步。
+- 【Web 控制台】进度页打开等待从 15~45 秒降至 1.5~2.3 秒（新增：每 5 分钟后台预热 + 快照秒显 + 静默刷新三层机制）。
+- 【题库】历史遗留错题批量修正：更正 39 条、新增 190 条（自动备份）。
+- 【题库】全面体检（数据/缓存/写入/引擎/服务/前端六层）全部通过。
+- 【智慧树】视频反复卡加载、弹题死循环等疑难卡点修复（点击定位、缓存/QUIC 处理经验固化）。
+
+### 说明
+- 本版含热心人士提供的参考资料助力；后端程序与 Web 控制台插件（1.3.6）配套升级。
+
+## V2.0.4-beta5 版本发布（2026-10-12，学习通互动测验全链路）
+
+### 新增功能
+- 【学习通】"互动测验（视频弹题）自动补齐"：课程学习完成后自动拉取权威未完成清单（stat2），双接口轮换（PC/mobile 风控独立）扫描弹题 → 多源答题（本地缓存/题库/AI）→ 重登录提交 → 完成度终审。新增配置项 `cxInteractiveQuizSw`（默认开启）；配置文件生成器与 Web 控制台均已提供对应开关。
+- 【Web 控制台】课程进度卡片新增"互动测验 x/y"进度显示（数据缺失自动隐藏）。
+- 实战验证：5 账号 540 题（各 108/108）全部通过，零失败。
+
+### 修复与优化
+- 互动测验多选答案按"A,B,C"逗号格式提交；判断题支持"A/B"直通与文本归一化双通道。
+- 答题源未命中时跳过该题（不乱答）；答对的答案自动写入本地题库缓存。
+
+### 说明
+- 互动测验与章节测验/作业/考试相互独立；开关关闭时完全不影响既有刷课流程。
+
+## V2.0.4-beta4 版本发布（2026-10-09，答案采集归档 + 一键采集）
+
+### 新增功能
+- 【学习通】"答题后题目采集归档"：作业完成后核对平台正确答案时，顺带把「题面+正确答案」归档到独立采集库 `questions_collected.json`（与现役题库完全隔离；走既有写入机制：原子替换+每日备份+占位词拦截）。新增配置项 `cxCollectAnswers`（默认开启）；配置文件生成器与 WP 控制台均已提供开关。
+- 【WP 控制台】「题库管理」页新增"一键采集题目"：选择学习通账号（可指定单课程或全部课程），后端自动遍历已提交作业回读批阅报告，归档题目并同步更正现役题库；仅"查看获取"，不做任何重做/提交。
+- 后端新增接口 `POST /api/v1/tiku/collect`（任务互斥锁；仅学习通）。
+
+### 修复与优化
+- 修复"题库管理"页面因前端缓存旧版 JS 导致的"无法使用"问题（WP 插件版本 1.2.4→1.3.0，静态资源缓存参数同步升级，浏览器将自动拉取新版）。
+- 配置文件生成器修复：修复 2026-10-08 版遗留的下拉组件语法错误（页面白屏），并重做「考试拟人节奏」+ 新增「答题后核对正确答案」「答题后题目采集归档」两个选项。
+
+### 说明
+- "采集归档"与"核对更正"共用同一引擎：自动（作业完成后）与手动（一键采集）行为一致。
+- 章测的回读/采集链路（workAnswerId 获取）仍在验证中，本期采集覆盖"作业"。
+
+## V2.0.4-beta3.1 版本发布（2026-10-09，作业链路二次修复）
+
+### 重大修复：单选题"整体优先"匹配（乱序选项/碎片答案场景）
+
+- 背景：实测——选项字母乱序的题目（作答页 id 与显示序不一致）中，缓存答案被逗号/顿号切碎后，短碎片先命中"部分文本选项"（如答案"提高客户满意度 ，避免纠纷"拆两段后先命中 A），而应按完整文本选 D，导致该题判 0。
+- 修复：_match_answer_to_options 单选时先用"整串(去空白)"与选项做"相等 > 最长包含"比较，命中即返回；多选行为不变。
+- 验证：真实题回归——原错误提交 A 修正为 D，重做后该题得满分；13/13 测试场景全通过。
+
+### 修复：多空填空题 blankNum 字段格式（多空题全错根因）
+
+- 背景：多空填空提交时 blankNum{qid} 旧值"3,"（空个数），而页面/APP 原生为"空序号串"如"1,2,3,"——服务端按后者解析，旧值导致只认最后 1 个空、该题全判 0（实测："报价/谅解/同意"仅记录了"同意"）。
+- 修复：blankNum{qid} 改为"1,2,3,"序号串（与页面原生逻辑一致）。
+- 验证：修复后多空题重做全部满分。
+
+### 改进：enc_task 过期自动刷新重试
+
+- 背景：多作业课程逐个处理耗时长，enter 阶段 enc_task 短时效可能过期（"已过时效"误报）。
+- 修复：enter 遇"已过时效"时自动重新拉取作业列表刷新 enc_task 并重试一次，仍失败才跳过。
+
+### 数据修复：题库缓存错误答案更正（依据学习通批阅报告）
+
+- "维修作业变更服务顾问对客户作必要的…"：说明#同意#签字确认 -> 报价###谅解###同意
+- "维修作业变更，修改维修工单…并更改…"：交车时间#总计价格 -> 交车时间###总维修费用
+- "维修作业变更由车间主任告知服务顾问,至少提前预定完工时间…"：两小时 -> 15分钟
+- "维修作业变更如果客户不同意增修…"：签字确认 -> 签免责协议
+
+### 实测成果（源码版端到端）
+
+- 账号 15322444327 汽车售后服务"增项处理习题-副本"经多轮修复后重做：**12/12 题全部满分（总分 100）**；另有"维修进度跟进-副本""维修确认"两作业同步用修复版重做提交（取最高成绩，无降分风险）。
+- 6 个"未交"作业经查为服务端已过作答期（APP 同样不可作答，非程序问题）；"作业1"为老师设置"重做次数=0"不可重做。
+
+---
+
+## V2.0.4-beta3 版本发布（2026-10-09）
+
+### 重大修复：学习通作业"选项字母识别"致命BUG（英语类课程提交假字母）
+
+- 背景：实测事故——英语类课程（选项文本为英文）作业被提交 AVSC/HOE/STB/IFA、S/H/U 等"越界假字母"，第二次作业 37 题中 11 题必然判错，且作业"已完成"无法重做。
+- 根因：_match_answer_to_options / _strip_option_prefix 把"选项文本的英文首字母"误当"选项字母"（如 'vehicle —…' 取 'V'）。
+- 修复：新增 _option_letter()——仅"字母+点/顿号/冒号/括号"前缀（如"A."）才认作自带字母，其余一律按序号 chr(65+i)；精确匹配与相似度兜底在返回前均过滤 A~H 越界字母；_strip_option_prefix 同步收紧（不再剥英文选项首字母）。
+- 回归：真实事故题目 11 个场景全部通过（原 HOE→ABC、AVSC→ABCD、S→A、U→B 等）。
+- 覆盖：作业/章节测验/考试三条链路共用该函数，一次修复全生效；主源码与后端副本双份同步。
+
+### 重大修复：多空填空分隔符兼容（# 与 ###）
+
+- 根因：题库多空答案用 # 或 ### 分隔，旧逻辑只认 ###——"说明#同意#签字确认"（汽车售后服务-增项处理第7/8题）、"金属薄板壳#cover#行李箱盖#分体式结构#body panel"（英汉互译 5 空题）被整串塞进单个空导致该题全错。
+- 修复：新增 _split_blank_answer()——先按 ### 拆，无效且含 # 时按 # 拆；作业填空与章节测验填空两处链路接入。
+
+### 数据修复：题库缓存污染清洗（83 条）
+
+- 清除 10-08/10-09 事故写入的污染记录 83 条（汽车专业英语 74 条 + 汽车售后服务"#整串"异常值 9 条），清洗前自动备份为 questions_answers.json.bak_时间戳。
+- 验证：污染关键词全部 0 残留；其它课程的模糊命中关联记录 3 条经复核全部保留。
+
+---
+
+## V2.0.4-beta2 版本发布（2026-10-08）
+
+### 新功能：题库缓存「在线更正」（前端「题库管理」页签）
+
+- 后端：LocalTikuCache.update()（覆盖更正/题面重命名）+ search()（分页检索）+ 每日首改自动备份；新增接口 GET /api/v1/tiku/stats、POST /api/v1/tiku/search、POST /api/v1/tiku/update（走现有加密通道）；仅允许更正已存在的题目，沿用原子替换+外部修改检测。
+- 前端（WP插件 1.2.4）：新增「题库管理」页签——关键词搜索（题目/答案/全字段）、分页浏览、在线更正（二次确认、保存后立即生效）；卡片式列表+手机端适配。
+- 实测：60.2万条真实题库检索/分页/反搜/写入防护全部通过。
+
+### 重大修复：前端"编辑已存在账号"保存后不同步（旧配置仍在跑）
+
+- 根因：update_user_service 写库后未清理 global_var 内存 Activity 缓存（含旧User快照），startBrush 复用旧 Activity 运行（停止再启动也无效，只有重启后端才恢复）。
+- 修复：update/delete/add 三处写库成功后统一 remove_user_activity(uid)，下次启动按最新库数据懒重建——编辑保存后立即生效。
+
+### 新功能：学习通考试「拟人节奏」（防"答题节奏规律"风控）
+
+- 背景：大号曾因每题0.2~0.5秒的机器式节奏被风控（服务端 monitorparam.duration 记录答题时长）。
+- 配置：cx_exam_pace（0=关闭 / 1=标准拟人默认 / 2=谨慎更慢）。
+- 节奏：开卷阅读5~15s + 每题随机思考2.5~7s（长题干/多选加成） + 每8~15题长停顿15~45s + 交卷前检查30~90s。
+- 安全红线：仅时间等待，绝不模拟切屏/离开事件（纯协议零上报）。
+- 推广：学习通作业/章测同款节奏。
+
+### 改进：安全微伴日志增强
+
+- 403/401结构化日志（异地或重复登录冲突）；-101错误码语义自动附注；完成失败详情入运行日志；Token失效附排查建议。
+
+### 改进：全平台模式日志 + 多任务点上报
+
+- 学习通「模式摘要」一行输出（视频模式/任务点模式/考试节奏/自动考试/自动交卷）。
+- 多任务点模式（含无限制）启用时邮件/ShowDoc双通道主动推送上报。
+
+### 改进：生成器与前端「新选项说明」
+
+- 生成器：新增「考试拟人节奏」选项（含extra说明）+默认值。
+- 前端：问号提示机制（❓点击弹说明）+手机端适配增强（弹窗自适应/16px防缩放/sticky操作栏）+关键选项tip补齐。
+
+---
+
+## V2.0.4-beta1 版本发布（2026-09-30）
+
+### V2.0.4-beta1 补丁（2026-10-07）：正式考试"提交签名"逻辑突破与移植（重大）
+
+- **背景**：继"进卷+拉题+答题"全链路打通后，正式卷的"逐题提交/交卷"被服务端拒绝（`{"msg":"提交失败：请使用学习通APP最新版本"}`）。获外部参考脚本（热心人士提供）新版（含完整提交+交卷链）后完成突破与移植。
+- **提交签名完整姿势**（移植来源：热心人士提供的参考脚本，实测对照验证）：
+  - **param格式**：`submitExam_{tuid}-{classId}-{enterPageTime}-{qid}-{答案值}`（四参数全拼：进入页面时间+题号+答案值）；
+  - **签名链**：`sig=RSA("param"+param)`（同一把内嵌私钥）→ `signt=MD5(cxcid{cid}cxtime{cx}param{param}paramToken{sig}{sc})`；
+  - **URL**：`_csign=1&_signcode=true&_signc=1&_signe=&_signk={sig}&_cxcid={cid}&_cxtime={cx}&_signt={signt}`（_signcode为字符串"true"）+ `pos=` 空 + `version=1`；
+  - **form**：同时携带无下划线版 `cxcid/cxtime/signt/signk`（官方APP双签名）；Referer必须为题目页URL。
+- **改动清单**：
+  - `logic/xuexitong/api.py` `submit_exam_answer_api`：新增v2提交签名段（`fetch_exam_client_id_v2`→`form_sign_v2`→`compute_signt_v2`），成功时URL/form双签名；失败自动回退旧占位签名（向后兼容）。
+- **进卷链路三处修复沉淀**（四史测试过程，已落地 part.py）：
+  - "访问异常→iPhone UA重试"后必须恢复 mobile UA 再签名（否则iPhone UA下签名start被拒）；
+  - 签名start前必须**重新过滑块**（"访问异常"重试pull会消耗validate，重试页变"安全验证不通过"）；
+  - v2/v1签名成功后必须**从enc页重新解析元数据**（encRemainTime/encLastUpdateTime/testPaperId等，否则拉题缺remainTimeParam被"无权限"拒绝）。
+- **实测状态（全闭环达成★）**：**13639031572-课程"108"-【没有人脸】考试：yatori 全流程跑通——进卷(v2签名) → 3题答题(言溪题库命中) → 逐题提交(全部 `{"msg":"提交成功","status":"success"}`) → 交卷(末题finalSubmitTime) → 考试变为"待批阅"——"学习通正式卷全自动考试闭环"首次完整达成！** **加码复测：19885639522 同课程同款【没有人脸】考试亦完整闭环（3题→提交→交卷→待批阅），并首次实测两个新分支：①"开考1分钟内限制提交→自动等待1分30秒后交卷"保护逻辑跑通；②跨账号本地题库缓存命中（第2题由前账号提交成功写入的缓存直接命中）。** 同名课程【拉满】(人脸卷)安全跳过（人脸准备失败→精准提示→不误伤）。四史教育（15985371026）进卷+拉题（85题）全通、提交环节待验证（用户要求停止测试）；斗罗大陆三场人脸卷被"人脸识别对比不通过"硬拦（start前置门槛）。
+- **文档**：`build/ref_migration/SUBMIT_SIGN_REVERSE_LOG.md`（提交签名专项逆向记录）。
+
+### V2.0.4-beta1 补丁（2026-10-05b）：考试人脸H5全链路逆向完成（情报层）
+
+- **背景**：用户要求结合7.0.4逆向与参考项目继续攻坚"正式人脸监考卷"。本轮通过对服务端在线JS的完整逆向，彻底摸清了考试人脸的官方流程。
+- **逆向成果（服务端JS实拉，已沉淀至 exam_sign.py 头部注释）**：
+  - **全部前端签名函数及param格式**（均经 jsBridge 'CLIENT_FORM_SIGN' 交APP原生RSA签）：
+    `startExam_{tuid}-{classId}`（已验证✓）、`faceCompare_{tuid}-{classId}-{currentFaceId}-{sessionId}`、`submitExam_{tuid}-{classId}-{blankNum}-{flag}`、`examSignatureCheck_...`、`keeperLog_...`；回调约定 `window[funckey](cxcid,cxtime,signk,signt,code,count,ecode)`。
+  - **face-compare 完整参数集**（前端 faceCompare() 函数）：relationid/courseId/classId/currentFaceId/liveDetectionStatus/collectStatus/recogType/_provider/sessionId/SenseDetectionStatus/tk/cpi/_d；tk=cxcid_cxtime_signToken（来自原生人脸object）；带签名时追加 _signcode/_signc/_signe/signk/cxcid/cxtime/signt。
+  - **人脸两套链路结论**：正式监考卷=APP原生人脸→原生拿facekey→jsBridge回传H5→带facekey直接start；face-compare仅为无APP时的降级替补（对正式卷被服务端拒绝"无效参数"，实测穷举6参数变体+4签名组合+完整参数集均拒）；自测卷（如测试7）face-compare开放，换基准法100分→全自动✓。
+  - **end-to-end闭环**：to-face-compare页 processResult→facekey→CLIENT_WEB_EXTRAINFO(ENTER_EXAM)→考试页start。
+- **结论**："正式人脸监考卷"的人脸凭证链必须依赖真APP原生环境（完整jsBridge+设备SDK签名），纯协议无法跨过——yatori 保持"自动识别+精准日志提示+温和跳过"的正确行为。
+
+### V2.0.4-beta1 补丁（2026-10-05）：考试人脸认证全链路自动通过（重大突破）
+
+- **背景**：v2签名链打通后仅剩"考前人脸"一关（服务端"人脸识别对比不通过"）。用户要求结合GitHub最新项目再挣扎一轮。
+- **情报来源**：GitHub CxKitty 系列项目（face-compare 接口全网唯一参考）+ v2签名链实测移植。
+- **修复底层BUG（"人脸验证失败"真正根因之一）**：`http_client.py` 的 multipart 分支只打包 data 文本字段，"files（图片）从未进 body"——所有人脸照片上传恒返回"file不能为空"（卡片人脸/考试人脸上传链路全部失效）。修复后上传 `{"result":true,"objectId":...}` 正常。
+- **新增考试人脸自动认证（换基准法）**：上传人脸照 → `changefaceid` 换基准（服务端有人脸质量检测）→ `face-compare`（relationid=**taskrefId**）比对"自己vs自己"100分 → `facekey`凭证 + `faceDetectionResult`(紧凑JSON) → `start` 携带 `faceDetection=1&facekey&faceDetectionResult` → **进卷成功**。
+- **端到端实测（13639031572-斗罗大陆-测试7）**：完整链路一次通过——HTTP 200 / 72977字节试卷页（含enc，remainTime计时启动）。**"人脸考试"从此可全自动**（此前只能人工APP参加）。
+- **全流程验证（2026-10-05 实测）**：yatori 自动跑完"测试7"人脸考试全流程——人脸认证通过→3题全自动作答（言溪题库）→自动交卷（`{"status":"success"}`）→考试已完成；3题均写入本地题库缓存（新策略生效）。
+- **补充修复（人脸拦截重试链路）**：
+  - `part.py`："人脸识别对比不通过"拦截分支升级——原"直接跳过"改为"人脸准备(换基准法) → 带凭证重发start(带v2签名)"自动过人脸（已实测成功进卷）；
+  - ★ 滑块 validate 是一次性消耗品：pull 那次裸 start 已用掉旧 validate，retry 必须**重新过滑块**拿新 validate（否则重试报"安全验证不通过"）——已修复。
+- **改动清单**：
+  - `logic/core/http_client.py`：multipart 分支补 files 字段打包（含 Content-Disposition/Content-Type/二进制安全）。
+  - `logic/xuexitong/api.py`：新增 `face_compare_exam_api`（考试人脸比对）+ `prepare_exam_face`（上传#1→换基准→上传#2→比对→组装faceDetectionResult 一体化；照片源复用现有 `_face_load_image`：assets/faces/{账号}/ 目录 → 单张兼容 → 历史人脸）。
+  - `logic/xuexitong/part.py`：`_exam_action` 签名段新增"考前人脸准备"——封面 `faceRecognitionCompare=1` 时自动准备凭证；v2/v1 两条签名路径的 start URL 均注入 `faceDetection/facekey/sdlkey/faceDetectionResult`；人脸被拦日志升级（区分"已带凭证仍被拦"/"未放置照片"）。
+- **人脸照片**：使用现有体系（前端控制台"人脸"按钮上传 → `assets/faces/{账号}/` 多张随机轮换）；无照片时保持旧行为（跳过并提示）。
+- **文档**：`build/ref_migration/FACE_BREAKTHROUGH.md`（完整链路+踩坑对照表）。
+
+### V2.0.4-beta1 补丁（2026-10-03b）：题库缓存策略重构（提交成功后写入）
+
+- **背景**：用户反馈"三方题库答案未写入缓存"。诊断确认真实原因：① 原"即问即存"防污染规则（选择题>20字符/含句末标点拦截）误杀大量"选项文字"型答案；② 提交失败的题也被写入（质量差）；③ 存的是"提问文本"而非"提交文本"。
+- **新策略（用户方案）**：取消"即问即存"，统一改为"**提交成功后写入**"（提交成功=答案有效，彻底避免误杀/失败题污染）。
+- **改动清单**：
+  - `answer_engine.py`：① `query()` 移除"即问即存"块（仅留日志"答案待提交成功后写入"）；② `_answer_cacheable` 精简为只拦截"占位词/空/换行/超长(>2000)"（不再拦截">20字符/句末标点"）；③ 新增 `cache_answer_after_submit(question, answer, q_type, answer_src)` 统一写入函数（含"来源为本地缓存则跳过"去重）。
+  - `part.py`：三处提交钩子统一接入——**作业**（`if submit_ok:` 行）、**考试**（`if exam_submit_ok:` 行）、**章节测验**（`if is_success:` 批量写入，循环内收集 `_ct_cache_pairs`）；写入成功时输出"已写入题库缓存(提交成功)"日志。
+- **验证**：编译✓；功能测试✓（正常字母/选项文字带句号均写入成功、占位词拒绝、本地源去重跳过、文件条目数符合预期）；源码检查确认旧逻辑零残留。
+
+### V2.0.4-beta1 补丁（2026-10-03）：考试客户端签名v2重大突破（APP原生链完整移植）
+
+- **背景**：用户提供学习通APP原生协议实测脚本（热心人士提供），完整揭示"设备指纹链+CLIENT_FORM_SIGN签名"真实算法；yatori 完成移植并端到端验证通过。
+- **新增设备指纹链**（此前完全缺失的关键环节）：
+  - `exam_sign.py` 新增 `build_device_info_v2`（设备画像JSON）/ `rsa_encrypt_report_v2`（RSA-1024公钥分块加密）/ `rsa_decrypt_client_id_v2`（clientId公钥解密出 cid/sc）；
+  - `api.py` 新增 `sso_accinfo_api`（SSO会话）+ `fetch_exam_client_id_v2`（完整链，结果缓存到 cache.exam_client_id/exam_sc）；
+  - `models.py` XueXiTUserCache 新增 `exam_client_id`/`exam_sc` 字段。
+- **新增正确签名算法**（此前30+种组合全错在消息构造）：
+  - `exam_sign.py` 新增 `form_sign_v2`（RSA签"param"+param）/ `compute_signt_v2`（MD5六段链）/ `compute_start_exam_sign_v2`（一站式）；
+  - `part.py _exam_action` 签名段升级为 **v2优先 + v1回退**（`_V2SignDone`异常控制跳过回退）。
+- **修复滑块精度缺陷**（隐藏的第二个坑）：
+  - `captcha.py` 新增 `detect_slide_offset_cv2`（cv2模板匹配，脚本同款算法），`_pass_slider_once` 优先使用；原NCC降采样差~9像素导致check失败（"安全验证不通过"）。
+- **端到端实测**（斗罗大陆APTX-4869）：yatori官方流程（v2签名+修复滑块）→ 服务端响应"人脸识别对比不通过，不允许进入考试"，与实测脚本100%一致——**签名链完全打通**！4场考试均为人脸考试（faceRecognitionCompare=1），仅剩"人脸"一关（需真人脸，纯HTTP无法过）；若考试 needFaceRecognition=0 则可直接进卷全自动答题。
+- **文档**：`build/ref_migration/B3_ANDROID_ATTACK_LOG.md` 新增第九章（v2突破全记录）。
+
+### V2.0.4-beta1 补丁（2026-10-02）：学习通7.0.4逆向情报落地
+
+- **依据**：学习通 Android 7.0.4 版（版本号10995）完整逆向工程（chaoxing_app_7.0.4/）。
+- **`logic/xuexitong/exam_sign.py`**：① 头部注释更新——新增7.0.4证据链（libsecuritylib.so JNI导出 webRequestSign/verifyJsSign/cryptUserAgent/CxDevice_getDeviceInfo、rsa_util签名函数、设备链路模型）；② 新增 `message_mode=3/4`（3=参考项目模板"cxcid{v}cxtime{v}param{v}paramToken{v}"、4=带分隔符"k=v&"变体），供考试签名实测调优。
+- **`logic/xuexitong/part.py`**：`_generate_device_flag` 注释增补7.0.4设备链路情报（APP真实设备码为多源画像+9项风控+服务端状态共同派生的加密值，非单一明文；本函数以APP兼容加密格式模拟生成）。
+- **实测结论**：mode 0/3/4 × _signcode 0/1 组合测试（13639031572-斗罗大陆）服务端仍拒绝——证实"签名消息字节流"为服务端私有细节（业务代码在梆梆壳加密载荷内），与7.0.4逆向报告结论一致。普通考试不受影响。
+- **文档**：`build/ref_migration/B3_ANDROID_ATTACK_LOG.md` 新增第八章（7.0.4逆向情报全记录）。
+
+- **版本号升级**：`config/logo.txt`（启动横幅）、`web/server.py`、`main.py`、`build_protected.py`、Windows exe 名称（`yatori-python刷课系统V2.0.4-beta1.exe`）、Release 附件名全部同步至 **V2.0.4-beta1**。
+- **本版内容（取长补短系列 · 第一批）**：
+  - **【新平台支持】tsjy（超星通识教育/学习广场）课程学习**：修复"有些任务点刷不了"问题——tsjy.chaoxing.com 平台的课程在 gas/clazz 章节接口下知识节点为0会被静默跳过；新增独立学习链路（`logic/xuexitong/tsjy.py`）：Referer 鉴权 → `/plaza/course/{cid}/node-list` 拉知识点 → `/plaza/user/{cid}/{nodeId}/modify-node` 拿 h5enc → `knowledge/cards` 解析 AttachmentSetting → `POST /keeper/api/receive-studylog`（eventType=4, enc=mtEnc）上报，实测 `{"status":true}` 通过。课程拉取自动识别 tsjy 课（courseSquareUrl 含 tsjy.chaoxing.com）并分流，无需额外配置。
+  - **【日志系统改造】跨天自动切换 + 账号专属日志 + uvicorn 访问日志落盘**：① 修复"系统时间过0点后仍写旧日期日志文件"的bug——自研 `_DailyRotatingHandler` 每次写入检查日期，跨天自动切换新文件（单日100MB轮转保留）；② 新增账号独立日志：刷课线程内日志自动带 `[账号|备注]` 前缀（控制台+全局文件），并同时写入 `assets/logs/accounts/{账号}_{备注}/{日期}.log`；Web 与 CLI 全平台（11个平台）自动注入账号上下文；③ uvicorn 的 HTTP 访问日志（如 `INFO: 127.0.0.1:50105 - "GET /api/v1/logTail..." 200 OK`）一条不漏写入全局日志文件；④ 新增 `/api/v1/logAccounts` 接口 + 前端"实时日志"页账号下拉（全局日志/各账号切换）。
+  - **【任务点细化】微课/图书/阅读专用上报 + 投票任务点 + 任务点复核**（对齐 参考项目 取长补短）：① 新增**微课任务点**解析与专用上报接口 `/ananas/job/microCourse`（旧版归入文档报会导致任务点不识别）；② 新增**投票任务点**上报接口 `/ananas/job/vote`；③ 图书（insertbook→/ananas/job）、阅读（insertreadv2→/ananas/job/readv2）细化区分保留；④ 章节学习完成后**任务点完成度复核**（重新拉取统计，输出未完成节点数提示，对齐 参考项目 taskPointStatistics 能力，不自动无限重刷）。
+  - **【积分课支持】tsjy 学习广场课积分机制打通**：查明"积分课"= tsjy 平台（学习广场）课程的游戏化积分体系——积分由看视频/阅读/测评等学习行为**自动累积**（bigdata-score.chaoxing.com/tsjy/point/*），刷课成功即积分到账；新增 `TsjyStudy.get_day_score()` 积分查询（/plaza/score/{cid}/day-score，对齐 参考项目 day-score），tsjy 课程刷完后日志自动显示"课程积分: 累计X, 今日Y"。
+  - **【致命BUG修复】课程过滤（只刷/排除）匹配语义错误**：前端标签为"只刷课程(名称包含)"/"排除课程(名称包含)"，但后端 `cmp_course` 旧实现为**精确相等**（`course in course_list`）——用户按"包含"语义填写部分名称（如填"军事"想排除"军事理论(2025)"）时匹配**全部失效**：排除不生效（不想刷的课照跑）/只刷全部跳过。已修复为**包含匹配**（配置项等于课程名 或 作为子串包含于课程名 均命中），全平台（11个）过滤同步生效。已用真实账号双组实测验证（只刷组：30门→只处理1门；排除组：3门排除课全部正确跳过、其余正常学习）。
+  - **【tsjy分流误判修复】混合课程回退机制**：部分课程URL挂 tsjy 但实际学习内容在标准 mooc 系统（如"四史教育-新青年·习党史": tsjy侧"课程不存在"/0节点，mooc侧147节点+59任务点）。tsjy 分流前现在会先探测节点，无节点自动**回退标准章节链路**，避免这类课被"无节点跳过"。
+  - **【停止刷课空转修复】停止传播链全部补齐**（据生产日志定位：点击"停止刷课"后，当前视频虽退出，但节点线程仍继续启动后续任务点视频/文档空转 N 次）。新增停止检查点：① `_node_run` 入口（停止后不处理新节点）；② 视频/文档/章测/外链/直播/讨论/其它 全部 7 类任务点循环开头（停止后不再启动新任务点）；③ `_course_study` 入口（停止后不进入章节学习/作业/考试）；④ 课程线程启动循环（停止后不启动新课程）。
+  - **【作业提交对齐网页真实格式】修复"保存成功但任务点不变绿"**：作业提交 URL 对齐学习通作业页 form 真实 action——补全 `workAnswerId/workid/cpi/jobid/knowledgeid` 参数、`ua=app`+`formType2=post`（旧实现缺参且用 ua=pc&formType=post，服务端仅暂存不关联任务点完成）。修复后服务端返回 `{"msg":"success!","stuStatus":4,"submit=true"}`（正式交卷），实测四史教育课 29 个黄点全部变绿、课程进度 50%→100%。
+  - **【多选题答案残缺修复】空格分隔多答案只提交首项**：`_similarity_array_select` 的分割符不含空格——题库答案如 `'规模大 来源广 年龄跨度大'`（应为 BCD）被整句当作一个答案匹配，只匹配出单个字母（实测 `['B']`）→ 每道此类多选题都答错。已修复：标点分割失效时按空格二次分割，逐段高置信(≥0.6)匹配，四重保护（仅1段+全片段高置信+≥2字母+多于原结果才采用）防止"含空格的单一答案"被误判。验证 7/7 边界用例全过（空格三分→BCD、逗号/顿号正常、单选完整答案/单答案含空格/整句单选均不误判）。
+  - **【纯图文节点黄点修复】知识点简介/推荐阅读书目不再跳过**：这类节点卡片是纯HTML文本（无iframe），`_node_run` 旧逻辑 `if not iframe_list: continue` 直接跳过——页面目录树的绿/黄由服务端"访问记录"驱动（实测这些节点 totalcount=0），因此黄点永不变绿。对齐 参考项目 修复：无iframe但desc含HTML的卡片归入其它类型（module=text_content）→ `read_point_report_api`（data-xxt ac_mark/readPoint）上报阅读记录 + `_simulated_browse` 停留30秒周期性重开卡片页。实测四史教育课 58 个图文节点全部上报成功。
+  - **【夜间休息 + 积分课检测+每日积分策略】三大新功能（对齐 参考项目）**：① **夜间休息**：新增 `restSw`（开关，默认0）+ `restStart`/`restEnd`（默认23:00/06:00，可修改），开启后休息时段内刷课暂停等待到点自动继续（每15秒检查"停止刷课"可随时中断等待）；接入点：拉课后/建池后/课程循环前后。② **积分课自动检测**：新增 `jfSw`（开关，默认0），开启后启动刷课时自动扫描每门进行中课程——调 `bigdata-score.chaoxing.com/tsjy/point/getCount` 检测积分课，日志输出"🔍 检测到积分课: 今日X分（上限Y，累计Z）"。③ **每日积分策略**：检测到积分课时计算与 maxScore 的缺口，由正常刷课行为自然累积，刷课结束后 `_jf_final_report` 复查提示缺口。新增 API：`point_get_count_api`（积分数据）+ `class_weight_api`（积分考核规则）。WP插件/配置生成器已同步字段（restSw/restStart/restEnd/jfSw）。
+
+---
+
+## V2.0.2-beta4 版本发布（2026-09-24）
+
+- **版本号升级**：`config/logo.txt`、`web/server.py`、`main.py`、`build_protected.py`、Windows exe 名称（`yatori-python刷课系统V2.0.2-beta4.exe`）、Release 附件名全部同步至 **V2.0.2-beta4**。
+- **本版内容（beta4 修复，对应前端插件 v1.2.2）**：
+  - **多任务点"双建池"重大修复**：Web 层不再按 cxNode 复制 N 份 cache（旧逻辑与引擎层重复建池 → cxNode=10 时产生 100 次登录风暴、cxNode=-1 时 `range(-1)` 为空导致不运行）；登录池建立统一由引擎层 `part._user_block` 按 cxNode 分支处理（>0 预登录池 / -1 无限制 / 0 默认3）。
+  - **停止刷课不生效修复**：新增账号级停止标志（`request_stop/clear_stop/is_stopped`），在"建池前、建池循环内、课程循环、节点调度、视频轮询"5 个检查点优雅退出；停止后视频不再继续上报（修复进度回退）。
+  - **前端「同时任务点数量」改回输入框**（可任意填 -1 / 0 / 正数，与配置文件生成器完全一致；插件版本升至 1.2.2）。
+
+---
+
+## V2.0.2-beta3 版本发布（2026-09-24）
+
+- **版本号升级**：`config/logo.txt`（启动横幅）、`web/server.py`、`main.py`（APP_VERSION）、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.2-beta3.exe`）、Release 附件名全部同步至 **V2.0.2-beta3**。
+- **本版内容（V2.0.1 之后）**：
+  - **CPU 无差别适配（型号级性能配置）**：新增 `cpus/` 目录（与 main.py 同级），每颗 CPU 一份独立 YAML 配置（41 款内置：AMD/Intel 桌面+移动主流型号，下划线归一命名如 `AMD_Ryzen_7_8845HS.yaml`）；新增 `logic/core/cpu_profile.py` 负责识别（Windows 注册表 / Linux /proc/cpuinfo / macOS sysctl）+ 三级匹配（精确→别名→包含）+ 公式兜底 + 启动横幅提示。**用户新增 `cpus/{型号}.yaml` 即自动生效，无需改源码**（规范见 `cpus/README_CPU配置规范.md`）。打包时 cpus/ 自动随包复制到 exe 同级。
+  - **性能策略（全局开关）**：`basicSetting.fullCpuMode`（0=默认基准核数 n-1 保留一份 / 1=全速吃满全部逻辑核）+ `basicSetting.performanceGear`（aggressive 激进[登录=基准×1.5/提交=基准/AI=基准÷2/视频=基准×¾] / conservative 稳健）。前端 WordPress 插件「后端配置」页可实时切换；配置文件生成器同步新增两个控件。
+  - **运行期负载自适应**：新增 `logic/core/perf_tuner.py`——每 10s psutil 采样，CPU 负载 <50% 系数自动上调（上限 1.5×）、>85% 自动下调（下限 0.5×）；所有并发消费方（登录/提交/视频/间隔/连接池/进程池/AI 信号量）统一走 `parallel.tuned_*` 动态取值。
+  - **并发全函数化改造**：`parallel.py` 由静态常量重构为动态函数（`login_workers()` / `work_concurrency()` / `ai_concurrency()` / `fast_video_workers()` / `node_start_interval()` / `cpu_pool_workers()` 等），支持热更新与全速自动缩放（配置值为 n-1 基准，全速时按 n/(n-1) 上调）；节点启动间隔下限降至 0.06s。
+  - **回退早期"低配砍并发"方案**：经实测（用户反馈"明显变慢"）全面回退 IS_LOW_SPEC 减半策略，恢复原版全速 + 可选开关。
+
+---
+
+## 🚀 V2.0.1 版本发布（2026-09-23）
+
+- **版本号升级**：`config/logo.txt`（启动横幅）、Web 服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.1.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V2.0.1`）全部同步至 **V2.0.1**。
+- **本版内容（V2.0.0 之后）**：
+  - **GPU 硬件加速（全厂商 / 跨平台）**：新增 `logic/core/gpu_accel.py`（NVML/nvidia-smi/WMI 惰性探测 → 评分 → 按平台给出 provider 优先级 + 解码线程建议）与 `logic/core/ort_ocr_session.py`（GPU 自适应 ONNX Runtime 会话，替换 `rapidocr_onnxruntime.utils.OrtInferSession` 注入，det/rec/cls 三个模型全部生效）。
+    - 后端矩阵：**Windows → DirectML（NVIDIA/AMD/Intel/核显 全厂商）+ 有 CUDA 时优先 CUDA；macOS → CoreML；Linux → CUDA/ROCm；无可用 GPU 自动回落 CPU**。
+    - 健壮性：**推理探针**（建会话成功≠真能用：缺 cuDNN 的 CUDA / 无 DX12 设备均会在 Conv 节点才报错；探针对多个候选形状零张量实跑一次，失败才换下一个后端）+ **CUDA 运行库自挂载**（自动把 pip 的 `nvidia/*/bin` 与 `CUDA_PATH/bin` 加入 DLL 搜索路径，无需系统装 CUDA Toolkit）。
+    - 安装适配：`requirements.txt` Windows 改用 `onnxruntime-directml`（并注明 rapidocr 会带入 CPU 版需 force-reinstall 的技巧）；环境变量 `YATORI_OCR_CPU=1` 可强制 CPU。
+    - 新增自检命令：`exe --gpu-check` / `python main.py --gpu-check`——打印显卡、平台后端优先级、可用后端与**实际生效的推理后端**；OCR 首次初始化时也会在日志/控制台输出实际后端。
+    - **实测**：源码环境 det/rec/cls 全部走 CUDA（自动挂载 pip 的 cuDNN 后）；打包环境 `--gpu-check` 输出实际推理后端 **DmlExecutionProvider**；无 GPU/老显卡自动回落 CPU，功能完全不受影响。
+  - **低配机性能自适应**：`logic/core/parallel.py` 新增 `IS_LOW_SPEC`（逻辑核 ≤4）判定，AI/登录/视频/解析并发与 httpx 连接池上限减半并带最小下限，节点启动间隔加倍，避免低配机上 CPU 长期高占用；高配机保持原有全速。
+  - **后端配置在线读写**：新增 `web/controller/config_controller.py`——`/configGet` 读取可编辑设置（排除 web 相关项）、`/configSave` 白名单写入 config.yaml 并热更新（免重启）、`/sourceTest` 答题源真实查询测试、`/emailTest` 邮件发送测试；`web/router.py` 注册到 /api/v1。
+  - **人脸本地库多张轮换**：`logic/xuexitong/api.py` 人脸加载升级——优先读取 `assets/faces/{账号}/` 目录下多张图片并随机轮换（控制台「人脸」按钮上传），降低同一张照片被风控概率；兼容旧单张 `assets/faces/{账号}.jpg`；都没有时才拉取历史人脸。
+  - **HTTPS 自签证书自动生成**：`logic/launcher.py` 新增 `_ensure_self_signed_cert()`——未配置证书时调用 openssl 生成并持久化到 `assets/web_ssl/`（兼容 Windows Git 自带 openssl 路径），失败回退 HTTP。
+  - **安全微伴增强**：`logic/weban/client.py` 新增 ETA 课程状态跟踪与题库解析增强。
+  - **配套前端**：WordPress 控制台插件升级 1.2.0（账号字段全量补齐 / 后端配置页 / 在线测试 / 性能自适应）。
+- **构建方式**：Windows 单文件 exe 与 macOS/Linux 二进制均由 `build_protected.py` 同源构建；本次沿用 Cython 编译全部自研模块为原生扩展 + PyInstaller 单文件，打包前以全量 cythonize 预检确认 0 编译不兼容。
+
+---
+
+## 2026-09-23
+
+### 🎮 GPU 硬件加速真正落地（全平台自适应 + 构建来源固定 + 自检开关）
+
+- **背景/根因**：此前“GPU 自动检测与硬件加速”只有探测、未真正生效——① `rapidocr_onnxruntime 1.2.3` 的 GPU 开关与其内部实现不匹配（`det_use_cuda` 会触发内部 KeyError、`use_dml` 被忽略），异常被吞后静默回落 CPU；② 发布包内既无 CUDA provider（为压体积裁剪）也无可用 DML 后端，OCR 恒为 CPU。
+- **平台自适应后端（单一事实源）**：`logic/core/gpu_accel.py` 新增 `pick_ort_providers()`——按平台优先级（Windows: CUDA→DirectML→OpenVINO；macOS: CoreML；Linux: CUDA→ROCm→OpenVINO）与 onnxruntime 实际可用后端取交集，避免“探测到 GPU 但后端不存在”的假加速；`YATORI_OCR_CPU=1` 强制 CPU 便于对比。
+- **注入 + 探针验证**：`logic/core/ocr_utils.py` 通过临时替换 rapidocr 内部 `InferenceSession` 符号，把选定后端注入其 det/rec/cls 三个会话（与 rapidocr 版本解耦，不升级依赖）；每档后端先用最小图做真实推理探针，失败自动降档——实测成功拦截“CUDA 缺 cuDNN 时会话建成功但推理崩溃”的假可用场景并逐级回落。
+- **构建来源固定**：`build_protected.py` 新增 ORT 来源解析（`YATORI_ORT_SRC` 环境变量 > 解释器 site-packages > 同盘 *venv* 目录）与包内校验：Windows 构建必须内置 `DirectML.dll`，否则直接报错并给出可操作指引；杜绝此前“同一脚本两次构建收到不同 ORT、体积 151↔169↔700MB 漂移”的问题。
+- **自检开关**：`main.py --gpu-check`（exe 与源码通用）输出显卡探测、平台候选后端、onnxruntime 可用后端、OCR 实际生效后端，并给出未生效原因提示。
+- **实测**：① 源码 DML 环境 → 实际后端 `DmlExecutionProvider`、识别正确；② 主环境 CUDA 缺 cuDNN → 探针拦截并回落 CPU（识别仍正确）；③ 从发布 exe 完整解包实跑 → 包内后端 `DmlExecutionProvider`、识别正确；④ 打包体积 169.1MB（DirectML 增量 +18MB）。
+
+---
+
+## 🚀 V2.0.0 版本发布（2026-09-23）
+
+- **版本号升级**：`config/logo.txt`（启动横幅）、Web 服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.0.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V2.0.0`）全部同步至 **V2.0.0**。
+- **本版内容（V1.2.0 之后）**：安全微伴（WEBAN）平台接入并真机全链路验证通过；智慧树（ZHIHUISHU）平台接入（**验证中**）；内置图形界面（Web 模式，自动打开浏览器）；前后端分离部署（web-s 前端 + AES-256-GCM 加密通道）；管理界面安全加固与外网暴露面收敛；全平台课程/总进度查询（11 个平台）；SSL 证书管理（多证书 SNI 即时生效）；人脸照片上传（多张随机轮换）；Android 底座与 Docker 异形架构适配；macOS 安装与使用指南。
+- **构建方式**：Windows 单文件 exe 与 macOS/Linux 二进制均由 `build_protected.py` 同源构建（内置安全微伴验证码 ONNX 模型与内置题库兜底 answer.json）；Docker 多架构镜像由 CI 按 logo.txt 版本自动打标签。
 
 ---
 
@@ -71,6 +391,78 @@
 - **生成器配套**：基础设置新增「Web模式(图形界面)（默认开）/ Web端口 / 自动打开浏览器」三项开关。
 - **打包与路由**：build_protected.py 收集 web/static 静态资源；根路径 `/` 自动重定向至 `/web/`。
 - **验证**：Chrome 实测——页面渲染/添加/删除/统计/SSE 实时日志/根重定向/importConfig 路由全部通过；Python 层 5 项单测通过；生成器页面渲染与三个新控件显示正常。
+
+### 🌐 前后端分离架构改造：web-s 独立前端 + AES-256-GCM 通信加密 + HTTPS 支持
+
+- **后端服务化增强**（保持兼容：webModel 未开启时行为完全不变）：
+  - **通信加密通道** `web/crypto_channel.py`：AES-256-GCM 预共享密钥，请求头 `X-Yatori-Enc: 1` 触发，密文布局对齐浏览器 Web Crypto（nonce12+ct+tag），时间戳防重放，密钥自动生成并持久化（config.webSecret → assets/web_secret.txt）；
+  - **HTTPS 支持**：`basicSetting.webSsl/webSslCert/webSslKey`，缺省自动生成自签证书（openssl，兼容 Windows Git 环境）；
+  - **CORS 放开**（credentials=False、headers/methods 全放行）以支持宝塔等外部分离前端直连；
+  - **新增 `GET /api/v1/logTail`**：日志尾部轮询接口（外部分离前端在加密通道下替代 SSE）；
+  - 修复：解密失败同样以加密错误包回应防探测；中间件覆盖 Starlette 请求体缓存确保路由拿到解密数据。
+- **新增独立前端 `web-s/`**（WordPress 后台风格）：
+  - 纯静态单页（hash 路由，零依赖零构建）：index.html / assets/{wp.css,api.js,app.js} / config.example.js / 部署说明.md；
+  - 功能：仪表盘统计、账号表格管理（增/删/改/启停/课程）、实时日志轮询、系统设置与连接测试引导；
+  - **AES-256-GCM 客户端加密**（Web Crypto），与后端协议完全互通；密钥不一致时给出明确排错提示；
+  - **宝塔部署友好**：上传网站根目录即用（无需伪静态/反向代理），支持宝塔 SSL 证书（配套后端 HTTPS）。
+- **配置生成器**：基础设置新增「Web通信密钥」「Web服务HTTPS」两项（连同此前的 Web模式/Web端口/自动打开浏览器）。
+- **验证**：后端加密往返/明文兼容/logTail/错误密钥/HTTPS 端到端全部通过；Chrome 实测前端（WP 风格渲染/加密连接/账号增删/日志轮询）通过；生成器新控件渲染正常。
+
+### 🚀 宝塔自动化部署：WordPress 前端上线（yatori.keaident.org）
+
+- **前端形态确定**：以「WordPress 插件」承载控制台（短代码 `[yatori_console]` + 后台菜单 + 设置页），样式作用域化 `#yatori-console-root`——完整保留 WordPress 特性并兼容任意第三方主题；插件源码归档于 `web-s/wordpress-plugin/`（含《部署与维护说明.md》）
+- **全自动部署链路**（经由宝塔面板 API 的文件操作/建站/计划任务通道执行）：建站 → 部署 WordPress（中文版）→ 站点 PHP 切换为系统 PHP 8.5（修复宝塔自带 PHP 与 Ubuntu 26 系统库的二进制不兼容）→ wp-cli 安装 → 复用 `*.keaident.org` 通配符证书（有效至 2026-12-07）+ 强制 HTTPS → 插件上传激活 + 控制台页面创建 + WordPress 伪静态
+- **加密联通**：插件预置后端地址 `https://1.95.49.111:8080` 与通信密钥（= config.yaml 的 webSecret），AES-256-GCM 协议与后端 crypto_channel.py 完全一致
+- **验证**：首页/控制台/登录页/插件静态资源全部 HTTP 200（HTTPS 受信证书）；部署临时文件与计划任务已全部清理
+- **PHP 8.2 完整修复**：宝塔 PHP 与 Ubuntu 26 系统库二进制不兼容（libxml2/libzip 符号错配）→ 为站点 PHP 8.2 配置专属兼容库（lib-compat：libxml2 2.9.4 + libzip 4）+ patchelf 注入 rpath，面板 PHP 管理（切换/重启/扩展）全部恢复正常，站点回归标准配置运行于 PHP 8.2
+- **数据库登记入面板**：yatori_db 已注册至面板「数据库」页（此前用 MySQL 命令直接创建故未登记）
+- **收尾**：A 记录已解析；首页/控制台/登录页公网 HTTPS 全部 200
+
+### 🔧 WordPress 控制台全面修复（已可正常使用）
+
+- **修复站点地址错值**：siteurl/home 曾被写成含服务器路径的错误值，导致登录跳转错乱、“Cookies blocked”、后台与控制台全部进不去 → 全库检索替换并修正
+- **管理员密码重置**（新密码见交付报告；登录后可在用户设置中自行修改）
+- **修复插件 JS 崩溃**（控制台显示“未连接”）：选择器作用域兜底到全局 + 模态框/提示条归一入 root（插件 v1.0.3）
+- **修复 Mixed Content**：插件默认值/ WP 选项的后端地址统一为 `https://1.95.49.111:8080`
+- **浏览器全链路验收**：登录 ✓ 控制台渲染 ✓ 绿灯“已连接”✓ 弹窗交互 ✓
+- **永久免信任方案（正式证书上线）**：新增 `home.keaident.org → 后端` 解析，将 `*.keaident.org` 通配符正式证书（Let's Encrypt，有效至 2026-12-07）配置为后端 HTTPS 证书；WP 插件后端地址切换为 `https://home.keaident.org:8080`（插件 v1.0.4）——**任何浏览器/手机电脑无需任何信任操作，打开即连**
+
+### 🚀 新功能：课程进度查询 + SSL 证书管理（参考 yatori-free / yatori-go-desktop 衍生项目）
+
+- **课程+总进度查询（全平台）**：控制台“课程”按钮升级为“课程列表与总进度”——每门课展示 课程名/教师/状态/百分比/任务点完成数(x/y)/进度条
+  - 覆盖 11 个平台：学习通(任务点进度)、英华、海旗、WeLearn、安全微伴(项目进度)、智慧树(目录树统计)、重庆工程、智慧职教、码上研训、青书学堂、学习公社
+  - 统一数据结构 jobFinishCount/jobCount/jobRate/statusText；通用 activity 动态分发各平台 web_course_list；实测学习通 41 门课程进度完整拉取
+- **SSL 证书管理（多证书并存 + 前端上传）**：参考飞牛 OS「系统设置-安全-证书」设计
+  - 后端新增 `web/cert_manager.py`（SNI 按访问域名自动匹配证书）+ 证书 API（certList/certAdd/certDelete/certSetDefault/certToggle）
+  - 新增/删除证书**即时生效（无需重启）**；与 config.webSslCert 兼容（作默认证书）；多一级域名访问同一后端不再告警
+  - 内置界面与 WP 控制台均新增「SSL 证书」页：列表（域名/有效期/剩余天数/默认徽标）+ 上传（PEM 文本）+ 启停/删除；WP 插件 v1.0.5
+  - 兼容修复：新版 uvicorn 无 Server.load 改用 config.load() 幂等预加载挂载 SNI；Python 3.13 证书解析 subject 嵌套结构适配
+
+### 🔒 管理界面安全加固（界面+接口全保护）
+
+- **访问认证**（web/auth.py）：口令 = webSecret（前后端通信密钥，不引入独立密码）→ 换取会话令牌（随机 32B，7 天有效，重启失效；compare_digest 校验）
+- **全接口保护**：所有 /api 接口均要求 Bearer 令牌（仅 login/authCheck 白名单）；SSE 日志流支持 query token
+- **隐蔽入口**：管理界面改为秘密路径（`panel_<密钥派生>`，启动日志打印），根路径与 /web/ 均伪装 404
+- **登录限速**：同 IP 连续 5 次口令错误锁定 10 分钟（防爆破）
+- **前端适配**：内置界面新增登录遮罩（令牌自动携带 / 401 自动重登）；WP 插件 v1.0.6 自动登录取令牌（用户无感）
+- **根因修复**：launcher 密钥初始化提前到 create_app 之前（避免认证模块抢先读 web_secret.txt 导致缓存与 config 不一致）
+
+### 🎨 站点主题：安装并启用 Sakurairo 3.0.10
+
+- 从 GitHub 源码 zip（codeload，release 无 zip 资产时可用）部署主题至 wp-content/themes/sakurairo 并用 wp-cli 激活
+- 验证：首页（Sakurairo 渲染正常）/控制台页（[yatori_console] 短代码在新主题下功能完全正常，已连接+账号列表）/登录页 均 HTTP 200；无混合内容（仅 schema.org 命名空间字串）
+- 证书链复核：*.keaident.org 通配符证书（Let's Encrypt YR2）受信、TLSv1.3、有效期至 2026-12-07，服务端无异常
+
+### 🧑 人脸上传功能 + Sakurairo 封面配置
+
+- **人脸上传（前端嵌套）**：控制台（内置界面+WP插件 v1.0.7）账号卡片新增「人脸」按钮——可上传/预览/删除该账号的人脸照片（多张，刷课触发人脸识别时随机轮换使用）；后端新增 faceList/faceUpload/faceDelete API，存储于 assets/faces/{账号}/；_face_load_image 支持多张轮换（降低风控）
+- **Sakurairo 封面配置**：外置随机图 API（经同源 PHP 代理 randbg-pc.php/randbg-mobile.php 转发，规避浏览器跨域）、多终端分离、文字LOGO“Yatori 学习工具”、两行副标题；关键：前台 iro_opt 读独立 option `iro_options`（非 theme_mods）；用户原 API(random.moejue.cn) 对服务器调用只返回教程图，当前代理指向 mwm.moe 随机图源（可随时更换）
+
+### 🔒 后端暴露面阉割（外网彻底 404，仅保留加密 API）
+
+- **管理界面仅限本机**：秘密入口与所有界面路径从外网访问一律 404 伪装（`_is_local` 判定 127.0.0.1/::1）；本机浏览器访问 `https://127.0.0.1:8080/panel_xxx/` 保留应急通道
+- **API 强制加密+令牌**：外网请求必须携带 X-Yatori-Enc AES 加密头（明文一律 401，不泄露信息），本机豁免（内置界面便捷性）；配合原有会话令牌校验
+- **暴露面体检（宝塔服务器真实外网反向）全部通过**：entry/root/web/admin 扫描全 404、明文登录/无令牌 API 全 401；WP 控制台加密正路径正常（已连接+2账号）
 
 ---
 

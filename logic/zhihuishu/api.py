@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import time
@@ -20,7 +21,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from hashlib import md5
 from typing import Any
-from urllib.parse import unquote_plus
+from urllib.parse import quote, unquote_plus
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -29,7 +30,8 @@ from requests.utils import cookiejar_from_dict
 
 from logic.platform_common import get_simple_logger
 from logic.zhihuishu.models import (
-    ZhsAPIError, ZhsAuthError, ZhsCaptchaError, ZhsTokenExpired,
+    ZhsAPIError, ZhsAuthError, ZhsCaptchaError, ZhsExtraAuthRequired,
+    ZhsSessionValidation, ZhsSmsRequired, ZhsTokenExpired,
 )
 
 logger = get_simple_logger("[智慧树]")
@@ -618,7 +620,8 @@ class PolymasAPIClient(ZhsAPIClientBase):
             try:
                 r = resp.json()
             except ValueError:
-                logger.warning("Polymas report_progress 返回非 JSON: %s", resp.text[:200])
+                logger.warning(
+                    "Polymas report_progress 返回非 JSON: %s", resp.text[:200])
                 return None
             if r.get("success"):
                 return (r.get("data") or {}).get("completeRate", 0)
@@ -650,19 +653,86 @@ class PolymasAPIClient(ZhsAPIClientBase):
 
 # ============ 登录 ============
 
-def login_password(session: ManagedSession, username: str, password: str) -> None:
-    """智慧树密码登录
+def _nested_response_value(body: dict, key: str):
+    """兼容智慧树接口常见的 data/result/rt 多层包装。"""
+    if not isinstance(body, dict):
+        return None
+    if key in body:
+        return body.get(key)
+    for name in ("data", "result", "rt", "userInfo"):
+        child = body.get(name)
+        if isinstance(child, dict):
+            value = _nested_response_value(child, key)
+            if value is not None:
+                return value
+    return None
 
-    三阶段: 访问登录页建会话 → 校验账号密码 → 完成登录(Cookie 落地)。
+
+def _status_code(body: dict):
+    value = _nested_response_value(body, "status")
+    if value is None:
+        value = _nested_response_value(body, "code")
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
+
+def _as_bool(value) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "y", "on")
+    return bool(value)
+
+
+def _solve_yidun_and_retry(session: ManagedSession, valid_url: str,
+                           username: str, password: str) -> dict:
+    """易盾滑块纯协议求解 + secretStr 重提(login_password 内部用)
+
+    明文提交触发滑块(status -1/-4)时: 进程内 V8(参考项目的 msData.js) 完成
+    getconf→v3/get→缺口识别→v3/check→CN31 令牌 全流程(约 2 秒),
+    再以 secretStr 加密提交账号密码(实测一次通过)。
+    """
+    from logic.zhihuishu.yidun import YidunSolver
+
+    def _ylog(msg, err=False):
+        try:
+            if err:
+                logger.warning(f"易盾: {msg}")
+            else:
+                logger.info(f"易盾: {msg}")
+        except Exception:
+            pass
+
+    solver = YidunSolver(session, _ylog)
+    validate = solver.solve()
+    if not validate:
+        raise ZhsCaptchaError("易盾滑块纯协议求解失败")
+    payload = json.dumps(
+        {"account": username, "password": password, "validate": validate},
+        separators=(",", ":"))
+    sec = base64.b64encode(quote(payload).encode()).decode()
+    resp = session.post(valid_url, data={"secretStr": sec})
+    try:
+        return resp.json()
+    except ValueError:
+        return {}
+
+
+def login_password(session: ManagedSession, username: str, password: str) -> None:
+    """智慧树密码登录(纯协议, 自动过易盾滑块)
+
+    四阶段: 访问登录页→校验账号密码(明文; 遇滑块自动纯协议求解后
+    secretStr 重提)→完成登录(Cookie 落地)。
+    - status == -1/-4: 触发滑块 → 内置 YidunSolver 自动求解
     - status == -2: 账号或密码错误
-    - status == -4: 触发验证码(抛 ZhsCaptchaError)
     - status == -9: 需要短信验证
-    - needAuth: 需要额外安全验证(需先用浏览器登录一次)
+    - needAuth: 需要额外安全验证(需先在平台侧完成验证)
     """
     login_page = ("https://passport.zhihuishu.com/login"
                   "?service=https://onlineservice-api.zhihuishu.com/login/gologin")
     valid_url = "https://passport.zhihuishu.com/user/validateAccountAndPassword"
-    check_url = ("https://appcomm-user.zhihuishu.com/app-commserv-user/userInfo/checkNeedAuth")
+    check_url = (
+        "https://appcomm-user.zhihuishu.com/app-commserv-user/userInfo/checkNeedAuth")
 
     # 第一步: 访问登录页, 获取服务端会话
     session.get(login_page)
@@ -671,31 +741,69 @@ def login_password(session: ManagedSession, username: str, password: str) -> Non
         "Referer": login_page,
     })
 
-    # 第二步: 校验账号密码
+    # 第二步: 校验账号密码(遇滑块自动纯协议求解)
     user_info = _api_query(session, valid_url,
                            {"account": username, "password": password})
-    status = user_info.get("status")
+    status = _status_code(user_info)
+    if status in (-1, -4):
+        logger.info("触发易盾滑块验证, 启动纯协议求解...")
+        user_info = _solve_yidun_and_retry(session, valid_url,
+                                           username, password)
+        status = _status_code(user_info)
     if status == -2:
         raise ZhsAuthError("用户名或密码错误")
     if status == -4:
-        raise ZhsCaptchaError("多次尝试失败，需要验证码")
+        raise ZhsCaptchaError("易盾滑块校验未通过(纯协议求解重试失败)")
     if status == -9:
-        raise ZhsAuthError("账户需要短信验证")
+        raise ZhsSmsRequired("账户需要短信验证")
 
-    uid = user_info.get("uuid")
-    pwd = user_info.get("pwd")
+    uid = _nested_response_value(user_info, "uuid")
+    pwd = _nested_response_value(user_info, "pwd")
+    if not uid or not pwd:
+        raise ZhsAuthError("登录响应缺少一次性凭据")
 
     # 第三步: 检查是否需要额外安全验证(如异地登录检测)
-    need_auth = _api_query(session, check_url, {"uuid": uid}) \
-        .get("rt", {}).get("needAuth", False)
-    if need_auth:
-        raise ZhsAuthError("账户需要额外验证，请先使用浏览器登录一次")
+    auth_info = _api_query(session, check_url, {"uuid": uid})
+    if _as_bool(_nested_response_value(auth_info, "needAuth")):
+        raise ZhsExtraAuthRequired("账户需要额外验证，请先在平台侧完成验证")
 
     # 第四步: 使用凭据完成最终登录
-    session.get(login_page, params={"account": username, "pwd": pwd, "validate": 0})
+    session.get(login_page, params={
+                "account": username, "pwd": pwd, "validate": 0})
     if not session.cookies:
         raise ZhsAuthError("登录后未获得 Cookie")
     logger.info("密码登录成功")
+
+
+def validate_session_detail(session: ManagedSession) -> ZhsSessionValidation:
+    """检查显式导入或缓存的会话，并返回不含敏感信息的结构化结果。"""
+    url = "https://onlineservice-api.zhihuishu.com/gateway/f/v1/login/getLoginUserInfo"
+    try:
+        response = session.get(url, params={"time": int(time.time() * 1000)},
+                               timeout=15)
+        if response.status_code != 200:
+            status = "TOKEN_EXPIRED" if response.status_code in (
+                401, 403) else "NETWORK_ERROR"
+            return ZhsSessionValidation(status, f"会话检查 HTTP {response.status_code}")
+        body = response.json()
+        if not isinstance(body, dict):
+            return ZhsSessionValidation("TOKEN_EXPIRED", "会话检查响应格式无效")
+        success = body.get("success")
+        code = _status_code(body)
+        user_id = _nested_response_value(body, "userId") or ""
+        has_user = bool(_nested_response_value(body, "uuid")
+                        or _nested_response_value(body, "userInfo")
+                        or user_id)
+        if success is True or code in (0, 200, "0", "200") or has_user:
+            return ZhsSessionValidation("LOGIN_SUCCESS", "会话有效", str(user_id))
+        return ZhsSessionValidation("TOKEN_EXPIRED", "会话无效或已过期")
+    except (ValueError, requests.RequestException):
+        return ZhsSessionValidation("NETWORK_ERROR", "会话检查网络失败")
+
+
+def validate_session(session: ManagedSession) -> bool:
+    """兼容旧调用方的布尔会话检查入口。"""
+    return validate_session_detail(session).status == "LOGIN_SUCCESS"
 
 
 def _api_query(session: ManagedSession, url: str, data: dict) -> dict:
@@ -709,3 +817,135 @@ def _api_query(session: ManagedSession, url: str, data: dict) -> dict:
         return resp.json()
     except ValueError:
         return {}
+# ==== share course client (2026-10-09) ====
+
+
+_SHARE_AES_KEY = b"azp53h0kft7qi78q"
+_SHARE_AES_IV = b"1g3qqdh4jvbskb9x"
+
+
+def share_encrypt(payload: dict) -> str:
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import pad
+    raw = json.dumps(payload, separators=(",", ":"))
+    enc = AES.new(_SHARE_AES_KEY, AES.MODE_CBC, _SHARE_AES_IV).encrypt(
+        pad(raw.encode("utf-8"), 16))
+    return base64.b64encode(enc).decode()
+
+
+class ShareCourseAPIClient(ZhsAPIClientBase):
+    """新版共享课(studyvideoh5) 网关客户端 (2026-10-09 逆向)
+    加密: secretStr=AES-128-CBC-Pkcs7(json, key/iv固定) -> base64 (逐字节验证通过)
+    会话: CAS 登录后必须 gologin 激活 studyservice-api 的 SESSION cookie
+    """
+    BASE = "https://studyservice-api.zhihuishu.com"
+
+    def __init__(self, session):
+        super().__init__(session)
+        self._gz = False
+
+    def ensure_session(self):
+        """gologin 激活 studyservice-api 域 SESSION(业务端点鉴权凭证)"""
+        if self._gz:
+            return True
+        try:
+            self._session.session.get(f"{self.BASE}/login/gologin", params={
+                                      "fromurl": "https://studyvideoh5.zhihuishu.com/"}, timeout=25)
+            self._gz = True
+            return True
+        except Exception as e:
+            logger.debug("share gologin fail: %s", e)
+            return False
+
+    def _prepare_request(self, method, url, data=None):
+        return url, ({"json": data} if data is not None else {})
+
+    def _parse_response(self, resp):
+        return resp.json()
+
+    def _gw(self, path, payload):
+        """网关调用: 自动加密+dateFormate"""
+        ts = int(time.time() * 1000)
+        body = dict(payload)
+        body["dateFormate"] = ts
+        ss = share_encrypt(body)
+        ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " "  (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36")
+        r = self._session.session.post(f"{self.BASE}/gateway/t/v1/{path}", data={"secretStr": ss, "dateFormate": ts}, headers={"User-Agent": ua,
+                                       "Content-Type": "application/x-www-form-urlencoded", "Origin": "https://studyvideoh5.zhihuishu.com", "Referer": "https://studyvideoh5.zhihuishu.com/"}, timeout=25)
+        try:
+            return r.json()
+        except ValueError:
+            return {"code": r.status_code, "message": r.text[:200]}
+
+    def query_course(self, rid):
+        return self._gw("learning/queryCourse", {"recruitAndCourseId": str(rid)})
+
+    def video_list(self, rid):
+        return self._gw("learning/videolist", {"recruitAndCourseId": str(rid)})
+
+    def stuy_info(self, rid):
+        return self._gw("learning/queryStuyInfo", {"recruitAndCourseId": str(rid)})
+
+    def save_cache_time(self, payload):
+        return self._gw("learning/saveCacheIntervalTimeV2", payload)
+
+    def save_database_time(self, payload):
+        return self._gw("learning/saveDatabaseIntervalTimeV2", payload)
+
+
+# ==== stuonline 学习域直连客户端 (2026-10-11 逆向验证) ====
+
+class StuOnlineClient:
+    """stuonline.zhihuishu.com 学习域直连客户端 (2026-10-11 实测: 无需加密, form POST 直连)
+
+    学习数据/成绩分析/课程结构均在此域, 仅需登录态 Cookie(login_password 后即可):
+    - load_learning_tab: 课程章节结构(章/课/videoId/watchStatus/examName 章节测试名)
+    - load_learn_report: 成绩报告(总分/课件分/作业分/考试分/见面课分)
+    - load_stu_habit:    学习习惯(平时分/学习天数/课程起止时间)
+    - load_course_forum: 互动数据(有效问答数)
+
+    实测记录(账号18286610553/从课堂走出来的创新):
+    - recruitId=课程ID本身(如 1000125370), 与 courseId 相同; 431867 仅用于考试域URL;
+    - 四接口均 200 返回完整 JSON;
+    - 播放器域(studyservice studyvideoh5)同一课程返回 421"该账号无权限"/"参数解码错误"
+      —— 2026-10-10 课程结束后播放器域权限被回收(页面自身亦如此, 非协议差异);
+    - 视频上报 saveCacheIntervalTimeV2 真实 payload 字段为 {ewssw, sdsew, zwsds}
+      (ewssw=时长/次数值, sdsew=模块Z()加密值, zwsds=encode(studiedLessonDto.id 或目录节点 idSecretStr)),
+      其中 idSecretStr 由服务端目录接口下发, 离线不可构造。
+    """
+
+    BASE = "https://stuonline.zhihuishu.com/stuonline/json/stuLearnReportNew"
+
+    def __init__(self, session):
+        """session: ManagedSession(登录后的会话)"""
+        self._session = session
+
+    def _post(self, path: str, payload: dict) -> dict:
+        """form POST(直连, 无加密/无dateFormate)"""
+        try:
+            r = self._session.session.post(
+                f"{self.BASE}/{path}/", data=payload, timeout=25)
+            return r.json()
+        except Exception as e:
+            return {"error": str(e)[:200]}
+
+    def load_learning_tab(self, recruit_id: str, course_id: str) -> dict:
+        """课程章节结构: data.chapterOrLesson.clList[].lessonTempDtos[]
+        (每课含 lessonId/videoId/lessonSec/watchStatus; 每章含 examName 章节测试名)"""
+        return self._post("loadStuLearingTab", {
+            "recruitId": str(recruit_id), "courseId": str(course_id)})
+
+    def load_learn_report(self, recruit_id: str, course_id: str) -> dict:
+        """成绩报告: 总分/课件分/作业分/考试分/见面课分"""
+        return self._post("loadStuLearnReport", {
+            "recruitId": str(recruit_id), "courseId": str(course_id)})
+
+    def load_stu_habit(self, recruit_id: str, course_id: str) -> dict:
+        """学习习惯: 平时分/学习天数/课程起止(courseStartTime/courseEndTime)"""
+        return self._post("loadStuHabit", {
+            "recruitId": str(recruit_id), "courseId": str(course_id)})
+
+    def load_course_forum(self, recruit_id: str, course_id: str) -> dict:
+        """互动数据: 有效提问/无效提问/有效回答/无效回答"""
+        return self._post("loadCourseForum", {
+            "recruitId": str(recruit_id), "courseId": str(course_id)})

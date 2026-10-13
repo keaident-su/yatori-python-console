@@ -24,10 +24,14 @@ import time
 from pathlib import Path
 from typing import Any, ClassVar
 
-try: import cv2
-except ImportError: cv2 = None
-try: import numpy as np
-except ImportError: np = None
+try:
+    import cv2
+except ImportError:
+    cv2 = None
+try:
+    import numpy as np
+except ImportError:
+    np = None
 try:
     import nodriver
 except ImportError:
@@ -95,8 +99,6 @@ def _dsv_to_py(dsv):
             return [_dsv_to_py(item) for item in val]
         return val
     return dsv
-
-
 
 
 # 腾讯验证码 SDK 地址
@@ -187,7 +189,7 @@ def normalize_mask(
     canvas = np.zeros((canvas_size, canvas_size), dtype=np.uint8)
     oy = (canvas_size - new_h) // 2
     ox = (canvas_size - new_w) // 2
-    canvas[oy : oy + new_h, ox : ox + new_w] = resized
+    canvas[oy: oy + new_h, ox: ox + new_w] = resized
     return canvas
 
 
@@ -282,7 +284,8 @@ def locate_with_template(
     for scale in scales:
         new_w = max(8, round(qw * scale))
         new_h = max(8, round(qh * scale))
-        base = cv2.resize(query_crop, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+        base = cv2.resize(query_crop, (new_w, new_h),
+                          interpolation=cv2.INTER_NEAREST)
 
         for angle in angles:
             rotated = rotate_mask(base, angle)
@@ -297,7 +300,8 @@ def locate_with_template(
             if np.count_nonzero(rotated) < 40:
                 continue
 
-            result = cv2.matchTemplate(main_mask, rotated, cv2.TM_CCOEFF_NORMED)
+            result = cv2.matchTemplate(
+                main_mask, rotated, cv2.TM_CCOEFF_NORMED)
             _, score, _, loc = cv2.minMaxLoc(result)
             if score > best_score:
                 cx = loc[0] + rotated.shape[1] // 2
@@ -323,7 +327,8 @@ def _extract_query_templates(
     """
     top_gray = cv2.cvtColor(prompt_img, cv2.COLOR_BGR2GRAY)
     gray_mask = ((top_gray > 110) & (top_gray < 220)).astype(np.uint8) * 255
-    gray_mask = cv2.morphologyEx(gray_mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    gray_mask = cv2.morphologyEx(
+        gray_mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
 
     num_labels, _labels, stats, _centroids = cv2.connectedComponentsWithStats(
         gray_mask, connectivity=8
@@ -341,7 +346,7 @@ def _extract_query_templates(
         strip_box = (0, 0, top_w, top_h)
 
     sx, sy, sw, sh = strip_box
-    strip_roi = prompt_img[sy : sy + sh, sx : sx + sw]
+    strip_roi = prompt_img[sy: sy + sh, sx: sx + sw]
     strip_roi_gray = cv2.cvtColor(strip_roi, cv2.COLOR_BGR2GRAY)
     query_cells = np.array_split(strip_roi_gray, 3, axis=1)
 
@@ -355,7 +360,8 @@ def _extract_query_templates(
         cell_bw[-2:, :] = 0
         cell_bw[:, :2] = 0
         cell_bw[:, -2:] = 0
-        cell_bw = cv2.morphologyEx(cell_bw, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+        cell_bw = cv2.morphologyEx(
+            cell_bw, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
         query_raw_masks.append(cell_bw)
         query_templates.append(normalize_mask(cell_bw))
 
@@ -379,8 +385,10 @@ def _extract_main_candidates(main_img: np.ndarray) -> tuple[list[dict], np.ndarr
     )
     global_bw = (main_gray < 90).astype(np.uint8) * 255
     symbol_bw = cv2.bitwise_and(adaptive_bw, global_bw)
-    symbol_bw = cv2.morphologyEx(symbol_bw, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
-    symbol_bw = cv2.morphologyEx(symbol_bw, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+    symbol_bw = cv2.morphologyEx(
+        symbol_bw, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    symbol_bw = cv2.morphologyEx(
+        symbol_bw, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
     template_main_bw = symbol_bw.copy()
 
     num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
@@ -396,7 +404,7 @@ def _extract_main_candidates(main_img: np.ndarray) -> tuple[list[dict], np.ndarr
         if w / max(h, 1) > 3.0 or h / max(w, 1) > 3.0:
             continue
 
-        component_mask = np.where(labels[y : y + h, x : x + w] == i, 255, 0).astype(
+        component_mask = np.where(labels[y: y + h, x: x + w] == i, 255, 0).astype(
             np.uint8
         )
         normalized = normalize_mask(component_mask)
@@ -586,7 +594,8 @@ class LoginCaptchaSolver:
     _initialized: bool = False
     _lock = threading.Lock()
     _charset = "0123456789abcdefghijklmnopqrstuvwxyz"
-    _idx_to_char: ClassVar[dict[int, str]] = {i: c for c, i in {c: i for i, c in enumerate(_charset)}.items()}
+    _idx_to_char: ClassVar[dict[int, str]] = {
+        i: c for c, i in {c: i for i, c in enumerate(_charset)}.items()}
     _char_size = 28
 
     @classmethod
@@ -606,9 +615,12 @@ class LoginCaptchaSolver:
                         return None
                     try:
                         if getattr(sys, "frozen", False):
-                            model_path = Path(sys._MEIPASS) / "captcha_model.onnx"  # type: ignore[attr-defined]
+                            # type: ignore[attr-defined]
+                            model_path = Path(sys._MEIPASS) / \
+                                "captcha_model.onnx"
                         else:
-                            model_path = Path(__file__).parent / "captcha_model.onnx"
+                            model_path = Path(__file__).parent / \
+                                "captcha_model.onnx"
 
                         if not model_path.exists():
                             log.warning(f"验证码模型文件不存在: {model_path}")
@@ -644,7 +656,8 @@ class LoginCaptchaSolver:
         if not ocr:
             return None
         try:
-            arr = cv2.imdecode(np.frombuffer(image, np.uint8), cv2.IMREAD_GRAYSCALE)
+            arr = cv2.imdecode(np.frombuffer(
+                image, np.uint8), cv2.IMREAD_GRAYSCALE)
             if arr is None:
                 return None
             _, w = arr.shape
@@ -652,7 +665,7 @@ class LoginCaptchaSolver:
 
             result = []
             for i in range(4):
-                char_img = arr[:, i * seg_w : (i + 1) * seg_w if i < 3 else w]
+                char_img = arr[:, i * seg_w: (i + 1) * seg_w if i < 3 else w]
                 resized = cv2.resize(
                     char_img,
                     (cls._char_size, cls._char_size),
@@ -708,14 +721,24 @@ def _registry_candidates() -> list[str]:
     # Chrome/Edge 通过 App Paths 注册
     # winreg 仅 Windows 存在，typeshed 按平台裁剪导致 Darwin 下属性不可见
     for hive, subkey in [
-        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"),  # type: ignore[attr-defined]
-        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"),  # type: ignore[attr-defined]
-        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe"),  # type: ignore[attr-defined]
-        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe"),  # type: ignore[attr-defined]
+        # type: ignore[attr-defined]
+        (winreg.HKEY_CURRENT_USER,
+         r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"),
+        # type: ignore[attr-defined]
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe"),
+        # type: ignore[attr-defined]
+        (winreg.HKEY_CURRENT_USER,
+         r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe"),
+        # type: ignore[attr-defined]
+        (winreg.HKEY_LOCAL_MACHINE,
+         r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe"),
     ]:
         try:
-            with winreg.OpenKey(hive, subkey) as key:  # type: ignore[attr-defined]
-                path, _ = winreg.QueryValueEx(key, None)  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            with winreg.OpenKey(hive, subkey) as key:
+                # type: ignore[attr-defined]
+                path, _ = winreg.QueryValueEx(key, None)
                 if path and os.path.isfile(path):
                     results.append(path)
         except (FileNotFoundError, PermissionError):
@@ -740,16 +763,20 @@ def detect_browser() -> str | None:
 
     if system == "Darwin":
         _apps = "/Applications"
-        _chrome = ["Google Chrome", "Google Chrome Beta", "Google Chrome Dev", "Google Chrome Canary"]
+        _chrome = ["Google Chrome", "Google Chrome Beta",
+                   "Google Chrome Dev", "Google Chrome Canary"]
         _chromium = ["Chromium"]
-        _edge = ["Microsoft Edge", "Microsoft Edge Beta", "Microsoft Edge Dev", "Microsoft Edge Canary"]
+        _edge = ["Microsoft Edge", "Microsoft Edge Beta",
+                 "Microsoft Edge Dev", "Microsoft Edge Canary"]
         for name in _chrome + _chromium + _edge:
             candidates.append(f"{_apps}/{name}.app/Contents/MacOS/{name}")
 
     elif system == "Linux":
-        _chrome = ["google-chrome", "google-chrome-stable", "google-chrome-beta", "google-chrome-unstable"]
+        _chrome = ["google-chrome", "google-chrome-stable",
+                   "google-chrome-beta", "google-chrome-unstable"]
         _chromium = ["chromium", "chromium-browser"]
-        _edge = ["microsoft-edge-stable", "microsoft-edge-beta", "microsoft-edge-dev", "microsoft-edge"]
+        _edge = ["microsoft-edge-stable", "microsoft-edge-beta",
+                 "microsoft-edge-dev", "microsoft-edge"]
         for name in _chrome + _chromium + _edge:
             candidates.append(f"/usr/bin/{name}")
             candidates.append(f"/snap/bin/{name}")
@@ -770,16 +797,20 @@ def detect_browser() -> str | None:
         pf64 = os.environ.get("PROGRAMW6432", "")
         pf = os.environ.get("PROGRAMFILES", "")
         pf86 = os.environ.get("PROGRAMFILES(X86)", "")
-        _chrome = ["Chrome", "Chrome Beta", "Chrome Dev", "Chrome SxS"]  # SxS = Canary
+        _chrome = ["Chrome", "Chrome Beta",
+                   "Chrome Dev", "Chrome SxS"]  # SxS = Canary
         _chromium = ["Chromium"]
-        _edge = ["Microsoft/Edge", "Microsoft/Edge Beta", "Microsoft/Edge Dev", "Microsoft/Edge SxS"]
+        _edge = ["Microsoft/Edge", "Microsoft/Edge Beta",
+                 "Microsoft/Edge Dev", "Microsoft/Edge SxS"]
         for base in dict.fromkeys((local, pf64, pf, pf86)):
             if not base:
                 continue
             for name in _chrome + _chromium:
-                candidates.append(str(Path(base) / name / "Application" / "chrome.exe"))
+                candidates.append(
+                    str(Path(base) / name / "Application" / "chrome.exe"))
             for name in _edge:
-                candidates.append(str(Path(base) / name / "Application" / "msedge.exe"))
+                candidates.append(
+                    str(Path(base) / name / "Application" / "msedge.exe"))
 
     for p in candidates:
         if os.path.isfile(p):
@@ -1245,9 +1276,11 @@ class CaptchaHandler:
         if save_debug:
             self._debug_dir.mkdir(parents=True, exist_ok=True)
             stamp = int(time.time() * 1000)
-            cv2.imwrite(str(self._debug_dir / f"{stamp}_a{attempt}_main.png"), main_img)
             cv2.imwrite(
-                str(self._debug_dir / f"{stamp}_a{attempt}_prompt.png"), prompt_img
+                str(self._debug_dir / f"{stamp}_a{attempt}_main.png"), main_img)
+            cv2.imwrite(
+                str(self._debug_dir /
+                    f"{stamp}_a{attempt}_prompt.png"), prompt_img
             )
             cv2.imwrite(
                 str(self._debug_dir / f"{stamp}_a{attempt}_debug.png"),
@@ -1330,7 +1363,8 @@ class CaptchaHandler:
     async def _quit_browser(self, browser: "nodriver.Browser", label: str = "") -> None:
         """关闭 websocket、Chrome 进程和 asyncio subprocess transport。"""
         proc = getattr(browser, "_process", None)
-        transport = getattr(proc, "_transport", None) if proc is not None else None
+        transport = getattr(proc, "_transport",
+                            None) if proc is not None else None
         try:
             try:
                 await browser.aclose()
@@ -1363,12 +1397,24 @@ class CaptchaHandler:
     def handle_exam_captcha(self, user_exam_plan_id: str) -> dict[str, str]:
         """处理考试前的无感验证码（同步版本）。
 
-        无感模式：验证码在后台自动完成，无需用户交互，因此使用 headless=True。
+        ★ 纯协议优先: 进程内 V8(py_mini_racer) 求解 TCaptcha 无感验证,
+          约 0.5-1 秒、零浏览器; 失败自动降级浏览器方案。
 
         :param user_exam_plan_id: 考试计划 ID（预留，目前未使用）
         :return: {"randstr": str, "ticket": str} — 验证通过后的凭证
         :raises RuntimeError: 已在事件循环中调用时，使用 handle_exam_captcha_async 代替
         """
+        # ★ 纯协议优先(2026-09-29 攻克; 实测 errorCode=0 稳定)
+        try:
+            from logic.weban.tcaptcha_solver import solve_tcaptcha
+            res = solve_tcaptcha(EXAM_CAPTCHA_APP_ID, EXAM_ENTRY_URL,
+                                 "weiban.mycourse.cn", log=self.log)
+            if res:
+                self.log.success("纯协议通过无感验证(零浏览器)")
+                return res
+            self.log.warning("纯协议过无感验证失败, 降级浏览器方案")
+        except Exception as e:  # noqa: BLE001 -- 纯协议异常时降级浏览器
+            self.log.warning(f"纯协议求解异常, 降级浏览器: {type(e).__name__}: {e}")
         try:
             asyncio.get_running_loop()
         except RuntimeError:
@@ -1392,13 +1438,24 @@ class CaptchaHandler:
     def handle_course_captcha(self, course_url: str | None = None) -> dict[str, str]:
         """处理课程完成时的图片点选验证码（同步版本）。
 
-        流程：先以无头模式自动识别（最多 3 轮 x 6 次，连接异常会重建页面），
-        全部失败后再打开可见浏览器让用户手动完成。
+        ★ 纯协议优先: 进程内 V8 + 本地点选识别求解 TCaptcha 点选验证
+          (约 3-10 秒、零浏览器); 失败自动降级原浏览器方案。
 
         :param course_url: 课程入口 URL，留空则使用默认的 mcwk.mycourse.cn
         :return: {"randstr": str, "ticket": str} — 验证通过后的凭证
         :raises RuntimeError: 已在事件循环中调用时，使用 handle_course_captcha_async 代替
         """
+        # ★ 纯协议优先(2026-09-29 攻克; 内置重试)
+        try:
+            from logic.weban.tcaptcha_solver import solve_tcaptcha_pick
+            res = solve_tcaptcha_pick(COURSE_CAPTCHA_APP_ID, COURSE_ENTRY_URL,
+                                      "mcwk.mycourse.cn", log=self.log)
+            if res:
+                self.log.success("纯协议通过课程点选验证(零浏览器)")
+                return res
+            self.log.warning("纯协议点选验证失败, 降级浏览器方案")
+        except Exception as e:  # noqa: BLE001 -- 纯协议异常时降级浏览器
+            self.log.warning(f"纯协议点选求解异常, 降级浏览器: {type(e).__name__}: {e}")
         try:
             asyncio.get_running_loop()
         except RuntimeError:

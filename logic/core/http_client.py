@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 import httpx
 import uuid
 
-from logic.core.parallel import HTTP_MAX_CONNECTIONS, HTTP_MAX_KEEPALIVE
+from logic.core import parallel as _par
 
 # httpx >= 0.28.0 将 proxies 参数改为 proxy
 _HTTPX_USE_PROXY = tuple(int(x)
@@ -61,8 +61,8 @@ class HttpClient:
                 headers={"User-Agent": DEFAULT_USER_AGENT},
                 # 多核并行优化：按 CPU 核心数放大连接池，避免高并发下连接排队
                 limits=httpx.Limits(
-                    max_connections=HTTP_MAX_CONNECTIONS,
-                    max_keepalive_connections=HTTP_MAX_KEEPALIVE),
+                    max_connections=_par.http_max_connections(),
+                    max_keepalive_connections=_par.http_max_keepalive()),
             )
             if self.proxy_ip:
                 proxy_url = f"http://{self.proxy_ip}"
@@ -145,7 +145,7 @@ class HttpClient:
                 resp = client.request(
                     method, url, json=json_data, headers=req_headers
                 )
-            elif use_multipart and data is not None:
+            elif use_multipart and (data is not None or files):
                 # 手动构建multipart/form-data body，与 Go multipart.Writer 对齐
                 boundary = uuid.uuid4().hex
                 lines: list[bytes] = []
@@ -162,6 +162,29 @@ class HttpClient:
                     )
                     lines.append(b"")
                     lines.append(str(v).encode())
+                # 关键修复(2026-10): 原实现遗漏 files 参数,
+                # 导致人脸上传等文件型multipart永远缺 file 字段("file不能为空")
+                if files:
+                    for field, fv in files.items():
+                        if isinstance(fv, (tuple, list)) and len(fv) >= 2:
+                            fname = str(fv[0])
+                            fdata = fv[1]
+                            fct = (str(fv[2]) if len(fv) > 2 and fv[2]
+                                   else "application/octet-stream")
+                        else:
+                            fname = str(field)
+                            fdata = fv
+                            fct = "application/octet-stream"
+                        if isinstance(fdata, str):
+                            fdata = fdata.encode()
+                        lines.append(f"--{boundary}".encode())
+                        lines.append(
+                            (f'Content-Disposition: form-data; '
+                             f'name="{field}"; filename="{fname}"').encode()
+                        )
+                        lines.append(f"Content-Type: {fct}".encode())
+                        lines.append(b"")
+                        lines.append(fdata)
                 lines.append(f"--{boundary}--".encode())
                 lines.append(b"")
                 body = b"\r\n".join(lines)

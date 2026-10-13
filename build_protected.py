@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-打包流水线 —— yatori-python刷课系统 V1.2.0
+打包流水线 —— yatori-python刷课系统 V2.0.2-beta4.1
 
 流程:
   1. 复制源码到隔离的 build_stage 目录(不动原始源码树)
@@ -8,8 +8,10 @@
      编译为原生扩展
   3. 清理已编译模块的 .py/.c 中间文件
   4. 在 stage 内逐个 import 全量校验(确保扩展可正常加载)
-  5. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
-  6. 产物输出到 dist/yatori-python刷课系统V1.2.0.exe
+  5. 对全部自研原生扩展计算 SHA-256 清单, 生成 _integrity_data.py
+     (运行时由 utils/integrity.py 比对, 防篡改)
+  6. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
+  7. 产物输出到 dist/yatori-python刷课系统V2.0.2-beta4.1.exe
 
 用法: python build_protected.py
 """
@@ -21,8 +23,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-STAGE = ROOT / "build_stage"
-APP_NAME = "yatori-python刷课系统V1.2.0"
+# 构建临时目录(可迁移): 目标盘空间不足时用环境变量 YATORI_BUILD_STAGE
+# 指向其他盘, 如 $env:YATORI_BUILD_STAGE="C:\yatori_build_stage" (输出仍回 ROOT/dist)
+STAGE = Path(os.environ.get("YATORI_BUILD_STAGE", str(ROOT / "build_stage")))
+APP_NAME = "yatori-python刷课系统V2.0.4-beta8"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 
@@ -97,7 +101,7 @@ MODULES = %r
 def main():
     setup(
         name="yatori-protected",
-        version="1.2.0",
+        version="2.0.4b8",
         ext_modules=cythonize(
             MODULES,
             language_level=3,
@@ -209,6 +213,39 @@ def verify_imports(modules: list) -> bool:
         return False
     log(f"import verify OK ({len(names)} modules)")
     return True
+
+
+# ---------------- 3.5 完整性清单(运行时防篡改校验用) ----------------
+
+def write_integrity_manifest():
+    """对 stage 内全部自研原生扩展计算 SHA-256 清单 -> _integrity_data.py
+    运行时由 utils/integrity.py 在 frozen 环境比对 _MEIPASS 内实际文件。
+    """
+    import hashlib
+    hashes = {}
+    for d in ["config", "logic", "utils", "dao", "entity",
+              "global_state", "web"]:
+        root = STAGE / d
+        if not root.is_dir():
+            continue
+        for dirpath, _dirs, files in os.walk(root):
+            for fn in files:
+                if not (fn.endswith(".pyd") or fn.endswith(".so")):
+                    continue
+                full = Path(dirpath) / fn
+                rel = full.relative_to(STAGE).as_posix()
+                h = hashlib.sha256()
+                with open(full, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        h.update(chunk)
+                hashes[rel] = h.hexdigest()
+    code = (
+        "# -*- coding: utf-8 -*-\n"
+        '"""自动生成: 自研原生扩展完整性清单(build_protected.py)"""\n\n'
+        "MANIFEST = %r\n" % (hashes,)
+    )
+    (STAGE / "_integrity_data.py").write_text(code, encoding="utf-8")
+    log(f"integrity manifest written: {len(hashes)} native modules")
 
 
 # ---------------- 4. 生成 spec 并打包 ----------------
@@ -390,6 +427,18 @@ def publish() -> Path:
     shutil.copy2(src, dst)
     if sys.platform != "win32":
         os.chmod(dst, 0o755)
+    # 附带 cpus/ 目录(CPU 型号性能配置): 复制到 dist 与 exe 同级, 用户可自行增删
+    # (运行时 cpu_profile.py 从 exe 所在目录查找 cpus/; 缺失时自动公式兜底)
+    try:
+        cpus_src = ROOT / "cpus"
+        if cpus_src.is_dir():
+            cpus_dst = out_dir / "cpus"
+            if cpus_dst.exists():
+                shutil.rmtree(cpus_dst, ignore_errors=True)
+            shutil.copytree(cpus_src, cpus_dst)
+            log(f"cpus bundled -> {cpus_dst}")
+    except Exception as e:
+        log(f"cpus bundle skipped: {e}")
     return dst
 
 
@@ -408,6 +457,7 @@ def main():
     prune_sources(compiled)
     if not verify_imports([m for m in modules]):
         return 1
+    write_integrity_manifest()
     write_spec()
     if not run_pyinstaller():
         log("PyInstaller FAILED")

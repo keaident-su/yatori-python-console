@@ -28,10 +28,18 @@ class BasicSetting:
     web_port: int = 8080           # Web模式监听端口(多开时被占用会自动顺延到空闲端口)
     ocr_image_question: int = 1    # 图片题目OCR识别开关(0关闭,1开启)
     notice_prefix: str = "Yatori"  # 通知开头名称(邮件主题/推送标题前缀, 留空则回退默认"Yatori")
-    browser_path: str = ""        # 浏览器可执行文件路径(安全微伴验证码自动识别用; 留空自动检测Chrome/Chromium/Edge)
+    # 浏览器可执行文件路径(安全微伴验证码自动识别用; 留空自动检测Chrome/Chromium/Edge)
+    browser_path: str = ""
     cdp_host: str = ""            # CDP远程调试地址(安全微伴连接已有浏览器实例用, 可留空)
     cdp_port: int = 0              # CDP远程调试端口(0=不使用, 与cdpHost同时填写才生效)
     auto_open_browser: int = 1     # Web模式下启动后自动打开浏览器界面(0关闭,1开启)
+    web_ssl: int = 0               # Web服务HTTPS(1=启用; 证书缺省自动生成自签, 首次访问需手动信任)
+    web_ssl_cert: str = ""         # HTTPS证书路径(留空=自动生成自签证书)
+    web_ssl_key: str = ""          # HTTPS私钥路径(留空=自动生成)
+    web_secret: str = ""           # 前后端通信加密密钥(留空=自动生成并存 assets/web_secret.txt)
+    full_cpu_mode: int = 0         # 全速开关: 0(默认)=基准核数n-1 / 1=吃满全部逻辑核
+    # 性能档位: aggressive(激进:登录×1.5/提交×1) / conservative(稳健)
+    performance_gear: str = "aggressive"
 
 
 @dataclass
@@ -48,7 +56,8 @@ class EmailInform:
 class ShowDocInform:
     """ShowDoc推送配置 - 与邮件通知并列的推送方案, 两者可独立开关、同时开启"""
     sw: int = 0                 # 是否开启ShowDoc推送(0关闭,1开启)
-    url: str = ""               # ShowDoc专属推送地址(含token, 在 push.showdoc.com.cn 获取)
+    # ShowDoc专属推送地址(含token, 在 push.showdoc.com.cn 获取)
+    url: str = ""
 
 
 @dataclass
@@ -86,6 +95,9 @@ class AnswerSetting:
     """多答题源设置(顺序依次调用、失败即回退)"""
     token_check: int = 1        # 启动时token自检开关: 1开启 / 0关闭
     local_cache_enable: int = 1  # 本地题库缓存开关: 1开启 / 0关闭
+    # 2026-10-13 采集填充: 现役库未命中时查询独立采集库(questions_collected.json)
+    # 0=关(默认) / 1=开; 建议先对采集库跑"一键并入(投票清洗)"后再开启
+    fill_from_collected: int = 0
     local_cache_path: str = "questions_answers.json"  # 缓存文件(格式同题库json)
     order: List[str] = field(default_factory=list)     # 调用顺序(填自定义名称)
     sources: List[AnswerSourceItemCfg] = field(default_factory=list)  # 题库组列表
@@ -118,33 +130,75 @@ class CoursesCustom:
     cx_chapter_test_sw: Optional[int] = 1   # 学习通章测开关
     cx_work_sw: Optional[int] = 1           # 学习通作业开关
     cx_exam_sw: Optional[int] = 1           # 学习通考试开关
-    cx_exam_sw_again: Optional[int] = 0     # 学习通强制重考开关(1=支持重考的考试不管分数都必须重考, 0=仅分数<60时重考)
+    # 学习通互动测验(视频弹题)开关: 1=课程学习完成后自动拉取未完成清单并补齐弹题, 0=关闭 (2026-10-12)
+    cx_interactive_quiz_sw: Optional[int] = 1
+    # 学习通强制重考开关(1=支持重考的考试不管分数都必须重考, 0=仅分数<60时重考)
+    cx_exam_sw_again: Optional[int] = 0
     shuffle_sw: int = 0                     # 是否打乱顺序
     video_model: int = 1                    # 观看视频模式
     auto_exam: int = 0                      # 是否自动考试
     exam_auto_submit: int = 0               # 是否自动提交试卷
-    other_task_stay: int = 30               # 其它/文档类任务点处理后的停留秒数(知识结构/引导问题/单文字/PPT/文档文章等)
-    add_study_sw: int = 0                   # 【学习通】增加学习次数/学习时长开关(课程任务点全部完成后执行; 0关1开)
-    add_study_count: int = 0                # 【学习通】增加的学习次数(对齐yatori-free默认0=不增加; 上限400)
-    add_study_video_minutes: int = 0        # 【学习通】增加的视频观看时长(分钟, 对齐yatori-free默认0=不增加; 上限4000)
-    add_study_read_minutes: int = 0         # 【学习通】增加的阅读时长(分钟, 对齐yatori-free默认0=不增加; 上限4000)
-    add_study_delay: int = 30               # 【学习通】学习记录上报间隔秒数(建议≥30; 参照chaoxing_tool默认30)
-    brute_speed: float = 2.4                # 【学习公社】暴力模式倍速(最低2.4, 未填写默认2.4; 服务端单次封顶5分钟/25秒间隔, 有效上限12x)
+    # 【学习通考试拟人节奏】(2026-10-08 防"答题节奏规律"风控, A+B方案)
+    # 0=旧行为(秒答, 高风险) 1=标准(每题2.5~7s+阶段长停顿+交卷检查) 2=谨慎(更慢)
+    # 安全红线: 仅做时间等待拉长(服务端 duration 自然增长, 更拟人);
+    # 绝不模拟/伪造任何"切屏、离开、visibilitychange"类事件(那才是自曝违规)
+    cx_exam_pace: Optional[int] = 1
+    # 【学习通】考试提交正确率%(2026-10-13, MOGO式): 默认100=满分作答;
+    # <100时按比例随机把部分题答案降级(降低"完美卷"嫌疑); 0=全错(不推荐)
+    cx_exam_submit_rate: Optional[int] = 100
+    # 【学习通】答题后核对平台正确答案(0关1开, 默认1)
+    # 仅对"提交后可从平台查看正确答案"的场景生效(作业/章测);
+    # 任务完成后回读平台答案, 与本地题库缓存不一致时以平台为准更正缓存
+    cx_verify_answer: Optional[int] = 1
+    # 【学习通】答题后题目采集归档(0关1开, 默认1)
+    # 核对平台正确答案时, 顺带把「题面+正确答案」归档到独立采集库
+    # (questions_collected.json, 不并入现役题库; 供前端"一键采集题目"同源使用)
+    cx_collect_answers: Optional[int] = 1
+    # 其它/文档类任务点处理后的停留秒数(知识结构/引导问题/单文字/PPT/文档文章等)
+    other_task_stay: int = 30
+    # 【学习通】增加学习次数/学习时长开关(课程任务点全部完成后执行; 0关1开)
+    add_study_sw: int = 0
+    # 【学习通】增加的学习次数(对齐yatori-free默认0=不增加; 上限400)
+    add_study_count: int = 0
+    # 【学习通】增加的视频观看时长(分钟, 对齐yatori-free默认0=不增加; 上限4000)
+    add_study_video_minutes: int = 0
+    # 【学习通】增加的阅读时长(分钟, 对齐yatori-free默认0=不增加; 上限4000)
+    add_study_read_minutes: int = 0
+    # 【学习通】学习记录上报间隔秒数(建议≥30; 参照chaoxing_tool默认30)
+    add_study_delay: int = 30
+    # 【学习通】夜间休息开关(0关1开, 默认0不影响现有行为; 开启后休息时段内刷课暂停等待到点继续)
+    rest_sw: int = 0
+    # 【学习通】夜间休息开始时间(HH:MM, 默认23:00)
+    rest_start: str = "23:00"
+    # 【学习通】夜间休息结束时间(HH:MM, 默认06:00)
+    rest_end: str = "06:00"
+    # 【学习通】积分课自动检测+每日积分策略(0关1开, 默认0; 开启后启动刷课时检测积分课并将当日积分补到上限)
+    jf_sw: int = 0
+    # 【学习通】考试自动重考次数(0=不重考默认; N>0=遇"待批阅/已完成"卷自动重考N次,
+    #  实测链: restartOp激活→reset封面→jt=0/1均带reset=true→答题交卷)
+    cx_exam_retake: int = 0
+    # 【学习公社】暴力模式倍速(最低2.4, 未填写默认2.4; 服务端单次封顶5分钟/25秒间隔, 有效上限12x)
+    brute_speed: float = 2.4
     device_flag: str = ""                   # 设备特征码(学习通APP内获取, 用于考试客户端签名)
     # ===== 安全微伴(WEBAN) =====
     wb_tenant: str = ""                     # 【安全微伴】学校全称(必填, 需与登录页显示的学校名称完全一致)
-    wb_user_id: str = ""                    # 【安全微伴】Token登录用户ID(可留空; 填写后password视为token)
+    # 【安全微伴】Token登录用户ID(可留空; 填写后password视为token)
+    wb_user_id: str = ""
     wb_study_mode: int = 1                  # 【安全微伴】学习模式: 0=不学习 1=正常学习 2=强制重新学习
     wb_exam_mode: int = 1                   # 【安全微伴】考试模式: 0=不考试 1=正常 2=追求满分 3=强制重考
-    wb_random_answer: int = 1               # 【安全微伴】题库外题目随机作答: 1=随机(单选随机/多选全选) 0=终端手动输入
+    # 【安全微伴】题库外题目随机作答: 1=随机(单选随机/多选全选) 0=终端手动输入
+    wb_random_answer: int = 1
     wb_study_time: int = 20                 # 【安全微伴】每门课学习时长(秒, 随机追加0~10秒)
-    wb_video_speed: float = 1.0             # 【安全微伴】视频课程倍速: 0=不按时长等待 1=原速等待 2=半速等待(视频时长/倍速)
+    # 【安全微伴】视频课程倍速: 0=不按时长等待 1=原速等待 2=半速等待(视频时长/倍速)
+    wb_video_speed: float = 1.0
     wb_exam_question_time: int = 3          # 【安全微伴】每道考试题答题等待时长(秒, 随机追加0~3秒)
     wb_exam_submit_match_rate: int = 90     # 【安全微伴】允许交卷的最低题库匹配率(%)
-    wb_jupiter_fallback: int = 0            # 【安全微伴】未加载apicenext.js的课程是否补发翻页轨迹: 0=否 1=是(个别学校需要)
+    # 【安全微伴】未加载apicenext.js的课程是否补发翻页轨迹: 0=否 1=是(个别学校需要)
+    wb_jupiter_fallback: int = 0
     wb_debug: int = 0                       # 【安全微伴】调试日志开关: 0关 1开
     # ===== 智慧树(ZHIHUISHU) =====
-    zhs_speed: float = 1.5                  # 【智慧树】刷课速度倍率(默认1.5, 越大越快; 范围0.3~20)
+    # 【智慧树】刷课速度倍率(默认1.5, 越大越快; 范围0.3~20)
+    zhs_speed: float = 1.5
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)
@@ -160,8 +214,10 @@ class User:
     password: str = ""
     is_proxy: int = 0
     inform_emails: List[str] = field(default_factory=list)
-    showdoc_sw: int = 0                     # 该用户独立的ShowDoc推送开关(0关,1开, 与全局通道互不影响)
-    showdoc_urls: List[str] = field(default_factory=list)  # 该用户独立的ShowDoc推送地址列表(可多个)
+    # 该用户独立的ShowDoc推送开关(0关,1开, 与全局通道互不影响)
+    showdoc_sw: int = 0
+    showdoc_urls: List[str] = field(
+        default_factory=list)  # 该用户独立的ShowDoc推送地址列表(可多个)
     courses_custom: CoursesCustom = field(default_factory=CoursesCustom)
 
 
@@ -203,8 +259,25 @@ def _register_remark_names(config: JSONDataForConfig):
 # ============ 工具函数 ============
 
 def cmp_course(course: str, course_list: List[str]) -> bool:
-    """比较是否存在对应课程"""
-    return course in course_list
+    """比较课程是否匹配（名称包含语义, 2026-09-30 修复）
+
+    前端标签为"只刷课程(名称包含)"/"排除课程(名称包含)",
+    旧实现 course in course_list 为精确相等——用户按"包含"语义
+    填写部分名称时匹配全部失效(排除不生效/只刷全部跳过), 故改为:
+    配置项 equals 课程名 或 作为子串包含于课程名 均判定命中。
+    """
+    if not course or not course_list:
+        return False
+    c = str(course).strip()
+    if not c:
+        return False
+    for item in course_list:
+        kw = str(item or "").strip()
+        if not kw:
+            continue
+        if kw == c or kw in c:
+            return True
+    return False
 
 
 def get_user_input(prompt: str) -> str:
@@ -302,6 +375,14 @@ def _default_value(config: JSONDataForConfig):
     bs.cdp_host = str(bs.cdp_host or "").strip()
     bs.cdp_port = max(0, _safe_int(bs.cdp_port, 0))
     bs.auto_open_browser = _safe_int(bs.auto_open_browser, 1)
+    bs.web_ssl = _safe_int(bs.web_ssl, 0)
+    bs.web_ssl_cert = (bs.web_ssl_cert or "").strip()
+    bs.web_ssl_key = (bs.web_ssl_key or "").strip()
+    bs.web_secret = (bs.web_secret or "").strip()
+    # 性能策略: 全速开关(0/1) + 档位(aggressive/conservative)
+    bs.full_cpu_mode = 1 if _safe_int(bs.full_cpu_mode, 0) == 1 else 0
+    _gear_v = str(bs.performance_gear or "").strip().lower()
+    bs.performance_gear = "conservative" if _gear_v == "conservative" else "aggressive"
 
     # ShowDoc推送 int 字段强制转换
     config.setting.showdoc_inform.sw = _safe_int(
@@ -311,6 +392,8 @@ def _default_value(config: JSONDataForConfig):
     aset = config.setting.answer_setting
     aset.token_check = _safe_int(aset.token_check, 1)
     aset.local_cache_enable = _safe_int(aset.local_cache_enable, 1)
+    aset.fill_from_collected = max(0, min(1, _safe_int(
+        getattr(aset, "fill_from_collected", 0), 0)))
     if not (aset.local_cache_path or "").strip():
         aset.local_cache_path = "questions_answers.json"
 
@@ -335,21 +418,44 @@ def _default_value(config: JSONDataForConfig):
             cc.cx_work_sw, 1) if cc.cx_work_sw is not None else 1
         cc.cx_exam_sw = _safe_int(
             cc.cx_exam_sw, 1) if cc.cx_exam_sw is not None else 1
+        cc.cx_interactive_quiz_sw = _safe_int(
+            cc.cx_interactive_quiz_sw, 1) if cc.cx_interactive_quiz_sw is not None else 1
         cc.cx_exam_sw_again = _safe_int(
             cc.cx_exam_sw_again, 0) if cc.cx_exam_sw_again is not None else 0
         cc.shuffle_sw = _safe_int(cc.shuffle_sw, 0)
         cc.video_model = _safe_int(cc.video_model, 1)
         cc.auto_exam = _safe_int(cc.auto_exam, 0)
         cc.exam_auto_submit = _safe_int(cc.exam_auto_submit, 0)
+        cc.cx_exam_pace = _safe_int(
+            cc.cx_exam_pace, 1) if cc.cx_exam_pace is not None else 1
+        cc.cx_exam_pace = max(0, min(2, cc.cx_exam_pace))
+        cc.cx_exam_submit_rate = max(
+            0, min(100, _safe_int(cc.cx_exam_submit_rate, 100)))
         cc.other_task_stay = _safe_int(cc.other_task_stay, 30)
         cc.add_study_sw = _safe_int(cc.add_study_sw, 0)
-        # 三指标边界对齐 yatori-free 界面限制(次数<=400, 时长<=4000分钟); 默认0=不增加
-        cc.add_study_count = max(0, min(400, _safe_int(cc.add_study_count, 0)))
+        # 三指标边界(2026-10-13×2.5): 次数<=1000, 时长<=10000分钟; 默认0=不增加
+        cc.add_study_count = max(
+            0, min(1000, _safe_int(cc.add_study_count, 0)))
         cc.add_study_video_minutes = max(
-            0, min(4000, _safe_int(cc.add_study_video_minutes, 0)))
+            0, min(10000, _safe_int(cc.add_study_video_minutes, 0)))
         cc.add_study_read_minutes = max(
-            0, min(4000, _safe_int(cc.add_study_read_minutes, 0)))
+            0, min(10000, _safe_int(cc.add_study_read_minutes, 0)))
         cc.add_study_delay = max(30, _safe_int(cc.add_study_delay, 30))
+        # 夜间休息(2026-09-30): 开关+起止时间(HH:MM格式, 非法值回退默认)
+        cc.rest_sw = _safe_int(cc.rest_sw, 0)
+        _re_time = re.compile(r"^([01]?\d|2[0-3]):([0-5]?\d)$")
+        if not isinstance(cc.rest_start, str) or not _re_time.match(str(cc.rest_start).strip()):
+            cc.rest_start = "23:00"
+        else:
+            cc.rest_start = str(cc.rest_start).strip()
+        if not isinstance(cc.rest_end, str) or not _re_time.match(str(cc.rest_end).strip()):
+            cc.rest_end = "06:00"
+        else:
+            cc.rest_end = str(cc.rest_end).strip()
+        # 积分课检测+每日积分策略开关
+        cc.jf_sw = _safe_int(cc.jf_sw, 0)
+        # 考试自动重考次数(0=关, 上限200防误配)
+        cc.cx_exam_retake = max(0, min(200, _safe_int(cc.cx_exam_retake, 0)))
         # 【学习公社】暴力模式倍速: 非法值默认2.4, 范围限制在 2.4 ~ 144
         try:
             cc.brute_speed = float(cc.brute_speed)
@@ -367,7 +473,8 @@ def _default_value(config: JSONDataForConfig):
         cc.wb_user_id = str(cc.wb_user_id or "").strip()
         cc.wb_study_mode = max(0, min(2, _safe_int(cc.wb_study_mode, 1)))
         cc.wb_exam_mode = max(0, min(3, _safe_int(cc.wb_exam_mode, 1)))
-        cc.wb_random_answer = 1 if _safe_int(cc.wb_random_answer, 1) != 0 else 0
+        cc.wb_random_answer = 1 if _safe_int(
+            cc.wb_random_answer, 1) != 0 else 0
         cc.wb_study_time = max(0, _safe_int(cc.wb_study_time, 20))
         try:
             cc.wb_video_speed = float(cc.wb_video_speed)
@@ -377,9 +484,12 @@ def _default_value(config: JSONDataForConfig):
             cc.wb_video_speed = 1.0
         if cc.wb_video_speed > 60:
             cc.wb_video_speed = 60.0
-        cc.wb_exam_question_time = max(0, _safe_int(cc.wb_exam_question_time, 3))
-        cc.wb_exam_submit_match_rate = max(0, min(100, _safe_int(cc.wb_exam_submit_match_rate, 90)))
-        cc.wb_jupiter_fallback = 1 if _safe_int(cc.wb_jupiter_fallback, 0) != 0 else 0
+        cc.wb_exam_question_time = max(
+            0, _safe_int(cc.wb_exam_question_time, 3))
+        cc.wb_exam_submit_match_rate = max(
+            0, min(100, _safe_int(cc.wb_exam_submit_match_rate, 90)))
+        cc.wb_jupiter_fallback = 1 if _safe_int(
+            cc.wb_jupiter_fallback, 0) != 0 else 0
         cc.wb_debug = 1 if _safe_int(cc.wb_debug, 0) != 0 else 0
         # 【智慧树】速度倍率: 非法值回退1.5, 范围 0.3 ~ 20
         try:
@@ -462,7 +572,8 @@ def _parse_answer_source_item(data, default_type: str = "") -> AnswerSourceItemC
     name = _pick("name", "remarkName", "remark_name", "title")
     item.name = str(name).strip() if name is not None else ""
 
-    s_type = _pick("type", "sourceType", "source_type", "tikuType", "tiku_type")
+    s_type = _pick("type", "sourceType", "source_type",
+                   "tikuType", "tiku_type")
     if s_type is not None:
         raw_type = str(s_type).strip()
         item.type = _ANSWER_TYPE_ALIAS.get(raw_type.lower(), raw_type)
@@ -483,7 +594,7 @@ def _parse_answer_source_item(data, default_type: str = "") -> AnswerSourceItemC
         item.model = str(model).strip()
 
     url = _pick("url", "baseUrl", "base_url", "apiUrl", "api_url",
-               "path", "file", "filePath", "file_path")
+                "path", "file", "filePath", "file_path")
     item.url = str(url).strip() if url is not None else ""
 
     items = _pick("items", "children", "subItems", "sub_items",
@@ -501,16 +612,20 @@ def _parse_answer_setting(data) -> AnswerSetting:
     if not isinstance(data, dict):
         return ans
 
-    ans.token_check = _safe_int(data.get("tokenCheck", data.get("token_check", 1)), 1)
+    ans.token_check = _safe_int(
+        data.get("tokenCheck", data.get("token_check", 1)), 1)
     ans.local_cache_enable = _safe_int(
         data.get("localCacheEnable", data.get("local_cache_enable", 1)), 1)
+    ans.fill_from_collected = max(0, min(1, _safe_int(
+        data.get("fillFromCollected", data.get("fill_from_collected", 0)), 0)))
     path = data.get("localCachePath", data.get("local_cache_path", ""))
     if isinstance(path, str) and path.strip():
         ans.local_cache_path = path.strip()
 
     order = data.get("order", data.get("priority", None))
     if isinstance(order, str):
-        ans.order = [p.strip() for p in re.split(r'[,，;；\n]+', order) if p.strip()]
+        ans.order = [p.strip()
+                     for p in re.split(r'[,，;；\n]+', order) if p.strip()]
     elif isinstance(order, list):
         ans.order = [str(p).strip() for p in order if str(p or "").strip()]
 

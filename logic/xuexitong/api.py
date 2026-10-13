@@ -32,13 +32,47 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # ============ 常量 ============
 
 _AES_KEY = b"u2oh6Vu^HWe4_AES"
-APP_VERSION = "6.7.2"
+# 2026-10-11 设备档升级(对齐 MOGO 实机截获档: xiaomi 12 / Android 11 / Build QKQ1.190929.002)
+# 原档 "MI10 + Android 16 + OPM1.171019.019(8.1 build)" 为矛盾组合, 属"设备请求异常"高风险特征
+APP_VERSION = "6.7.5"
 BUILD = "10941_314"
-DEVICE_VENDOR = "MI10"
-ANDROID_VERSION = "Android 16"
+DEVICE_VENDOR = "xiaomi 12"
+ANDROID_VERSION = "Android 11"
+ANDROID_BUILD_ID = "QKQ1.190929.002"
+UA_CHROME_VERSION = "79.0.3945.116"
 
-# 生成随机 IMEI（32位hex）
-_IMEI = secrets.token_hex(16)
+
+def _load_or_create_device_id() -> str:
+    """固定设备指纹(32位hex) - 持久化于 config/xxt_device.json
+
+    2026-10-11 升级: 原 secrets.token_hex(16) 每次启动随机 → 多会话"设备漂移",
+    与 MOGO"同设备恒定"特征相悖, 是"检测到其它设备尝试进入考试/设备请求异常"的
+    高疑似根因; 现首次生成后永久固定(与 part._generate_device_flag 共用同一文件)。
+    """
+    import os as _os
+    fp = _os.path.join(
+        _os.path.dirname(_os.path.dirname(
+            _os.path.dirname(_os.path.abspath(__file__)))),
+        "config", "xxt_device.json")
+    try:
+        if _os.path.exists(fp):
+            _d = _json.load(open(fp, encoding="utf-8"))
+            _v = str(_d.get("imei", "")).strip().lower()
+            if len(_v) == 32 and all(c in "0123456789abcdef" for c in _v):
+                return _v
+    except Exception:
+        pass
+    _v = secrets.token_hex(16)
+    try:
+        _os.makedirs(_os.path.dirname(fp), exist_ok=True)
+        _json.dump({"imei": _v}, open(fp, "w", encoding="utf-8"))
+    except Exception:
+        pass
+    return _v
+
+
+# 固定设备 IMEI（32位hex，跨会话稳定）
+_IMEI = _load_or_create_device_id()
 
 
 # ============ 辅助函数 ============
@@ -68,8 +102,8 @@ def get_ua(ua_type: str = "mobile") -> str:
         sign = _mobile_ua_sign(DEVICE_VENDOR, "zh_CN",
                                APP_VERSION, BUILD, _IMEI)
         return " ".join([
-            f"Mozilla/5.0 (Linux; {ANDROID_VERSION}; {DEVICE_VENDOR} Build/OPM1.171019.019; wv)",
-            "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/71.0.3578.99 Mobile Safari/537.36",
+            f"Mozilla/5.0 (Linux; {ANDROID_VERSION}; {DEVICE_VENDOR} Build/{ANDROID_BUILD_ID}; wv)",
+            f"AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/{UA_CHROME_VERSION} Mobile Safari/537.36",
             f"(schild:{sign})",
             f"(device:{DEVICE_VENDOR})",
             "Language/zh_CN",
@@ -79,6 +113,21 @@ def get_ua(ua_type: str = "mobile") -> str:
     elif ua_type == "iphone":
         # 对应 Go GetUA("iphone") - 用于考试API的iPhone UA
         return "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+    elif ua_type == "exam":
+        # 考试链专用UA(2026-10-09 对照实测): 新考试"访问异常"版本门校验UA自洽性
+        #  FAIL案例(被拦): Android 16 与 Build/OPM1.171019.019(8.1 build号) 矛盾组合;
+        #  PASS案例(实测进卷+交卷): Dalvik头 + Android 12 + Build/SKQ1.211006.001,
+        #  版本 6.7.5/10941_314 —— 与可用BUILD一致且自洽
+        sign = _mobile_ua_sign(DEVICE_VENDOR, "zh_CN",
+                               EXAM_UA_VERSION, EXAM_UA_BUILD, _IMEI)
+        return " ".join([
+            f"Dalvik/2.1.0 (Linux; U; {EXAM_UA_OS}; {DEVICE_VENDOR} Build/{EXAM_UA_BUILD_ID})",
+            f"(schild:{sign})",
+            f"(device:{DEVICE_VENDOR})",
+            "Language/zh_CN",
+            f"com.chaoxing.mobile/ChaoXingStudy_3_{EXAM_UA_VERSION}_android_phone_{EXAM_UA_BUILD}",
+            f"(@Kalimdor)_{_IMEI}",
+        ])
     elif ua_type == "web":
         return ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36 Edg/107.0.1418.35")
@@ -86,8 +135,12 @@ def get_ua(ua_type: str = "mobile") -> str:
 
 
 # 专门用于考试API的UA - 对应 Go XXTEXAMUA
-# 初始为mobile UA，遇到"访问异常"时切换为iphone UA
-XXTEXAMUA: str = get_ua("mobile")
+# (2026-10-09 起使用 exam 类型: 自洽Android12+Dalvik头+6.7.5/10941_314)
+EXAM_UA_VERSION = "6.7.5"
+EXAM_UA_BUILD = "10941_314"
+EXAM_UA_OS = "Android 12"
+EXAM_UA_BUILD_ID = "SKQ1.211006.001"
+XXTEXAMUA: str = get_ua("exam")
 
 # 作业拉题(翻页)专用UA - 完全复刻 Go core 的 GetUA("mobile")(MI 5X学习通客户端)
 # 关键: 作业翻题必须使用该客户端UA + 最小参数URL, 否则服务器会忽略 index
@@ -207,6 +260,85 @@ def login_api(cache: XueXiTUserCache, retry: int = 8) -> Tuple[str, Optional[Any
         return body, resp
     finally:
         client.close()
+
+
+# ============ 考试签名v2: 设备指纹链(2026-10实测) ============
+
+_SSO_ACCINFO_URL = "https://sso.chaoxing.com/apis/login/userLogin4Uname.do"
+
+
+def sso_accinfo_api(cache: XueXiTUserCache,
+                    retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """GET sso/accinfo - 建立SSO会话(下发sso_*会话cookie, 签名start必需)
+
+    注意: 需在登录成功后调用; 首次调用(无data)仅建立会话。
+    """
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
+    try:
+        body, resp = _do_get(client, _SSO_ACCINFO_URL, retry=retry)
+        if resp is not None:
+            _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def fetch_exam_client_id_v2(cache: XueXiTUserCache,
+                            retry: int = 3) -> Tuple[str, str, Optional[Exception]]:
+    """设备指纹链(考试签名v2): 上报设备画像 → clientId → 公钥解密出(cid, sc)
+
+    流程(对齐学习通APP原生):
+      ① GET sso/accinfo 建立SSO会话
+      ② 设备画像JSON → RSA-1024公钥分块加密 → POST sso/accinfo(data=密文)
+      ③ 响应msg.clientId(服务端私钥加密) → 公钥数学解密 → {cid, sc}
+    结果缓存到 cache.exam_client_id / cache.exam_sc (会话级复用)。
+    返回: (cid, sc, 错误)。失败时返回("", "", Exception)。
+    """
+    cid = (getattr(cache, "exam_client_id", "") or "").strip()
+    sc = (getattr(cache, "exam_sc", "") or "").strip()
+    if cid and sc:
+        return cid, sc, None  # 已在本次会话中获取过
+    try:
+        from logic.xuexitong import exam_sign
+        # ① SSO会话
+        sso_body, _ = sso_accinfo_api(cache, retry=retry)
+        if not sso_body:
+            return "", "", Exception("SSO会话建立失败(响应为空)")
+        # ② 设备画像 → RSA分块加密
+        plain = exam_sign.build_device_info_v2(
+            imei=_IMEI, model=DEVICE_VENDOR,
+            os_ver="12")  # 2026-10-09: 与考试链UA(Android 12)保持一致(版本门校验自洽性)
+        cipher_b64 = exam_sign.rsa_encrypt_report_v2(plain)
+        # ③ 上报
+        client = _build_client(cache, custom_ua=XXTEXAMUA)
+        try:
+            body, resp = _do_post_form(client, _SSO_ACCINFO_URL,
+                                       {"data": cipher_b64},
+                                       retry=retry, use_multipart=False)
+            if resp is not None:
+                _extract_cookies(client, cache)
+        finally:
+            client.close()
+        data = safe_json_parse(body) if body else None
+        client_id = ""
+        if isinstance(data, dict):
+            msg = data.get("msg")
+            if isinstance(msg, dict):
+                client_id = str(msg.get("clientId", ""))
+        if not client_id:
+            return "", "", Exception(
+                f"设备指纹上报失败: {(body or '')[:150]}")
+        # ④ 解密 clientId → cid/sc
+        dec = exam_sign.rsa_decrypt_client_id_v2(client_id)
+        cid = str(dec.get("cid", "")).strip()
+        sc = str(dec.get("sc", "")).strip()
+        if not cid or not sc:
+            return "", "", Exception("clientId解密结果缺少cid/sc")
+        cache.exam_client_id = cid
+        cache.exam_sc = sc
+        return cid, sc, None
+    except Exception as e:
+        return "", "", Exception(f"设备指纹链异常: {e}")
 
 
 def cookie_login_set(cache: XueXiTUserCache):
@@ -631,6 +763,62 @@ def read_point_report_api(cache: XueXiTUserCache, course_id: str,
         return False
 
 
+def point_get_count_api(cache: XueXiTUserCache, course_id: str,
+                        class_id: str, retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """学习积分查询 - 对齐参考实现 (bigdata-score getCount)
+
+    GET https://bigdata-score.chaoxing.com/tsjy/point/getCount?courseid=&classid=
+    返回: {"itemDayScore":[{score,scoreType}...], "totalScore":N,
+           "dailyMaxScore":N, "studyDays":N} 或 {"status":false,"msg":"您在该课程暂无积分！"}
+    作用: 积分课检测 + 每日积分缺口计算(dayScore vs dailyMaxScore)
+    """
+    import httpx
+    url = (f"https://bigdata-score.chaoxing.com/tsjy/point/getCount"
+           f"?courseid={course_id}&classid={class_id}")
+    try:
+        ck = "; ".join(f"{k}={v}" for k, v in cache.cookie_dict.items())
+        resp = httpx.get(url, timeout=15, verify=False, headers={
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Cookie": ck,
+            "User-Agent": cache.cookie_dict.get("xd", "") or
+            "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+            "Host": "bigdata-score.chaoxing.com",
+            "Connection": "keep-alive",
+        })
+        return resp.text, resp
+    except Exception as e:
+        return "", None
+
+
+def class_weight_api(cache: XueXiTUserCache, course_id: str,
+                     class_id: str, retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """积分考核规则明细 - 对齐参考实现 (tsjy class-weight)
+
+    GET https://tsjy.chaoxing.com/plaza/outp/api/class-weight?courseId=&classId=
+    返回: {"data":[{name,value}...]} 各考核项权重(如 视频30%/测评20%/考试50%)
+    """
+    import httpx
+    url = (f"https://tsjy.chaoxing.com/plaza/outp/api/class-weight"
+           f"?courseId={course_id}&classId={class_id}")
+    try:
+        ck = "; ".join(f"{k}={v}" for k, v in cache.cookie_dict.items())
+        resp = httpx.get(url, timeout=15, verify=False, headers={
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Cookie": ck,
+            "User-Agent": cache.cookie_dict.get("xd", "") or
+            "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36",
+            "X-Requested-With": "XMLHttpRequest",
+            "Host": "tsjy.chaoxing.com",
+            "Connection": "keep-alive",
+        })
+        return resp.text, resp
+    except Exception as e:
+        return "", None
+
+
 def document_book_report_api(cache: XueXiTUserCache, job_id: str,
                              knowledge_id: str, course_id: str,
                              class_id: str, jtoken: str,
@@ -676,6 +864,69 @@ def document_readv2_report_api(cache: XueXiTUserCache, job_id: str,
            f"&clazzid={class_id}"
            f"&jtoken={jtoken}"
            f"&checkMicroTopic=true&microTopicId=0&_dc={dc}")
+    client = _build_client(cache)
+    try:
+        hdrs = {
+            "Accept": "*/*",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept-Language": "zh-CN,en-US;q=0.9",
+            "Host": "mooc1-api.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = _do_get(client, url, headers=hdrs, retry=retry)
+        if resp is not None:
+            _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def micro_course_report_api(cache: XueXiTUserCache, job_id: str,
+                            knowledge_id: str, course_id: str,
+                            class_id: str, jtoken: str,
+                            retry: int = 8) -> Tuple[str, Optional[Any]]:
+    """微课任务点上报(2026-09-30 对齐参考实现)
+    URL: https://mooc1.chaoxing.com/ananas/job/microCourse?jobid=...&...
+    微课(microCourse)是超星新版任务点类型, 有专用上报接口
+    (旧版把微课归入文档报会导致不识别)
+    """
+    dc = str(int(time.time() * 1000))
+    url = (f"https://mooc1.chaoxing.com/ananas/job/microCourse"
+           f"?jobid={job_id}"
+           f"&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}"
+           f"&clazzid={class_id}"
+           f"&jtoken={jtoken}"
+           f"&_dc={dc}")
+    client = _build_client(cache)
+    try:
+        hdrs = {
+            "Accept": "*/*",
+            "Host": "mooc1.chaoxing.com",
+            "Connection": "keep-alive",
+        }
+        body, resp = _do_get(client, url, headers=hdrs, retry=retry)
+        if resp is not None:
+            _extract_cookies(client, cache)
+        return body, resp
+    finally:
+        client.close()
+
+
+def vote_report_api(cache: XueXiTUserCache, job_id: str,
+                    knowledge_id: str, course_id: str,
+                    class_id: str, jtoken: str,
+                    retry: int = 8) -> Tuple[str, Optional[Any]]:
+    """投票任务点上报(2026-09-30 对齐参考实现)
+    URL: https://mooc1-api.chaoxing.com/ananas/job/vote?jobid=...&...
+    """
+    url = (f"https://mooc1-api.chaoxing.com/ananas/job/vote"
+           f"?jobid={job_id}"
+           f"&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}"
+           f"&clazzid={class_id}"
+           f"&jtoken={jtoken}"
+           f"&checkMicroTopic=true&microTopicId=undefined")
     client = _build_client(cache)
     try:
         hdrs = {
@@ -1113,6 +1364,207 @@ def upload_face_image_api(cache: XueXiTUserCache, token: str,
         client.close()
 
 
+# ============ 考试人脸突破(2026-10实测链路) ============
+
+def face_compare_exam_api(cache: XueXiTUserCache, taskref_id: str,
+                          course_id: str, class_id: str, cpi: str,
+                          current_face_id: str,
+                          retry: int = 3,
+                          answer_id: str = "",
+                          client_id: str = "",
+                          sc: str = "") -> Tuple[Dict[str, Any], Optional[Any]]:
+    """考试人脸比对(2026-10-09 实测全通版: 完整签名链)
+    GET https://mooc1-api.chaoxing.com/exam-ans/exam/phone/face-compare
+    ★ relationid=taskrefId(试卷id)；而签名 param=faceCompare_{answerId}-{classId}-{oid}-
+      (★两处 id 来源不同, 实测结论: 混用会报"参数验证失败/考试已删除")
+    ★ 带签名参数: tk=cid_cxtime_MD5(face_msg) / signk=RSA(param) /
+      signt=MD5(cxcid..paramToken{signk}{sc}) / liveDetectionStatus=0 etc.
+    兼容: client_id/sc 为空时回退无签名旧版(可能被"图片信息获取失败1001"拒)
+    返回 (data dict, 错误)
+    """
+    import hashlib as _hl
+    from urllib.parse import quote as _quote_fc
+    oid = current_face_id
+    if client_id and sc:
+        cxtime = str(int(time.time() * 1000))
+        face_msg = ("LiveDetectionStatus0collectStatus1currentFaceId%scxcid%scxtime%s%s"
+                    % (oid, client_id, cxtime, sc))
+        tk = "%s_%s_%s" % (client_id, cxtime, _hl.md5(
+            face_msg.encode()).hexdigest())
+        param = "faceCompare_%s-%s-%s-" % (
+            answer_id or taskref_id, class_id, oid)
+        try:
+            from logic.xuexitong import exam_sign as _es_fc
+            signk = _es_fc.form_sign_v2(param)
+            signt = _hl.md5(("cxcid%scxtime%sparam%sparamToken%s%s"
+                             % (client_id, cxtime, param, signk, sc)).encode()).hexdigest()
+        except Exception:
+            signk = ""
+            signt = ""
+        url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/face-compare"
+               f"?relationid={taskref_id}&courseId={course_id}&classId={class_id}"
+               f"&currentFaceId={oid}"
+               "&liveDetectionStatus=0&collectStatus=1&recogType=0&sessionId="
+               f"&SenseDetectionStatus=0&tk={tk}&cpi={cpi}&_d=mobile"
+               f"&_signcode=1&_signc=1&_signe=&signk={_quote_fc(signk, safe='')}"
+               f"&cxcid={client_id}&cxtime={cxtime}&signt={signt}")
+    else:
+        url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/face-compare"
+               f"?relationid={taskref_id}&courseId={course_id}&classId={class_id}"
+               f"&currentFaceId={current_face_id}&liveDetectionStatus=1&cpi={cpi}")
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
+    try:
+        body, _resp = _do_get(client, url, retry=retry)
+    finally:
+        client.close()
+    try:
+        jd = _json.loads(body or "{}")
+    except Exception as e:
+        return {}, e
+    return jd.get("data") or {}, None
+
+
+def keeper_push_api(cache: XueXiTUserCache, course_id: str, class_id: str,
+                    cpi: str, test_paper_id: str, answer_id: str,
+                    event_type: int, monitor_enc: str,
+                    data: Optional[Dict[str, Any]] = None,
+                    current_face_id: str = "",
+                    retry: int = 2) -> Tuple[str, Optional[Any]]:
+    """考中监控 keeper 日志上报(2026-10-09 实测链路)
+    POST /keeper/api/receiveExamLogs?eventType={n}
+    事件: 0=进卷 1=重进 2=最终交卷 3=提交 5=人脸抓拍
+    (事件0/1 自动带 needFaceRecognition=1; 失败不阻断考试)
+    """
+    log_obj = {"courseId": course_id, "clazzId": class_id,
+               "personId": cpi, "examRelationId": test_paper_id,
+               "answerId": answer_id, "eventType": event_type,
+               "ip": "", "data": data or {}}
+    if event_type in (0, 1):
+        log_obj["data"]["needFaceRecognition"] = 1
+    url = f"https://mooc1-api.chaoxing.com/keeper/api/receiveExamLogs?eventType={event_type}"
+    if event_type == 0 and not current_face_id:
+        url += "&currentFaceId=false"
+    client = _build_client(cache, custom_ua=XXTEXAMUA)
+    try:
+        return _do_post_form(
+            client, url,
+            {"log": _json.dumps(log_obj, separators=(",", ":"),
+                                ensure_ascii=False),
+             "enc": monitor_enc},
+            retry=retry, use_multipart=False)
+    finally:
+        client.close()
+
+
+def prepare_exam_face(cache: XueXiTUserCache, face_img_data: Optional[bytes],
+                      taskref_id: str, course_id: str, class_id: str,
+                      cpi: str, retry: int = 3, answer_id: str = ""
+                      ) -> Tuple[str, str, Optional[Any]]:
+    """考试人脸准备一体化(2026-10-09 实测全通版):
+    ① upload#1 → oid1 ② changefaceid(oid1)建基准 ③ upload#2 → oid2
+    ④ face-compare(签名版, relationid=试卷id, param用answerId) → facekey+detail
+    ⑤ 首轮报"faceObjectId can't be empty"时重传+changefaceid→二轮(实测常成功)
+    ⑥ 组装 faceDetectionResult(紧凑JSON, CxKitty格式)
+    返回 (facekey, face_detection_result_json, 错误)
+    face_img_data 为空时复用 _face_load_image(本地库/assets/faces/{账号}/ → 历史人脸)
+    """
+    if not face_img_data:
+        _fi, _ferr = _face_load_image(cache)
+        if _ferr:
+            return "", "", _ferr
+        face_img_data = _fi
+    if not face_img_data:
+        return "", "", Exception(
+            "无人脸照片(请在 assets/faces/{账号}/ 目录上传或放置照片)")
+    token_body, _ = get_face_upload_token(cache, retry=retry)
+    tk = ""
+    try:
+        tk = (_json.loads(token_body or "{}") or {}).get("_token", "")
+    except Exception:
+        pass
+    if not tk:
+        return "", "", Exception("获取人脸上传token失败")
+    # 签名材料(设备指纹链; 不可用时回退无签名旧版)
+    _cid_fc, _sc_fc = "", ""
+    try:
+        _cid_fc, _sc_fc, _e_fc = fetch_exam_client_id_v2(cache, retry=retry)
+        if _e_fc:
+            _cid_fc, _sc_fc = "", ""
+    except Exception:
+        _cid_fc, _sc_fc = "", ""
+    # ① 上传#1
+    up1, _ = upload_face_image_api(cache, tk, face_img_data, retry=retry)
+    oid1 = ""
+    try:
+        oid1 = str((_json.loads(up1 or "{}") or {}).get("objectId", ""))
+    except Exception:
+        pass
+    if not oid1:
+        return "", "", Exception("人脸照片上传失败")
+    # ② 换基准(失败如"质量检测"不中断, 比对将基于旧基准)
+    change_faceid_api(cache, oid1, retry=retry)
+    # ③ 上传#2
+    up2, _ = upload_face_image_api(cache, tk, face_img_data, retry=retry)
+    oid2 = ""
+    try:
+        oid2 = str((_json.loads(up2 or "{}") or {}).get("objectId", ""))
+    except Exception:
+        pass
+    if not oid2:
+        oid2 = oid1
+    # ④ 比对(签名版, 实测参数: relationid=试卷id + param=faceCompare_answerId-...)
+    data, err = face_compare_exam_api(cache, taskref_id, course_id,
+                                      class_id, cpi, oid2, retry=retry,
+                                      answer_id=answer_id,
+                                      client_id=_cid_fc, sc=_sc_fc)
+    if err:
+        return "", "", err
+    data = data or {}
+    _msg_fc = str(data.get("msg") or "")
+    facekey = str(data.get("facekey", ""))
+    # ★ 实测(2026-10-09): 首轮常报"faceObjectId can't be empty" → 重传+changefaceid → 二轮
+    if not facekey and "faceObjectId can" in _msg_fc:
+        up3, _ = upload_face_image_api(cache, tk, face_img_data, retry=retry)
+        oid3 = ""
+        try:
+            oid3 = str((_json.loads(up3 or "{}") or {}).get("objectId", ""))
+        except Exception:
+            pass
+        if oid3:
+            change_faceid_api(cache, oid3, retry=retry)
+            time.sleep(3)
+            data, err = face_compare_exam_api(cache, taskref_id, course_id,
+                                              class_id, cpi, oid3, retry=retry,
+                                              answer_id=answer_id,
+                                              client_id=_cid_fc, sc=_sc_fc)
+            if err:
+                return "", "", err
+            data = data or {}
+            _msg_fc = str(data.get("msg") or "")
+            facekey = str(data.get("facekey", ""))
+            oid2 = oid3
+    if not facekey:
+        return "", "", Exception(_msg_fc or "face-compare失败")
+    detail = data.get("detail") or {}
+    # ⑤ 组装 faceDetectionResult (CxKitty格式, 紧凑JSON)
+    fdr = {
+        "collectedFaceId": detail.get("collectObjectId", ""),
+        "currentFaceId": detail.get("faceObjectId", oid2),
+        "collectStatus": 1,
+        "LiveDetectionStatus": 1,
+        "extraData": {
+            "a_eye": random.choices((-1, 0), (0.2, 0.8)),
+            "a_score": 0,
+            "f_extra": f"{random.randint(5000, 10000)}_0_-1_1_0",
+            "ret": random.randint(100, 105),
+            "s_objectId": oid2,
+            "s_score": random.randint(80000000, 99000000) / 1e8,
+        },
+        "ignoreLiveDetectionStatus": 1,
+    }
+    return facekey, _json.dumps(fdr, separators=(",", ":")), None
+
+
 def pass_face_qr_plan_phone_new_api(cache: XueXiTUserCache, class_id: str,
                                     course_id: str, knowledge_id: str,
                                     cpi: str, object_id: str,
@@ -1212,15 +1664,39 @@ def _face_image_rgb_disturb(image_data: bytes) -> bytes:
 
 
 def _face_load_image(cache: XueXiTUserCache):
-    """拉取人脸图片: 本地缓存优先(./assets/faces/{account}.jpg)，否则拉历史人脸 - 对齐 Go PassFacePhoneAction"""
+    """拉取人脸图片: 本地库优先(多张轮换) → 单张兼容 → 历史人脸
+
+    本地库(前端「人脸」按钮上传):
+      1) ./assets/faces/{account}/ 目录下的图片文件(jpg/jpeg/png/webp),
+         存在多张时随机选一张轮换(降低同一张被风控的概率);
+      2) 兼容旧单张 ./assets/faces/{account}.jpg;
+      3) 都没有时拉取服务器历史人脸。
+    """
     import os as _os
-    local_path = f"./assets/faces/{cache.account}.jpg"
+    import random as _random
+    base = "./assets/faces"
+    # 1) 多张目录(前端上传)
+    dir_path = _os.path.join(base, str(cache.account))
+    if _os.path.isdir(dir_path):
+        try:
+            files = [f for f in _os.listdir(dir_path)
+                     if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+                     and _os.path.isfile(_os.path.join(dir_path, f))]
+            if files:
+                with open(_os.path.join(dir_path, _random.choice(files)),
+                          "rb") as f:
+                    return f.read(), None
+        except Exception:
+            pass
+    # 2) 兼容旧单张
+    local_path = f"{base}/{cache.account}.jpg"
     if _os.path.exists(local_path):
         try:
             with open(local_path, "rb") as f:
                 return f.read(), None
         except Exception:
             pass
+    # 3) 服务器历史人脸
     return get_history_face_img(cache)
 
 
@@ -1512,10 +1988,25 @@ def work_new_submit_answer_api(cache: XueXiTUserCache,
     """
     enc_work = answer_data.get("enc_work", "")
     total_q = answer_data.get("totalQuestionNum", "")
+    # 2026-09-30 修复: 对齐作业页真实提交URL(form1 action)
+    # 网页真实: addStudentWorkNew?keyboardDisplayRequiresUserAction=1&_classId=&courseid=
+    #   &token={enc_work}&workAnswerId={answerId}&workid=&cpi=&jobid=&knowledgeid=
+    #   &ua=app&formType2=post&saveStatus=1&version=1&tempsave=1
+    # (旧实现缺 workAnswerId/workid/cpi/jobid/knowledgeid, 且用 ua=pc&formType=post,
+    #  导致"保存成功"但任务点不变绿: 服务端未将提交关联到任务点)
+    _answer_id = str(answer_data.get("workAnswerId", "") or "")
+    _workid_v = str(answer_data.get("oldWorkId", "")
+                    or answer_data.get("workid", "") or "")
+    _cpi_v = str(answer_data.get("cpi", "") or "")
+    _jobid_v = str(answer_data.get("jobid", "") or "")
+    _kid_v = str(answer_data.get("knowledgeid", "") or knowledge_id or "")
     path = (f"/mooc-ans/work/addStudentWorkNew"
-            f"?_classId={class_id}&courseid={course_id}"
-            f"&token={enc_work}&totalQuestionNum={total_q}"
-            f"&ua=pc&formType=post&saveStatus=1&version=1&tempsave=1")
+            f"?keyboardDisplayRequiresUserAction=1"
+            f"&_classId={class_id}&courseid={course_id}"
+            f"&token={enc_work}&workAnswerId={_answer_id}"
+            f"&workid={_workid_v}&cpi={_cpi_v}"
+            f"&jobid={_jobid_v}&knowledgeid={_kid_v}"
+            f"&ua=app&formType2=post&saveStatus=1&version=1&tempsave=1")
 
     # 获取mobile UA (与Go一致)
     mobile_ua = get_ua("mobile")
@@ -2388,20 +2879,53 @@ def submit_exam_answer_api(cache: XueXiTUserCache,
     temp_save_str = str(not is_submit).lower()
     imei_val = answer_data.get("imei", _IMEI)
 
+    # ★ 移植(2026-10-07, 来源: 热心人士提供的参考脚本): "正式卷"提交需 submitExam 完整param签名
+    #   param = submitExam_{tuid}-{classId}-{enterPageTime}-{qid}-{答案值}
+    #   sig=RSA("param"+param); signt=MD5(cxcid..cxtime..param..paramToken..sc)
+    #   URL: _csign=1&_signcode=true&_signc=1&_signe=&_signk/_cxcid/_cxtime/_signt
+    #   form: 同时附带 cxcid/cxtime/signt/signk (无下划线版)
+    _v2_sub_ok = False
+    _sig_v2 = _cx_v2 = _signt_v2 = _cid_v2 = ""
+    try:
+        from logic.xuexitong import exam_sign as _es_sub
+        _cid_v2, _sc_v2, _err_v2 = fetch_exam_client_id_v2(cache)
+        if _cid_v2 and _sc_v2:
+            _ans_val = str(answer_data.get("answer", "") or "")
+            _ept = str(answer_data.get("enterPageTime", "") or "0")
+            _param_v2 = (f"submitExam_{answer_data.get('testUserRelationId', '')}"
+                         f"-{answer_data.get('classId', '')}-{_ept}-{qid}-{_ans_val}")
+            _sig_v2 = _es_sub.form_sign_v2(_param_v2)
+            _cx_v2 = str(int(time.time() * 1000))
+            _signt_v2 = _es_sub.compute_signt_v2(
+                _cid_v2, _cx_v2, _param_v2, _sig_v2, _sc_v2)
+            _v2_sub_ok = True
+    except Exception:
+        _v2_sub_ok = False
+
+    if _v2_sub_ok:
+        _sign_seg = (f"&pos=&version=1"
+                     f"&_csign=1&_signcode=true&_signc=1&_signe="
+                     f"&_signk={quote(_sig_v2, safe='')}"
+                     f"&_cxcid={quote(_cid_v2, safe='')}"
+                     f"&_cxtime={_cx_v2}&_signt={_signt_v2}")
+    else:
+        # 回退: 旧占位签名(_signcode=3)
+        _sign_seg = (f"&version=1"
+                     f"&pos={sig['pos']}"
+                     f"&rd={sig['rd']:.16f}"
+                     f"&value={quote(sig['value'])}"
+                     f"&qid={qid}"
+                     f"&_edt={sig['_edt']}"
+                     f"&_csign=1&_signcode=3&_signc=0&_signe=3-1&_signk"
+                     f"&_cxcid&_cxtime&_signt")
     url = (f"https://mooc1-api.chaoxing.com/exam-ans/exam/test/reVersionSubmitTestNew"
            f"?classId={answer_data.get('classId', '')}"
            f"&courseId={answer_data.get('courseId', '')}"
            f"&testPaperId={answer_data.get('testPaperId', '')}"
            f"&testUserRelationId={answer_data.get('testUserRelationId', '')}"
            f"&cpi={answer_data.get('cpi', '')}"
-           f"&version=1&tempSave={temp_save_str}"
-           f"&pos={sig['pos']}"
-           f"&rd={sig['rd']:.16f}"
-           f"&value={quote(sig['value'])}"
-           f"&qid={qid}"
-           f"&_edt={sig['_edt']}"
-           f"&_csign=1&_signcode=3&_signc=0&_signe=3-1&_signk"
-           f"&_cxcid&_cxtime&_signt")
+           f"&tempSave={temp_save_str}"
+           + _sign_seg)
 
     # Build form body
     form = {
@@ -2429,6 +2953,12 @@ def submit_exam_answer_api(cache: XueXiTUserCache,
         "exitdtime": "0",
         "paperGroupId": "0",
     }
+    # ★ 移植(2026-10-07): form内同步携带签名(v2成功时, 对齐官方APP双签名)
+    if _v2_sub_ok:
+        form["cxcid"] = _cid_v2
+        form["cxtime"] = _cx_v2
+        form["signt"] = _signt_v2
+        form["signk"] = _sig_v2
     # Add score+qid
     score_val = answer_data.get("score", "")
     if score_val:

@@ -52,57 +52,11 @@ def _is_local(request: Request) -> bool:
         return False
 
 
-def create_app() -> FastAPI:
-    """创建并配置 FastAPI 应用"""
-    app = FastAPI(title="Yatori Console API", version=APP_VERSION)
+def _register_auth_plugins(app: FastAPI, web_auth) -> None:
+    """注册私有部署增强路由(认证接口 + 内置管理界面静态服务)
 
-    # 加密通道(内层): X-Yatori-Enc 请求/响应体 AES-256-GCM 加解密
-    from web.crypto_channel import install_encrypted_channel
-    install_encrypted_channel(app)
-
-    # 访问认证: 所有 /api(除 login) 要求 Bearer 令牌; 管理界面走秘密入口
-    from web import auth as web_auth
-    from starlette.middleware.base import BaseHTTPMiddleware
-
-    class AuthGuardMiddleware(BaseHTTPMiddleware):
-
-        async def dispatch(self, request, call_next):
-            path = request.url.path
-            if path.startswith("/api"):
-                # 强制加密通道: 外网请求必须带 X-Yatori-Enc 头(本机豁免)
-                enc_ok = (request.headers.get("x-yatori-enc") == "1")
-                if not enc_ok and not _is_local(request):
-                    return JSONResponse(
-                        {"code": 401, "message": "未登录或登录已过期"},
-                        status_code=401)
-                # 登录/校验接口白名单(不返回敏感数据)
-                if path in ("/api/v1/login", "/api/v1/authCheck"):
-                    return await call_next(request)
-                token = web_auth.bearer_of(request)
-                if not token:
-                    # SSE(EventSource 无法自定义头)等场景支持 query 参数传令牌
-                    token = request.query_params.get("token", "")
-                if not web_auth.verify(token):
-                    return JSONResponse(
-                        {"code": 401, "message": "未登录或登录已过期"},
-                        status_code=401)
-            return await call_next(request)
-
-    app.add_middleware(AuthGuardMiddleware)
-
-    # CORS 中间件(最外层, 处理跨域预检) - 支持宝塔等外部分离前端直连
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # 注册路由
-    from web.router import register_routes
-    register_routes(app)
-
+    仅在 web/auth.py 存在时调用(私有部署模式); 开源基础模式不注册。
+    """
     # ---- 认证接口(白名单): 口令(=webSecret)换取会话令牌 ----
     @app.post("/api/v1/login")
     async def api_login(request: Request):
@@ -161,6 +115,69 @@ def create_app() -> FastAPI:
                 return FileResponse(str(index_path))
             return JSONResponse({"error": "Frontend app not found"},
                                 status_code=404)
+
+
+def create_app() -> FastAPI:
+    """创建并配置 FastAPI 应用"""
+    app = FastAPI(title="Yatori Console API", version=APP_VERSION)
+
+    # 私有部署增强模块(不参与开源): 文件存在时自动启用加密通道+访问认证
+    # (web/crypto_channel.py、web/auth.py; 缺失时回退到开源基础模式)
+    try:
+        from web.crypto_channel import install_encrypted_channel
+        from web import auth as web_auth
+    except ImportError:
+        install_encrypted_channel = None
+        web_auth = None
+
+    if web_auth is not None:
+        # 加密通道(内层): X-Yatori-Enc 请求/响应体 AES-256-GCM 加解密
+        install_encrypted_channel(app)
+
+        # 访问认证: 所有 /api(除 login) 要求 Bearer 令牌; 管理界面走秘密入口
+        from starlette.middleware.base import BaseHTTPMiddleware
+
+        class AuthGuardMiddleware(BaseHTTPMiddleware):
+
+            async def dispatch(self, request, call_next):
+                path = request.url.path
+                if path.startswith("/api"):
+                    # 强制加密通道: 外网请求必须带 X-Yatori-Enc 头(本机豁免)
+                    enc_ok = (request.headers.get("x-yatori-enc") == "1")
+                    if not enc_ok and not _is_local(request):
+                        return JSONResponse(
+                            {"code": 401, "message": "未登录或登录已过期"},
+                            status_code=401)
+                    # 登录/校验接口白名单(不返回敏感数据)
+                    if path in ("/api/v1/login", "/api/v1/authCheck"):
+                        return await call_next(request)
+                    token = web_auth.bearer_of(request)
+                    if not token:
+                        # SSE(EventSource 无法自定义头)等场景支持 query 参数传令牌
+                        token = request.query_params.get("token", "")
+                    if not web_auth.verify(token):
+                        return JSONResponse(
+                            {"code": 401, "message": "未登录或登录已过期"},
+                            status_code=401)
+                return await call_next(request)
+
+        app.add_middleware(AuthGuardMiddleware)
+
+    # CORS 中间件(最外层, 处理跨域预检) - 支持宝塔等外部分离前端直连
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # 注册路由
+    from web.router import register_routes
+    register_routes(app)
+
+    if web_auth is not None:
+        _register_auth_plugins(app, web_auth)
 
     # 根路径与旧入口不再展示管理界面(伪装 404, 不暴露信息)
     @app.get("/")

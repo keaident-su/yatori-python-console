@@ -1,6 +1,6 @@
 # 智慧树新版共享课(studyvideoh5) 协议级刷课 — 完整技术文档
 
-> 2026-10-13 实战验证：账号 18286610553《从课堂走出来的创新》**24/24 节全绿**（UI层 pct=None + 协议层 learnTimeSec≥videoSec 双重复核通过）。
+> 2026-10-13 实战验证：账号 138****0553《从课堂走出来的创新》**24/24 节全绿**（UI层 pct=None + 协议层 learnTimeSec≥videoSec 双重复核通过）。
 > 代码固化：`logic/zhihuishu/share_proto.py`（本目录）。
 
 ---

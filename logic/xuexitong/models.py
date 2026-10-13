@@ -20,6 +20,9 @@ class XueXiTUserCache(UserCacheBase):
     fid: str = ""
     vc3: str = ""
     device_flag: str = ""  # 设备特征码(考试客户端签名用)
+    # 考试签名v2(2026-10): 设备指纹链解出的会话级凭证
+    exam_client_id: str = ""  # 设备指纹链解出的 cid(cxcid)
+    exam_sc: str = ""         # 设备指纹链解出的 sc(签名盐)
 
 
 @dataclass
@@ -38,6 +41,9 @@ class XueXiTCourse(CourseBase):
     chat_id: str = ""
     course_data_id: int = 0
     course_image: str = ""
+    # tsjy(超星通识教育/学习广场)平台专属字段(2026-09-30)
+    is_tsjy: bool = False       # True=tsjy.chaoxing.com 平台课(走独立学习链路)
+    tsjy_person_id: str = ""    # tsjy 课程 personId(courseSquareUrl 解析)
 
 
 @dataclass

@@ -30,16 +30,24 @@ from logic.xuexitong import captcha as xxt_captcha
 from logic.platform_common import (generic_filter_account, generic_user_block,
                                    send_user_event_notice, run_stats_bump)
 from logic.core.models import safe_json_parse, json_get
-from logic.core.parallel import NODE_START_INTERVAL, LOGIN_WORKERS
+from logic.core import parallel as _par  # 动态并发取值(全速开关/档位/运行期微调)
+# 并发参数统一经 _par.tuned_* 动态获取(支持全速开关/性能档位/运行期负载微调)
 from logic.core.cpu_pool import cpu_map
 from logic.core.parse_utils import parse_iframe_data as _parse_iframe_light
 from utils.log import (
-    log_print, model_print, INFO, DEBUG,
-    Green, Yellow, Red, Blue, Purple, Default, BoldRed, BoldGreen, DarkGray
+    log_print, model_print, with_log_account, INFO, DEBUG,
+    Green, Yellow, Red, Blue, Purple, Default, BoldRed, BoldGreen, DarkGray,
+    Cyan
 )
 from global_state.global_var import ACCOUNT_TYPE_STR
 
 PLATFORM_TYPE = "XUEXITONG"
+
+
+class _V2SignDone(Exception):
+    """内部信号: 考试签名v2(设备指纹链)已通过, 跳过v1旧签名回退"""
+    pass
+
 
 _users_lock = threading.Lock()
 _model3_caches: Dict[str, List[XueXiTUserCache]] = {}
@@ -67,6 +75,37 @@ _exam_serial_lock = threading.Lock()
 # 多任务点无限制模式：按账号累计登录次数并实时显示状态
 _account_login_counts: Dict[str, int] = {}
 _account_login_guard = threading.Lock()
+
+# 刷课停止标志(账号级): Web 端"停止刷课"时置位,
+# 引擎层各循环(建池/课程/节点/视频轮询)检查后优雅退出
+# (2026-09-24: 修复停止后视频仍继续上报/进度回退问题)
+_stop_flags: Dict[str, Any] = {}
+_stop_flags_guard = threading.Lock()
+
+
+def request_stop(account: str):
+    """请求停止指定账号的刷课(线程安全; 立即置位)"""
+    with _stop_flags_guard:
+        ev = _stop_flags.get(account)
+        if ev is None:
+            ev = threading.Event()
+            _stop_flags[account] = ev
+        ev.set()
+
+
+def clear_stop(account: str):
+    """清除停止标志(启动刷课前调用)"""
+    with _stop_flags_guard:
+        ev = _stop_flags.get(account)
+    if ev is not None:
+        ev.clear()
+
+
+def is_stopped(account: str) -> bool:
+    """是否已请求停止刷课"""
+    with _stop_flags_guard:
+        ev = _stop_flags.get(account)
+    return bool(ev is not None and ev.is_set())
 
 
 def _record_node_login(account: str, ok: bool, tag: str = ""):
@@ -98,11 +137,35 @@ _DEVICE_FLAG_AES_KEY = "QrCbNY@MuK1X8HGw"
 
 def _generate_device_flag() -> str:
     """动态生成设备特征码 - 对齐学习通APP逆向算法
-    Base64(AES-128-ECB-PKCS5(随机UUID, key="QrCbNY@MuK1X8HGw"))
+    Base64(AES-128-ECB-PKCS5(设备种子, key="QrCbNY@MuK1X8HGw"))
+
+    7.0.4版逆向补充(2026-10-02, chaoxing_app_7.0.4):
+    - APP真实设备码由 libsecuritylib.so 的 CxDevice_getDeviceInfo 生成(多源画像
+      + Root/模拟器/代理等9项风控 + 服务端状态共同参与), 非单一明文值;
+    - 本函数采用"APP兼容的加密格式"模拟生成, 登录时自动或配置指定。
+
+    2026-10-11 升级(对齐MOGO同设备恒定特征): 原"随机UUID"→"固定设备ID派生",
+    与 api._IMEI 共用 config/xxt_device.json, 跨会话稳定;
+    修复"多会话设备漂移→设备请求异常/检测到其它设备尝试进入考试"高风险项。
     """
     import base64 as _b64
-    import uuid as _uuid
-    raw = str(_uuid.uuid4()).encode("utf-8")
+    import json as _json
+    import os as _os
+    _fp = _os.path.join(
+        _os.path.dirname(_os.path.dirname(
+            _os.path.dirname(_os.path.abspath(__file__)))),
+        "config", "xxt_device.json")
+    _stable_id = ""
+    try:
+        if _os.path.exists(_fp):
+            _stable_id = str(_json.load(
+                open(_fp, encoding="utf-8")).get("imei", "")).strip().lower()
+    except Exception:
+        pass
+    if not _stable_id:
+        import secrets as _sec
+        _stable_id = _sec.token_hex(16)
+    raw = ("cxdevice|" + _stable_id).encode("utf-8")
     try:
         from Crypto.Cipher import AES
         from Crypto.Util.Padding import pad
@@ -116,10 +179,33 @@ def _generate_device_flag() -> str:
 # ============ AI答案匹配 ============
 
 def _strip_option_prefix(opt: str) -> str:
-    """去除选项的字母前缀(如"C三相笼式异步电机"→"三相笼式异步电机")"""
+    """去除选项的"字母+分隔符"前缀(如"C.三相笼式异步电机"/"A、xxx")。
+
+    2026-10-09 修复(致命): 旧逻辑把"任意字母开头"都当前缀剥离,
+    导致英语课程选项(如 "vehicle —交通工具")首字母被剥,
+    与字母识别联动产生 AVSC/HOE 等越界假字母提交(作业判错且无法重做)。
+    现仅剥离"字母+点/顿号/冒号/括号"形式; 其余(纯英文/字母紧连内容)原样保留。
+    """
     opt = (opt or "").strip()
-    m = re.match(r'^[A-Za-zＡ-Ｚ][\.、．:：\s]*', opt)
+    m = re.match(r'^[A-Za-zＡ-Ｚ]\s*[\.、．:：)）]\s*', opt)
     return opt[m.end():].strip() if m else opt
+
+
+def _option_letter(opt: str, idx: int) -> str:
+    """取选项字母(2026-10-09 修复): 仅"字母+分隔符"前缀(如"A."/"B、")认作
+    自带字母; 其余一律按序号 chr(65+idx)。不再把英文选项文本首字母当字母
+    (旧逻辑对 'vehicle —…' 取 'V', 曾致英语课提交 AVSC/HOE 越界假字母)。
+    """
+    o = (opt or "").strip()
+    m = re.match(r'^([A-Za-zＡ-Ｚ])\s*[\.、．:：)）]', o)
+    if m:
+        ch = m.group(1)
+        if not ch.isascii():
+            ch = chr(ord(ch) - 0xFEE0)  # 全角字母 -> ASCII
+        ch = ch.upper()
+        if "A" <= ch <= "H":
+            return ch
+    return chr(65 + idx)
 
 
 # 判断题同义词(对/错)
@@ -164,10 +250,18 @@ def _normalize_ai_answer_candidates(answer: str) -> List[str]:
                 return cands
     except (ValueError, TypeError):
         pass
-    # 纯文本: 按常见分隔符切分(#为AXE题库多选答案分隔符)
+    # 纯文本: 分层切分(2026-10-08修复"顿号切碎误匹配"BUG)
+    # # 为题库多选答案的标准分隔符: 含#时仅按#切, 保留段内顿号/逗号原文
+    # (否则"销售、服务分离模式"被切碎成"销售"/"服务"等短词, 短词包含匹配极易误命中多个选项 -> 多选变全选ABCD)
+    # 无#时才回退到 逗号/顿号/分号 等常见分隔符
     cands = []
-    for frag in re.split(r'[,，;；、|#]', text):
-        frag = frag.strip().strip('"\'[]{} ')
+    if '#' in text:
+        frags = text.split('#')
+    else:
+        frags = re.split(r'[,，;；、|]', text)
+    for frag in frags:
+        frag = frag.strip().strip('"\'[]{} ').replace(
+            '\n', ' ').replace('\r', ' ').strip()
         if frag and frag not in cands:
             cands.append(frag)
     # 连续字母答案(如"AC")拆成单字母候选
@@ -212,6 +306,20 @@ def _normalize_judge_answer(answer: str) -> str:
     return "true"  # 默认
 
 
+def _split_blank_answer(answer) -> List[str]:
+    """拆分多空填空答案(2026-10-09 修复)。
+
+    题库多空既用 ### 也用 # 分隔, 旧逻辑只认 ###——
+    "说明#同意#签字确认"被整串塞进单个空导致该题全错。
+    现: 先按 ### 拆; 无效(<=1段)且含 # 时按 # 拆; 仍无则整串作单空。
+    """
+    text = str(answer)
+    parts = [b.strip() for b in text.split("###") if b.strip()]
+    if len(parts) <= 1 and "#" in text:
+        parts = [b.strip() for b in text.split("#") if b.strip()]
+    return parts or [text]
+
+
 def _match_answer_to_options(answer: str, options: List[str],
                              multi: bool = False) -> str:
     """把AI答案匹配到选项字母 - 对齐 Go SimilarityArraySelect
@@ -226,14 +334,36 @@ def _match_answer_to_options(answer: str, options: List[str],
     candidates = _normalize_ai_answer_candidates(answer)
     if not candidates:
         return ""
+    # ★ 2026-10-09 二次修复(致命): 单选"整体优先"匹配——
+    # 旧逻辑取"第一个命中的选项", 当答案被顿号/逗号切碎后, 短碎片会先命中
+    # 部分选项(如答案"提高客户满意度 ，避免纠纷"被切为两段, "提高客户满意度"
+    # 先命中选项 A), 而服务器按选项 id 判分, 完整文本对应的选项(如 D)才正确。
+    # 现: 单选时先用"整串(去空白)"与选项做"相等 > 最长包含"比较, 命中即返回。
+    if not multi:
+        _full = re.sub(r"\s+", "", str(answer)).strip()
+        if _full and not re.fullmatch(r"[A-Ha-h]{1,8}", _full):
+            _fl_letter, _fl_len = "", 0
+            for i, opt in enumerate(options):
+                _oc = re.sub(r"\s+", "", _strip_option_prefix(opt)).strip()
+                if not _oc:
+                    continue
+                _lt = _option_letter(opt, i)
+                if _oc == _full:
+                    return _lt
+                if _full in _oc or _oc in _full:
+                    _ln = min(len(_oc), len(_full))
+                    if _ln > _fl_len:
+                        _fl_len, _fl_letter = _ln, _lt
+            if _fl_letter and _fl_len >= 4:
+                return _fl_letter
     matched = []
     for i, opt in enumerate(options):
         opt_clean = _strip_option_prefix(opt)
         if not opt_clean:
             continue
-        # 选项字母优先取自带前缀(如"C三相笼式异步电机"→C)，否则按序号
-        lm = re.match(r'^([A-Za-z])', (opt or '').strip())
-        letter = lm.group(1).upper() if lm else chr(65 + i)
+        # 选项字母: 仅"字母+分隔符"前缀认自带字母, 否则按序号
+        # (2026-10-09 修复: 不再把英文选项首字母当字母, 原逻辑致 AVSC/HOE 假字母)
+        letter = _option_letter(opt, i)
         for cand in candidates:
             if not cand:
                 continue
@@ -255,6 +385,8 @@ def _match_answer_to_options(answer: str, options: List[str],
                 if letter not in matched:
                     matched.append(letter)
                 break
+    # 2026-10-09 修复: 提交前做合法性过滤(字母须在 A~H 内), 越界一律丢弃
+    matched = [ltr for ltr in matched if ltr in "ABCDEFGH"]
     if matched:
         return "".join(matched) if multi else matched[0]
     # 相似度兜底(阈值0.5): 对齐 Go SimilarityArraySelect 择优思想
@@ -263,8 +395,7 @@ def _match_answer_to_options(answer: str, options: List[str],
         opt_clean = _strip_option_prefix(opt)
         if not opt_clean:
             continue
-        lm = re.match(r'^([A-Za-z])', (opt or '').strip())
-        letter = lm.group(1).upper() if lm else chr(65 + i)
+        letter = _option_letter(opt, i)
         for cand in candidates:
             score = _similarity(cand, opt_clean)
             if score < 0.5 and len(cand) > 2 and (
@@ -273,7 +404,8 @@ def _match_answer_to_options(answer: str, options: List[str],
             if score > best_score:
                 best_score = score
                 best_letter = letter
-    return best_letter if best_score >= 0.5 else ""
+    return best_letter if (best_score >= 0.5 and
+                           best_letter in "ABCDEFGH") else ""
 
 
 # ============ 登录 ============
@@ -346,7 +478,7 @@ def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
                       f"已动态生成: {cache.device_flag}")
         return cache, _login_action(cache)
 
-    workers = max(1, min(len(targets), LOGIN_WORKERS))
+    workers = max(1, min(len(targets), _par.tuned_login_workers()))
     if workers == 1 or len(targets) == 1:
         results = [_login_one(u) for u in targets]
     else:
@@ -379,12 +511,151 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
         user_idx = i % max(len(users), 1)
         if user_idx >= len(users):
             break
-        t = threading.Thread(target=_user_block, args=(
-            setting, users[user_idx], cache), daemon=True)
+        t = threading.Thread(
+            target=with_log_account(
+                users[user_idx].account, users[user_idx].remark_name)(_user_block),
+            args=(setting, users[user_idx], cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
         t.join()
+
+
+def _in_rest_period(cc) -> bool:
+    """判断当前是否处于夜间休息时段(2026-09-30; 2026-10-10 改为公共版转发)
+    实现已抽至 platform_common.in_rest_period, 全平台统一维护。
+    """
+    try:
+        from logic.platform_common import in_rest_period as _pub_in_rest
+        return _pub_in_rest(cc)
+    except Exception:
+        return False
+
+
+def _rest_wait_if_needed(cache, cc) -> bool:
+    """若处于夜间休息时段则暂停等待到结束(2026-10-10 改为公共版转发)
+    支持"停止刷课"随时中断; 实现已抽至 platform_common.rest_wait_if_needed。
+    """
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        return _pub_rest_wait(
+            display_account(cache.account), cc,
+            ACCOUNT_TYPE_STR[PLATFORM_TYPE],
+            stop_fn=lambda: is_stopped(cache.account))
+    except Exception:
+        return False
+
+
+def _jf_scan_and_daily_policy(cache, course_list, cc):
+    """积分课自动检测 + 每日积分策略(2026-09-30, 对齐参考实现)
+
+    启动刷课时对每门进行中课程调 getCount:
+      - 返回含积分结构(itemDayScore/totalScore) → 判定为积分课, 日志提示
+      - 若今日得分 < dailyMaxScore → 记录缺口(由课程正常刷课行为自然累积;
+        刷课结束后复查, 仍不足则日志提醒)
+    开关: cc.jf_sw==1 时启用(默认0不影响现有行为)
+    """
+    if int(getattr(cc, "jf_sw", 0) or 0) != 1:
+        return
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    if not course_list:
+        return
+    found = 0
+    for course in course_list:
+        if is_stopped(cache.account):
+            break
+        if cc.exclude_courses and cmp_course(course.course_name, cc.exclude_courses):
+            continue
+        if cc.include_courses and not cmp_course(course.course_name, cc.include_courses):
+            continue
+        if not course.is_start:
+            continue
+        try:
+            body, _ = xxt_api.point_get_count_api(
+                cache, str(course.course_id), str(course.key))
+            d = safe_json_parse(body or "")
+            if not d:
+                continue
+            # "暂无积分"= 未得分; 但若返回了其它字段(可能该课无积分体系)
+            if d.get("status") is False and "暂无" in str(d.get("msg", "")):
+                continue
+            found += 1
+            items = d.get("itemDayScore") or []
+            day_score = 0
+            try:
+                day_score = sum(float(it.get("score", 0) or 0)
+                                for it in items if isinstance(it, dict))
+            except (ValueError, TypeError):
+                day_score = 0
+            max_score = d.get("dailyMaxScore") or 0
+            total_score = d.get("totalScore", "?")
+            gap = 0
+            try:
+                max_f = float(max_score)
+                gap = max(0, int(max_f - day_score))
+            except (ValueError, TypeError):
+                pass
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】 ", Yellow,
+                      f"🔍 检测到积分课: 今日{int(day_score)}分"
+                      f"（上限{max_score}，累计{total_score}），"
+                      + (f"还差{gap}分，将由正常刷课行为自然累积"
+                         if gap > 0 else "今日已拉满 ✓"))
+        except Exception:
+            continue
+    if found:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  Yellow, f"积分课检测完成: 共 {found} 门积分课")
+    else:
+        log_print(INFO, f"[{platform}]",
+                  "[", Green, acct, Default, "] ",
+                  DarkGray, "积分课检测完成: 未发现积分课")
+
+
+def _jf_final_report(cache, course_list, cc):
+    """刷课结束后的积分复查(2026-09-30): 对比今日得分是否达标
+    (正常刷课行为已自然产生积分, 此处仅复查+提示, 不额外刷)
+    """
+    if int(getattr(cc, "jf_sw", 0) or 0) != 1:
+        return
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    if not course_list:
+        return
+    for course in course_list:
+        if is_stopped(cache.account):
+            break
+        try:
+            body, _ = xxt_api.point_get_count_api(
+                cache, str(course.course_id), str(course.key))
+            d = safe_json_parse(body or "")
+            if not d:
+                continue
+            if d.get("status") is False and "暂无" in str(d.get("msg", "")):
+                continue
+            items = d.get("itemDayScore") or []
+            day_score = 0
+            try:
+                day_score = sum(float(it.get("score", 0) or 0)
+                                for it in items if isinstance(it, dict))
+            except (ValueError, TypeError):
+                pass
+            max_score = d.get("dailyMaxScore") or 0
+            try:
+                gap = max(0, int(float(max_score) - day_score))
+            except (ValueError, TypeError):
+                gap = 0
+            if gap > 0:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】 ", Yellow,
+                          f"积分复查: 今日{int(day_score)}分，距上限还差{gap}分"
+                          f"（将随后续正常学习继续累积）")
+        except Exception:
+            continue
 
 
 def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
@@ -405,14 +676,45 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
     log_print(DEBUG, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               "[", Green, display_account(cache.account), Default, "] ",
               f"多任务点配置: video_model={cc.video_model}, cx_node={cc.cx_node}")
+    # 积分课自动检测+每日积分策略(2026-09-30, jf_sw开启时生效)
+    _jf_scan_and_daily_policy(cache, course_list, cc)
+    # 夜间休息检查(2026-09-30, rest_sw开启时生效): 处于休息时段→暂停等待到点继续
+    if _rest_wait_if_needed(cache, cc) and is_stopped(cache.account):
+        return
     if cc.video_model == 3:
         # 对齐 Go UserBlock: videoModel=3 时建立多任务点登录池
         # cxNode>0 → 预登录cxNode次形成池(同时任务点数量)
         # cxNode==-1 → 无限制模式(不预登录, 每个节点独立relogin)
         # cxNode==0/未配置 → 默认3次(对齐Go num:=3)
+        if is_stopped(cache.account):
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      Yellow, "已请求停止，跳过多任务点登录池建立")
+            return
         node_num = 3
         if cc.cx_node is not None and cc.cx_node != 0:
             node_num = cc.cx_node
+        # ★ 2026-10-08 结构化"模式摘要": 一行告知账号当前所处全部相关模式
+        _pace_show = {0: "关闭(旧行为)", 1: "标准拟人", 2: "谨慎拟人"}.get(
+            max(0, min(2, getattr(cc, "cx_exam_pace", 1) or 0)), "?")
+        _mode_txt = ("多任务点-无限制(极高并发)" if node_num < 0
+                     else f"多任务点-{node_num}并发")
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  Cyan, "【模式摘要】",
+                  f"视频学习模式={cc.video_model} | 任务点模式={_mode_txt} | "
+                  f"考试节奏={_pace_show}(cx_exam_pace={getattr(cc, 'cx_exam_pace', 1)}) | "
+                  f"自动考试={cc.auto_exam} 自动交卷={cc.exam_auto_submit}")
+        # ★ 上报: 多任务点=高风控行为, 主动推送告知用户(邮件/ShowDoc通道)
+        try:
+            send_user_event_notice(
+                setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE],
+                f"【任务点模式提醒】当前启用【{_mode_txt}】，将同时保持多个登录会话，"
+                f"存在小概率封号(一般十几分钟)或封IP风险，请知悉；"
+                f"当前考试节奏={_pace_show}")
+        except Exception:
+            pass
         if cache.account not in _model3_caches:
             _model3_caches[cache.account] = []
         if node_num < 0:
@@ -429,6 +731,12 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
             pool = _model3_caches[cache.account]
             pool.clear()  # 防止同一次运行内重复累积
             for i in range(node_num):
+                if is_stopped(cache.account):
+                    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                              "[", Green, display_account(
+                                  cache.account), Default, "] ",
+                              Yellow, f"已请求停止，中断登录池建立({i}/{node_num})")
+                    return
                 pool_cache = copy.deepcopy(cache)
                 rerr = xxt_api.relogin(pool_cache)
                 _record_node_login(cache.account, rerr is None, "登录池")
@@ -448,15 +756,22 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
             for i in range(len(_model3_caches[cache.account])):
                 q.put(i)
 
+    # 课程循环前再查一次休息时段(建池可能耗时后跨入休息点)
+    if _rest_wait_if_needed(cache, cc) and is_stopped(cache.account):
+        return
     # Concurrent course execution for model 2/3 (Go uses goroutines)
     if user.courses_custom.video_model == 1:
         for course in course_list:
+            if is_stopped(cache.account):
+                break
             _course_study(setting, user, cache, course)
     else:
         # 对齐Go: 每个goroutine有独立的HTTP客户端状态
         # Python版: 每个课程线程必须有独立的cache副本，防止cookie_dict并发读写
         threads_course = []
         for course in course_list:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30): 不再启动新课程
             course_cache = copy.deepcopy(cache)
             t = threading.Thread(target=_course_study,
                                  args=(setting, user, course_cache, course), daemon=True)
@@ -465,6 +780,8 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         for t in threads_course:
             t.join()
 
+    # 刷课结束后的积分复查(2026-09-30): 对比今日得分是否达标
+    _jf_final_report(cache, course_list, cc)
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               "[", Green, display_account(cache.account), Default, "] ",
               Purple, "所有待学习课程学习完毕")
@@ -476,14 +793,26 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
 
 def _pull_course_action(cache: XueXiTUserCache) -> Optional[List[XueXiTCourse]]:
     """拉取课程 - 对应 Go 的 XueXiTPullCourseAction"""
-    body, _ = xxt_api.course_list_api(cache, retry=8)
+    body, resp = xxt_api.course_list_api(cache, retry=8)
     data = safe_json_parse(body)
     if not data:
+        # 诊断: 拉取失败时输出 HTTP 状态与响应片段(便于排查含空响应/风控页)
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(
+                      cache.account), Default, "] ",
+                  Red, f"课程接口响应异常(HTTP={getattr(resp, 'status_code', '?')}, "
+                  f"长度={len(body or '')}, 片段={(body or '')[:120]!r})")
         return None
 
     channel_list = data.get("channelList", [])
     course_list: List[XueXiTCourse] = []
     seen_keys = set()
+    # 诊断: 记录原始频道数便于排查"拉取课程失败"(如接口返回空列表/降级页)
+    if not channel_list:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(
+                      cache.account), Default, "] ",
+                  Yellow, f"课程列表为空(接口返回 channelList 空; msg={data.get('msg')}, result={data.get('result')})")
 
     for ch in channel_list:
         if not isinstance(ch, dict):
@@ -505,6 +834,17 @@ def _pull_course_action(cache: XueXiTUserCache) -> Optional[List[XueXiTCourse]]:
         course_square_url = d.get("courseSquareUrl", "")
         if not course_square_url or "courseId=" not in course_square_url:
             continue
+
+        # tsjy(超星通识教育/学习广场)平台识别(2026-09-30):
+        # 这类课的 gas/clazz 章节接口知识节点为0, 需走独立学习链路
+        is_tsjy = "tsjy.chaoxing.com" in course_square_url
+        tsjy_person_id = ""
+        if is_tsjy and "personId=" in course_square_url:
+            try:
+                tsjy_person_id = course_square_url.split(
+                    "personId=")[1].split("&")[0]
+            except IndexError:
+                tsjy_person_id = ""
 
         try:
             user_id = course_square_url.split("userId=")[1].split("&")[0]
@@ -530,6 +870,8 @@ def _pull_course_action(cache: XueXiTUserCache) -> Optional[List[XueXiTCourse]]:
             content_id=content.get("id", 0),
             course_data_id=d.get("id", 0),
             course_image=d.get("imageurl", ""),
+            is_tsjy=is_tsjy,
+            tsjy_person_id=tsjy_person_id,
         )
 
         if course.key in seen_keys:
@@ -603,8 +945,34 @@ def _course_study(setting: Setting, user: User, cache: XueXiTUserCache,
                   "[", Green, display_account(cache.account), Default, "] ",
                   "[", course.course_name, "] ", Blue, "该课程还未开课，已自动跳过")
         return
+    # ★ tsjy 课程分流(2026-09-30):
+    # 注意: 部分课 URL 挂 tsjy 但实际学习内容在标准 mooc 系统
+    # (如"四史教育"课: tsjy侧课程不存在/0节点, mooc侧147节点+59任务点);
+    # → tsjy 分流前先探测节点, 无节点则回退标准章节链路
+    if getattr(course, "is_tsjy", False):
+        _tsjy_has_nodes = False
+        try:
+            from logic.xuexitong.tsjy import TsjyStudy
+            _st = TsjyStudy(cache, display=display_account(cache.account),
+                            stop_fn=lambda: is_stopped(cache.account))
+            _tsjy_has_nodes = bool(_st.list_nodes(
+                str(course.course_id), str(course.key or "")))
+        except Exception:
+            _tsjy_has_nodes = False
+        if _tsjy_has_nodes:
+            _tsjy_course_study(setting, user, cache, course)
+            return
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  "[", course.course_name, "] ", Yellow,
+                  "tsjy侧无节点(该课内容在标准系统), 回退标准章节链路")
     # 对齐Go courseStudy: 任务点完成度仅门控章节学习，作业和考试始终执行
     # (否则课程任务点100%后考试将永远不被处理，导致多考试课程只完成一门)
+    if is_stopped(cache.account):
+        return  # 停止检查点(2026-09-30): 停止后不再进入章节学习/作业/考试
+    # 夜间休息检查(2026-10-10 修复: 课程级检查点——刷课中途到点即停)
+    if _rest_wait_if_needed(cache, cc) and is_stopped(cache.account):
+        return
     if course.job_rate < 100 and course.state != 1:
         _chapter_study(setting, user, cache, course)
     else:
@@ -617,6 +985,8 @@ def _course_study(setting: Setting, user: User, cache: XueXiTUserCache,
     _write_course_work_and_exam(setting, user, cache, course)
     # 增加学习次数/学习时长(课程任务点全部完成后执行)
     _add_study_count_action(setting, user, cache, course)
+    # 互动测验(视频弹题)自动补齐(2026-10-12 新增): stat2权威清单→双接口扫描→多源解答→重登录提交
+    _interactive_quiz_action(setting, user, cache, course)
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               "[", Green, display_account(cache.account), Default, "] ",
               "[", course.course_name, "] ", Purple, "课程学习完毕")
@@ -624,6 +994,33 @@ def _course_study(setting: Setting, user: User, cache: XueXiTUserCache,
     run_stats_bump(ACCOUNT_TYPE_STR[PLATFORM_TYPE], user.account, "course")
     send_user_event_notice(setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE],
                            f"课程【{course.course_name}】已完成")
+
+
+def _tsjy_course_study(setting: Setting, user: User,
+                       cache: XueXiTUserCache, course: XueXiTCourse):
+    """tsjy 平台课程学习(2026-09-30, v2.0.4-beta1)
+
+    独立链路: node-list → modify-node(h5enc) → knowledge/cards(AttachmentSetting)
+    → POST /keeper/api/receive-studylog (eventType=4, enc=mtEnc)
+    """
+    from logic.xuexitong.tsjy import TsjyStudy
+    try:
+        st = TsjyStudy(cache, display=display_account(cache.account),
+                       stop_fn=lambda: is_stopped(cache.account))
+        ok = st.study_course(course)
+    except Exception as e:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  "[", course.course_name, "] ", Red,
+                  f"tsjy 学习异常: {type(e).__name__}: {e}")
+        return
+    if ok:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  "[", course.course_name, "] ", Purple, "tsjy 课程学习完毕")
+        run_stats_bump(ACCOUNT_TYPE_STR[PLATFORM_TYPE], user.account, "course")
+        send_user_event_notice(setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE],
+                               f"课程【{course.course_name}】已完成(tsjy)")
 
 
 # ============ 章节学习 ============
@@ -765,6 +1162,16 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
         progress_lock = threading.Lock()
         progress_state = {"done": 0}
         for index, node_id in enumerate(nodes):
+            # 夜间休息检查(2026-10-10 修复: 任务级检查点——到点即停,恢复后继续)
+            if _rest_wait_if_needed(cache, cc) and is_stopped(cache.account):
+                break
+            if is_stopped(cache.account):
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          "[", course.course_name, "] ",
+                          Yellow, "已请求停止，中断后续节点调度")
+                break
             node_str = str(node_id)
             if node_str in finished_map:
                 total, finished = finished_map[node_str]
@@ -835,7 +1242,7 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                 node_threads.append(t)
                 t.start()
                 # 多核优化：启动间隔随 CPU 核心数缩短（保留最小节流防风控）
-                time.sleep(NODE_START_INTERVAL)
+                time.sleep(_par.tuned_node_start_interval())
             else:
                 # 登录池模式：阻塞等待空闲session - 对齐 Go idx := <-queue
                 # (池为空时队列未初始化, 回退为该节点独立relogin)
@@ -849,7 +1256,7 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                     t = threading.Thread(target=_run_fallback, daemon=True)
                     node_threads.append(t)
                     t.start()
-                    time.sleep(NODE_START_INTERVAL)
+                    time.sleep(_par.tuned_node_start_interval())
                     continue
                 # 课程级并发上限(公平分配): 占满则等待本课程的节点完成
                 if course_sem is not None:
@@ -875,6 +1282,9 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
     else:
         # Sequential node execution (model 1/2)
         for index, node_id in enumerate(nodes):
+            # 夜间休息检查(2026-10-10 修复: 任务级检查点——到点即停,恢复后继续)
+            if _rest_wait_if_needed(cache, cc) and is_stopped(cache.account):
+                break
             node_str = str(node_id)
             if node_str in finished_map:
                 total, finished = finished_map[node_str]
@@ -906,6 +1316,42 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                       "[", course.course_name, "] ",
                       Yellow, f"任务点进度: {index+1}/{len(nodes)}")
 
+    # === 任务点完成度复核 (2026-09-30 对齐参考实现) ===
+    # 章节学习全部完毕后重新拉取任务点统计, 输出完成情况;
+    # 若仍有未完成节点则提示(不自动无限重刷, 避免死循环)
+    try:
+        _v_body, _ = xxt_api.fetch_chapter_point_status(
+            cache, nodes, key_int, user_id_int, course.cpi, course_id_int,
+            retry=2)
+        _v_data = safe_json_parse(_v_body)
+        if _v_data:
+            _unfinished = 0
+            for _k, _v in _v_data.items():
+                if not isinstance(_v, dict):
+                    continue
+                _t = _v.get("totalcount", _v.get("pointTotal", 0))
+                _f = _v.get("finishcount", _v.get("pointFinished", 0))
+                _u = _v.get("unfinishcount", 0)
+                if _u != 0 and _t == 0:
+                    _t = _u
+                if _t > _f:
+                    _unfinished += 1
+            if _unfinished > 0:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          "[", course.course_name, "] ", Yellow,
+                          f"任务点复核: 仍有 {_unfinished} 个节点未完全完成"
+                          f"(部分任务点需服务端延迟生效或下轮补刷)")
+            else:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          "[", course.course_name, "] ", Green,
+                          "任务点复核: 全部节点已完成 ✓")
+    except Exception:
+        pass
+
 
 # ============ 节点运行 (核心重写 - 完全对齐Go) ============
 
@@ -930,6 +1376,11 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
         class_id_int = int(course.key)
         cpi_int = int(course.cpi)
     except (ValueError, TypeError):
+        return
+
+    # 停止检查点(2026-09-30): 全局限停后节点处理立即退出
+    # (修复: 停止后节点线程继续启动后续任务点视频/文档空转的问题)
+    if is_stopped(cache.account):
         return
 
     # === Step 1: ChapterFetchCardsAction (API 1 获取卡片列表) ===
@@ -1006,6 +1457,18 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     other_points: List[Dict] = []
     for (card_idx, card, _desc), iframe_list in zip(_card_desc_pairs, _parsed_iframes):
         if not iframe_list:
+            # 2026-09-30 修复: 无iframe的纯图文卡片(知识点简介/推荐阅读书目等)
+            # 旧逻辑直接continue跳过→这类节点在页面目录树中长期显"黄点"不变绿;
+            # 对齐行为: 归入其它类型任务点→模拟浏览+readPoint上报(给服务端访问记录)
+            _desc_s = str(_desc or "")
+            if len(_desc_s) > 20 and ("<p" in _desc_s or "<span" in _desc_s
+                                      or "<div" in _desc_s or "<strong" in _desc_s):
+                other_points.append({
+                    "card_index": card_idx,
+                    "card": card,
+                    "module": "text_content",
+                    "data": {"title": str(card.get("title", ""))},
+                })
             continue
 
         for point_idx, point in enumerate(iframe_list):
@@ -1107,6 +1570,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     # === 视频/音频类型 ===
     if video_dtos and cc.video_model != 0:
         for vdto in video_dtos:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30): 不再启动新任务点
             card, enc, err = _page_mobile_chapter_card_action(
                 setting, cache, class_id_int, course_id_int,
                 vdto.knowledge_id, vdto.card_index, cpi_int)
@@ -1149,6 +1614,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     # === 文档类型 ===
     if doc_dtos and cc.video_model != 0:
         for ddto in doc_dtos:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30)
             card, enc, err = _page_mobile_chapter_card_action(
                 setting, cache, class_id_int, course_id_int,
                 ddto.knowledge_id, ddto.card_index, cpi_int)
@@ -1172,6 +1639,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     # === 章测(作业)类型 ===
     if work_dtos and cc.auto_exam != 0 and (cc.cx_chapter_test_sw or 0) == 1:
         for wdto in work_dtos:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30)
             card, enc, err = _page_mobile_chapter_card_action(
                 setting, cache, class_id_int, course_id_int,
                 wdto.knowledge_id, wdto.card_index, cpi_int)
@@ -1216,6 +1685,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     # === 外链类型 ===
     if hyperlink_dtos and cc.video_model != 0:
         for hdto in hyperlink_dtos:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30)
             card, enc, err = _page_mobile_chapter_card_action(
                 setting, cache, class_id_int, course_id_int,
                 hdto.knowledge_id, hdto.card_index, cpi_int)
@@ -1232,6 +1703,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     # === 直播类型 ===
     if live_dtos and cc.video_model != 0:
         for lvdto in live_dtos:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30)
             card, enc, err = _page_mobile_chapter_card_action(
                 setting, cache, class_id_int, course_id_int,
                 lvdto.knowledge_id, lvdto.card_index, cpi_int)
@@ -1250,6 +1723,8 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
     # === 讨论类型 ===
     if bbs_dtos and cc.auto_exam != 0:
         for bbs_dto in bbs_dtos:
+            if is_stopped(cache.account):
+                break  # 停止检查点(2026-09-30)
             card, enc, err = _page_mobile_chapter_card_action(
                 setting, cache, class_id_int, course_id_int,
                 bbs_dto.knowledge_id, bbs_dto.card_index, cpi_int)
@@ -1267,7 +1742,7 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
 
     # === 其它类型任务点(知识结构/引导问题/单文字/PPT/文档文章等) ===
     # 尽力尝试完成后停留 _other_stay 秒
-    if other_points:
+    if other_points and not is_stopped(cache.account):
         _handle_other_task_points(
             setting, user, cache, course, knowledge_item, other_points,
             class_id_int, course_id_int, knowledge_id, cpi_int)
@@ -1470,6 +1945,38 @@ def _fill_dto_from_iframe(dto: PointDto, module_type: str,
             dd.cpi = str(cpi)
             dd.job_id = job_id
             dd.type = "insertbook"
+            dd.is_set = True
+
+    elif (module_type or "").lower() in ("insertmicrocourse", "microcourse",
+                                         "insertmicro", "micro"):
+        # 微课任务点(2026-09-30 对齐参考实现): 专用上报接口处理,
+        # 旧版归入文档报会导致任务点不识别
+        job_id = str(tp_data.get("_jobid", ""))
+        if job_id:
+            dd = dto.document
+            dd.card_index = card_idx
+            dd.course_id = str(course_id)
+            dd.class_id = str(class_id)
+            dd.knowledge_id = knowledge_id
+            dd.cpi = str(cpi)
+            dd.job_id = job_id
+            dd.title = tp_data.get("title", "") or tp_data.get("name", "")
+            dd.type = "microcourse"
+            dd.is_set = True
+
+    elif module_type in ("insertvote", "vote"):
+        # 投票任务点(2026-09-30 对齐参考实现): 专用vote接口上报
+        job_id = str(tp_data.get("_jobid", ""))
+        if job_id:
+            dd = dto.document
+            dd.card_index = card_idx
+            dd.course_id = str(course_id)
+            dd.class_id = str(class_id)
+            dd.knowledge_id = knowledge_id
+            dd.cpi = str(cpi)
+            dd.job_id = job_id
+            dd.title = tp_data.get("title", "") or tp_data.get("name", "")
+            dd.type = "vote"
             dd.is_set = True
 
     elif module_type == "hyperlink":
@@ -1953,6 +2460,16 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
               f"duration={video.duration}s")
 
     while True:
+        # 停止检查点: Web 端点击"停止刷课"后, 视频轮询立即优雅退出
+        # (避免停止后仍持续上报进度/进度回退)
+        if is_stopped(cache.account):
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", k_label, "】",
+                      "【", video.title, "】 >>> ",
+                      Yellow, "已请求停止，中断视频学习")
+            break
         # isdrag: 首次播放(playingTime==playTime)时为3，否则为0
         if playing_time != video.duration:
             if playing_time == video.play_time:
@@ -2432,6 +2949,16 @@ def _execute_document(cache: XueXiTUserCache, course: XueXiTCourse,
             body, resp = xxt_api.document_readv2_report_api(
                 cache, ddto.job_id, str(ddto.knowledge_id),
                 ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+        elif ddto.type == "microcourse":
+            # 微课专用上报(2026-09-30)
+            body, resp = xxt_api.micro_course_report_api(
+                cache, ddto.job_id, str(ddto.knowledge_id),
+                ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+        elif ddto.type == "vote":
+            # 投票任务点上报(2026-09-30)
+            body, resp = xxt_api.vote_report_api(
+                cache, ddto.job_id, str(ddto.knowledge_id),
+                ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
         else:
             body, resp = xxt_api.document_read_report_api(
                 cache, ddto.job_id, str(ddto.knowledge_id),
@@ -2454,6 +2981,14 @@ def _execute_document(cache: XueXiTUserCache, course: XueXiTCourse,
                     ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
             elif ddto.type == "insertreadv2":
                 body, resp = xxt_api.document_readv2_report_api(
+                    cache, ddto.job_id, str(ddto.knowledge_id),
+                    ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+            elif ddto.type == "microcourse":
+                body, resp = xxt_api.micro_course_report_api(
+                    cache, ddto.job_id, str(ddto.knowledge_id),
+                    ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
+            elif ddto.type == "vote":
+                body, resp = xxt_api.vote_report_api(
                     cache, ddto.job_id, str(ddto.knowledge_id),
                     ddto.course_id, ddto.class_id, ddto.jtoken, retry=5)
             else:
@@ -2570,6 +3105,19 @@ def _handle_other_task_points(setting: Setting, user: User,
         job_id = _extract_jobid(tp_data)
         if not job_id:
             # 无jobid无法上报: 模拟点击/滑动浏览(停留期间反复打开卡片页)
+            # 2026-09-30: 纯图文卡片(text_content)先补一次readPoint上报,
+            # 向服务端提交"阅读行为"记录(对齐参考实现对图文节点的处理)
+            if module_type == "text_content":
+                try:
+                    xxt_api.read_point_report_api(
+                        cache, str(course_id), str(knowledge_id))
+                    log_print(INFO, f"[{platform}]",
+                              "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】",
+                              "【", k_label, "】 ", Green,
+                              "纯图文节点已上报阅读记录(readPoint)")
+                except Exception:
+                    pass
             _simulated_browse(cache, class_id, course_id, knowledge_id,
                               card_index, cpi, stay)
             continue
@@ -2953,11 +3501,41 @@ def _similarity_array_select(target: str, options: List[str]) -> List[str]:
         letter = chr(65 + best_idx)
         letters_map[letter] = True
 
+    # 2026-09-30 修复: 题库/答题源常用"空格"分隔多答案
+    # (如"规模大 来源广 年龄跨度大" 应为3个选项, 旧逻辑整句只匹配出1个 → 答案残缺)
+    # 策略: 仅当分离符分割失败(只有1段)且未命中高置信选项时,
+    # 按空格二次分割, 逐段高置信(>=0.6)匹配, 命中>=2个才采用
+    if len(parts) == 1 and re.search(r'\s', target.strip()):
+        _sparts = [p.strip() for p in target.split() if p.strip()]
+        if len(_sparts) >= 2:
+            _letters2 = {}
+            _all_high = True
+            for _part in _sparts:
+                _best = -1.0
+                _bi = 0
+                for i, opt in enumerate(options):
+                    sc = _similarity(_part, opt)
+                    if sc < 0.5 and len(_part) > 0:
+                        if _part in opt or opt in _part:
+                            sc = max(sc, 0.6)
+                    if sc > _best:
+                        _best = sc
+                        _bi = i
+                if _best >= 0.6:
+                    _letters2[chr(65 + _bi)] = True
+                else:
+                    _all_high = False
+                    break
+            # 所有片段都高置信命中且数量多于原结果 → 采用空格分割结果
+            if _all_high and len(_letters2) >= 2 and len(_letters2) > len(letters_map):
+                letters_map = _letters2
+
     # 如果完全无法匹配，尝试检查答案本身是否是字母
     if all(score < 0.2 for score in [_similarity(p, options[0] if options else "") for p in parts]):
         direct = []
         for ch in target.upper():
-            if ch.isalpha() and ord(ch) - 65 < len(options):
+            # 2026-10-09 修复: 仅接受 A~H 范围内的合法选项字母
+            if "A" <= ch <= "H" and ord(ch) - 65 < len(options):
                 direct.append(ch)
         if direct:
             return sorted(set(direct))
@@ -3018,10 +3596,18 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
         cache, enabled=(getattr(setting.basic_setting, "ocr_image_question", 1) == 1))
     questions, meta = _parse_work_questions_v2(body, img_ocr=_img_ocr)
     if not questions:
-        log_print(INFO, f"[{platform}]",
-                  "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  Yellow, "该章测无题目，已自动跳过")
+        # 2026-10-10 增强: 区分"教师未创建完成"空壳页, 明确告知不变绿原因
+        if "教师未创建完成" in body or "教师未创建" in body:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      Yellow, "该章测【教师未创建完成该测验】，题目尚未发布，"
+                      "任务点暂无法完成（等教师发布题目后运行将自动补做）")
+        else:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      Yellow, "该章测无题目，已自动跳过")
         return
 
     mode_str = ""
@@ -3043,6 +3629,8 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
     answerwqbid = ""
     ai_answered = 0  # AI实际给出答案的题数
     ai_raw_answers = []  # 调试用：记录AI原始返回值
+    # ★ 2026-10-03用户方案: (q_text, answer, src, type) 提交成功后批量写入题库缓存
+    _ct_cache_pairs = []
     for _qi, q in enumerate(questions):
         q_type = q.get("type", "")
         q_text = q.get("text", "")
@@ -3135,6 +3723,9 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
         if q_id:
             answerwqbid += q_id + ","
             q["answer"] = answer
+            # ★ 2026-10-03: 收集"非本地源"的答案, 供提交成功后写入缓存
+            if answer_src and (answer or "").strip():
+                _ct_cache_pairs.append((q_text, answer, answer_src, q_type))
 
         time.sleep(random.randint(1, 2))
 
@@ -3155,6 +3746,10 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                   "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
                   "【", title, "】",
                   Yellow, f"所有答题源均未返回答案，跳过提交")
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  Yellow, "提示: 未命中通常为题库覆盖不足或答题源不可用; "
+                  "建议检查/增设答题源(本地题库/AI)后再运行, 否则此类章测不会提交")
         return
 
     # 构建提交数据 - 完全对齐Go WorkNewSubmitAnswer的multipart fields
@@ -3271,12 +3866,9 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
 
         elif q_type == "fill":
             # 对齐Go: answer{qid}{index} → tiankongsize → answertype
-            # 多空支持(2026-09-21): 题库用 ### 分隔多个空的答案, 按空序号依次填入;
-            # 无 ### 或单空时保持原行为(所有空填同一答案)
-            _blanks = [b.strip()
-                       for b in str(answer).split("###") if b.strip()]
-            if not _blanks:
-                _blanks = [str(answer)]
+            # 多空支持(2026-10-09 升级): ###/# 双分隔符兼容, 按空序号依次填入;
+            # 单空时保持原行为(所有空填同一答案)
+            _blanks = _split_blank_answer(answer)
             answer_fields = q.get("answer_fields", {})
             for k, v in answer_fields.items():
                 if k.startswith(f"answer{q_id}"):
@@ -3373,6 +3965,22 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
         pass
 
     if is_success:
+        # ★ 2026-10-03用户方案: 提交成功后批量写入题库缓存(替代"即问即存")
+        try:
+            from logic.core.answer_engine import cache_answer_after_submit
+            _ct_written = 0
+            for _cq, _ca, _csrc, _cqt in (_ct_cache_pairs or []):
+                if cache_answer_after_submit(_cq, _ca, q_type=_cqt,
+                                             answer_src=_csrc):
+                    _ct_written += 1
+            if _ct_written:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          f"<{mode_str}>",
+                          "【", course.course_name, "】",
+                          DarkGray, f"已写入题库缓存(提交成功): {_ct_written}题")
+        except Exception:
+            pass
         log_print(INFO, f"[{platform}]",
                   "[", Green, acct, Default, "] ",
                   f"<{mode_str}>",
@@ -3380,6 +3988,19 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                   "【", f"{knowledge.label} {knowledge.name}".strip(), "】",
                   "【", title, "】",
                   Green, f"章节作业{mode_str}答题完毕,服务器返回信息：{result_str[:300]}")
+        # ★ 2026-10-10 修复: 章测交卷成功后回读平台正确答案 -> 更正题库缓存+采集
+        #   (此前核对仅作业链路(_work_action)有, 章测链路缺失导致"题库更正"不生效)
+        if is_submit and int(getattr(cc, "cx_verify_answer", 1) or 0) == 1:
+            try:
+                _verify_work_answers_action(
+                    cache, course, wdto.work_id,
+                    meta.get("workAnswerId", "") or meta.get("answerId", ""),
+                    title,
+                    collect=int(getattr(cc, "cx_collect_answers", 1) or 0) == 1)
+            except Exception as _ve:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", title, "】",
+                          Red, f"[答案核对] 异常: {str(_ve)[:120]}")
     else:
         # 诊断日志：显示完整submit_data
         submit_fields = []
@@ -3893,6 +4514,9 @@ def _write_course_work_and_exam(setting: Setting, user: User,
 
 # ============ 增加学习次数/学习时长(参照 yatori-free / chaoxing_tool 的 setlog 机制) ============
 
+# 账号级三指标执行标记(2026-10-13 用户定夺): 该账号全部课程完成后, 运行内仅执行一次
+_STUDY_ACCOUNT_DONE = set()
+
 _STUDY_PV_COUNT_URL = "https://stat2-ans.chaoxing.com/stat2/study-pv/chart"
 
 
@@ -3932,6 +4556,164 @@ def _get_study_pv_count(client, course: XueXiTCourse) -> Optional[int]:
     return None
 
 
+def _interactive_quiz_action(setting: Setting, user: User,
+                             cache: XueXiTUserCache, course: XueXiTCourse):
+    """互动测验(视频弹题)自动补齐 (2026-10-12 新增, 实战5账号540题100%通过)
+
+    流程: stat2权威未完成清单(study-videoTest/finish) → 双接口轮换扫描弹题
+          → 多源答题(本地题库/题库/AI) → 重登录提交 → 终审
+    开关: coursesCustom.cxInteractiveQuizSw (默认1开启)
+    幂等: 已全部完成时清单为空, 直接跳过
+    """
+    cc = user.courses_custom
+    if int(getattr(cc, "cx_interactive_quiz_sw", 1) or 0) != 1:
+        return
+    if is_stopped(cache.account):
+        return
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    class_id = str(course.key or "")
+    course_id = str(course.course_id or "")
+    cpi = str(course.cpi or "")
+    if not class_id or not course_id or not cpi:
+        return
+    try:
+        from logic.xuexitong.interactive_quiz import (
+            build_session, fetch_quiz_plan, get_video_attachment_dual,
+            fetch_timeline_quizzes, submit_quiz_answer)
+        from logic.core.answer_engine import (answer_query_detail,
+                                              cache_answer_after_submit)
+    except Exception:
+        return
+
+    sess = build_session(cache)
+    for _k, _v in (cache.cookie_dict or {}).items():
+        sess.cookies.set(_k, _v, domain=".stat2-ans.chaoxing.com")
+
+    # 1. 权威未完成清单
+    items, total = fetch_quiz_plan(sess, class_id, course_id, cpi, status="")
+    if not items:
+        return  # 已全部完成, 静默跳过
+    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              Yellow, f"互动测验未完成{total if total is not None else len(items)}个，开始自动补齐...")
+
+    # 2. 双接口轮换扫描弹题
+    found = []
+    for _it in items:
+        if is_stopped(cache.account):
+            return
+        _kid = _it.get("knowledgeId")
+        _att, _way = get_video_attachment_dual(sess, cache, class_id,
+                                               course_id, _kid, cpi)
+        if _att:
+            _qs = fetch_timeline_quizzes(sess, _att.get("mid"), cpi,
+                                         class_id, course_id)
+            if _qs:
+                found.append({"oid": _att.get("objectId"),
+                              "quizzes": _qs})
+        time.sleep(1.0)
+    undone = [(f2, q) for f2 in found for q in f2["quizzes"]
+              if not (q.get("answerContent") or "").strip()]
+    if not undone:
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  Green, "互动测验无需补做(清单项已全部作答)")
+        return
+    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              Yellow, f"互动测验待答{len(undone)}题，开始多源答题...")
+
+    # 3. 多源答题(复用统一答题引擎: 本地缓存→题库→AI) + 答案转选项字母
+    _Q_MAP = {"判断题": "judge", "单选题": "single_choice",
+              "多选题": "multiple_choice"}
+    plan = []
+    for f2, q in undone:
+        _qt_cn = str(q.get("questionType") or "")
+        _qt = _Q_MAP.get(_qt_cn, "single_choice")
+        _desc = q.get("description") or ""
+        _opts_raw = [str(o.get("description") or "")
+                     for o in (q.get("options") or [])]
+        if not q.get("options"):
+            # 判断题无选项: A=对 / B=错
+            _ans_text, _src = answer_query_detail(
+                _desc, options=["对", "错"], q_type="judge")
+            _as = str(_ans_text or "").strip().upper()
+            if _as in ("A", "B"):
+                _content = _as  # 题库/AI直接返回字母
+            else:
+                _content = "A" if _normalize_judge_answer(
+                    _ans_text) == "true" else "B"
+        else:
+            _ans_text, _src = answer_query_detail(
+                _desc, options=_opts_raw, q_type=_qt)
+            if _qt == "judge":
+                _as = str(_ans_text or "").strip().upper()
+                if _as in ("A", "B"):
+                    _content = _as  # 题库/AI直接返回字母
+                else:
+                    _content = "A" if _normalize_judge_answer(
+                        _ans_text) == "true" else "B"
+            else:
+                _letters = _match_answer_to_options(
+                    _ans_text, _opts_raw, multi=(_qt == "multiple_choice"))
+                if not _letters:
+                    continue  # 全部答题源未命中, 跳过该题(不乱答)
+                _content = (",".join(_letters)
+                            if _qt == "multiple_choice" else _letters)
+        plan.append({"oid": f2["oid"], "quiz": q, "ans": _content,
+                     "src": _src, "q_text": _desc, "q_type": _qt})
+    if not plan:
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  Yellow, "互动测验题目所有答题源均未命中，本次跳过(建议检查答题源)")
+        return
+
+    # 4. 重登录刷新会话 + 慢速提交(1.5s/题; HTML响应自动重登录重试)
+    try:
+        xxt_api.login_api(cache, retry=8)
+    except Exception:
+        pass
+    sess = build_session(cache)
+    ok = fail = 0
+    for _p in plan:
+        if is_stopped(cache.account):
+            break
+        for _attempt in range(2):
+            _d = submit_quiz_answer(
+                sess, class_id, cpi, _p["oid"],
+                _p["quiz"].get("resourceId"),
+                _p["quiz"].get("memberinfo"), _p["ans"])
+            if _d.get("raw_html"):
+                if _attempt == 0:
+                    try:
+                        xxt_api.login_api(cache, retry=8)
+                    except Exception:
+                        pass
+                    sess = build_session(cache)
+                    time.sleep(2)
+                    continue
+                fail += 1
+                break
+            if _d.get("isRight") or _d.get("status"):
+                ok += 1
+                # 答对的答案写入题库缓存(2026-10-03规范: 提交成功后写入)
+                try:
+                    cache_answer_after_submit(
+                        _p["q_text"], _p["ans"],
+                        q_type=_p["q_type"], answer_src=_p["src"])
+                except Exception:
+                    pass
+            else:
+                fail += 1
+            break
+        time.sleep(1.5)
+    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              Green if fail == 0 else Yellow,
+              f"互动测验补齐完成: 成功{ok}题" + (f"，失败{fail}题" if fail else ""))
+
+
 def _add_study_count_action(setting: Setting, user: User,
                             cache: XueXiTUserCache, course: XueXiTCourse):
     """增加学习次数/学习时长 - 对齐 yatori-free 的三指标设计
@@ -3954,25 +4736,52 @@ def _add_study_count_action(setting: Setting, user: User,
     video_minutes = int(getattr(cc, "add_study_video_minutes", 0) or 0)
     read_minutes = int(getattr(cc, "add_study_read_minutes", 0) or 0)
     delay = int(getattr(cc, "add_study_delay", 30) or 30)
-    count = max(0, min(400, count))
-    video_minutes = max(0, min(4000, video_minutes))
-    read_minutes = max(0, min(4000, read_minutes))
+    count = max(0, min(1000, count))
+    video_minutes = max(0, min(10000, video_minutes))
+    read_minutes = max(0, min(10000, read_minutes))
     delay = max(30, delay)
 
     if count == 0 and video_minutes == 0 and read_minutes == 0:
         # 对齐 yatori-free 默认参数(均为0): 未设置时不做任何增加
         return
 
-    # 复查课程完成度: 任务点全部完成才执行(重新拉取服务端进度)
+    # ★ 2026-10-13 账号级门禁: 该账号(按只刷/排除过滤后)全部课程完成后才执行
+    # (用户定夺: 只有所有设置课程均已全部完成才能跑三指标)
+    _acc_key = str(cache.account)
+    if _acc_key in _STUDY_ACCOUNT_DONE:
+        return
     try:
-        _fetch_course_status(cache, [course])
+        _all_courses = _pull_course_action(cache) or [course]
+    except Exception:
+        _all_courses = [course]
+    _inc = list(getattr(cc, "include_courses", []) or [])
+    _exc = list(getattr(cc, "exclude_courses", []) or [])
+    _targets = []
+    for _c0 in _all_courses:
+        try:
+            if _exc and cmp_course(_c0.course_name, _exc):
+                continue
+            if _inc and not cmp_course(_c0.course_name, _inc):
+                continue
+        except Exception:
+            pass
+        _targets.append(_c0)
+    if not _targets:
+        _targets = [course]
+    try:
+        _fetch_course_status(cache, _targets)
     except Exception:
         pass
-    if course.job_rate < 100:
+    _undone = [c0 for c0 in _targets if c0.job_rate < 100]
+    if _undone:
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                  "【", course.course_name, "】",
-                  Yellow, f"任务点未全部完成(进度{course.job_rate:.0f}%)，本次不执行增加学习次数/时长")
+                  Yellow,
+                  f"账号级门禁: 还有{len(_undone)}门课程未完成"
+                  f"(如【{_undone[0].course_name}】{_undone[0].job_rate:.0f}%), "
+                  f"暂不执行增加学习次数/时长")
         return
+    # 全部课程已完成 -> 执行三指标(账号级参数, 运行内仅执行一次)
+    _STUDY_ACCOUNT_DONE.add(_acc_key)
 
     # 预计总耗时: 次数×间隔/60 + 视频(真实节奏约1:1) + 阅读轮数×间隔/60
     _est_min = 0.0
@@ -4438,6 +5247,22 @@ def _extract_exam_question_text(tit) -> str:
     return "".join(parts).strip()
 
 
+def _is_real_exam_page(body: str) -> bool:
+    """真卷页判定(2026-10-09 实测加固)
+
+    实测: 登录页/安全提示页也含 'id="enc"' 字样, 仅凭它判定会误判(198掉线实证);
+    必须以 'id="encRemainTime"' 为强判定, 无ert时才用 'id="enc"' 且排除登录页。
+    """
+    b = body or ""
+    if 'id="encRemainTime"' in b:
+        return True
+    if 'id="enc"' in b or "id='enc'" in b:
+        if "用户登录" in b or "请输入验证码" in b or "安全验证" in b:
+            return False
+        return True
+    return False
+
+
 def _html_exam_question_turn_entity(html: str, img_ocr=None) -> Dict:
     """解析考试题目HTML提取元数据 - 对应 Go HtmlQuestionTurnEntity
     选项解析对齐 Go singleTurn/multipleTurn/trueOrFalseTurn:
@@ -4650,11 +5475,36 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         enc_val = enc_match.group(1) if enc_match else ""
 
         # 检查是否已过时
+        # 2026-10-09 修复: enc_task 为短时效令牌(多作业课程逐个处理耗时长);
+        # "已过时效"多为 enc 过期误报 → 用最新列表刷新 enc_task 重试一次
         if "已过时效，不能操作!" in enter_body:
-            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】【", work_name, "】",
-                      Red, "该作业已过时，已自动跳过")
-            continue
+            _fresh_enc = ""
+            try:
+                _lb, _ = xxt_api.pull_work_list_api(
+                    cache, course.course_id, course.key, str(course.cpi), retry=2)
+                for _w in _parse_work_list_html(_lb or ""):
+                    if str(_w.get("taskrefId", "")) == str(task_ref_id):
+                        _fresh_enc = _w.get("enc_task", "") or ""
+                        break
+            except Exception:
+                _fresh_enc = ""
+            if _fresh_enc and _fresh_enc != enc_task:
+                _eb2, _er2 = xxt_api.enter_work_api(
+                    cache, task_ref_id, _fresh_enc, course.course_id,
+                    course.key, str(course.cpi), retry=2)
+                if _eb2 and "已过时效，不能操作!" not in _eb2:
+                    enter_body, enter_resp = _eb2, _er2
+                    enc_task = _fresh_enc
+                else:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", work_name, "】",
+                              Red, "该作业已过时(刷新enc后仍不可进入)，已自动跳过")
+                    continue
+            else:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", work_name, "】",
+                          Red, "该作业已过时，已自动跳过")
+                continue
 
         # 已结课课程的作业不支持作答(页面为只读视图/无提交表单)
         if "本课程已结课" in enter_body and "作业不支持作答" in enter_body:
@@ -4715,6 +5565,23 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         _work_aborted = False
         # 本次是否实际提交成功过任一题(用于"作业完成"事件通知: 仅通知本次实际完成的作业)
         _work_submitted = False
+        # ★ 2026-10-08 拟人节奏(作业/章测, 与考试同款; 防"答题节奏规律"风控)
+        # 安全红线同考试: 仅时间等待, 绝不模拟切屏/离开事件
+        try:
+            _pace_mode_w = int(getattr(cc, "cx_exam_pace", 1) or 0)
+        except Exception:
+            _pace_mode_w = 1
+        _pace_mode_w = max(0, min(2, _pace_mode_w))
+        # ★ 2026-10-13 人类化节奏引擎(作业/章测)
+        from logic.xuexitong.human_pace import HumanPace
+        _pace_w = HumanPace(cache.account, mode=_pace_mode_w)
+        _next_long_pause_w = random.randint(8, 15)
+        if _pace_mode_w >= 1:
+            _w_read = _pace_w.read_time()
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", work_name, "】",
+                      DarkGray, f"拟人节奏(模式{_pace_mode_w}): 作业开卷阅读 {_w_read:.0f}s...")
+            time.sleep(_w_read)
         for qi in range(question_total):
             # 拉取题目
             q_body, _ = xxt_api.pull_work_question_api(
@@ -4922,15 +5789,34 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         judge_answer = "true"  # 默认
                 submit_data.append((f"answer{qid}", judge_answer))
             elif q_type_code == "2":  # 填空
-                # 多空支持(2026-09-21): 题库用 ### 分隔多个空的答案, 拆分为
+                # 多空支持(2026-10-09 升级): ###/# 双分隔符兼容, 拆分为
                 # answer{qid}1..N 逐空提交, blankNum 为空的个数; 单空保持原行为
-                _blanks = [b.strip() for b in str(answer).split("###")]
-                _blanks = [b for b in _blanks if b != ""] or [str(answer)]
+                _blanks = _split_blank_answer(answer)
                 for _bi, _bv in enumerate(_blanks, 1):
                     submit_data.append((f"answer{qid}{_bi}", _bv))
-                submit_data.append((f"blankNum{qid}", f"{len(_blanks)},"))
+                # 2026-10-09 修复: blankNum 需为"空序号串"(页面原生/APP一致, 如"1,2,3,");
+                # 旧值"3,"会被服务端拆解为仅"3"号空 -> 多空题只记最后1空全部判0
+                _bn = "".join(f"{_i}," for _i in range(1, len(_blanks) + 1))
+                submit_data.append((f"blankNum{qid}", _bn))
             else:  # 简答/论述
                 submit_data.append((f"answer{qid}", answer))
+
+            # ★ 拟人节奏: 每题思考时间(拉题→提交, duration自然变长, 防节奏规律检测)
+            # 2026-10-13 升级: HumanPace(对数正态+自相关+疲劳+时段感知)
+            if _pace_mode_w >= 1:
+                _w_think = _pace_w.think_time(qi, question_total)
+                if len(str(q_text)) > 50:
+                    _w_think += random.uniform(1.0, 3.0)
+                if q_type_code == "1":
+                    _w_think += random.uniform(1.0, 2.0)
+                if qi >= _next_long_pause_w and qi < question_total - 1:
+                    _w_long = _pace_w.pause()
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", work_name, "】",
+                              DarkGray, f"拟人节奏: 作业阶段停顿 {_w_long:.0f}s...")
+                    time.sleep(_w_long)
+                    _next_long_pause_w = qi + random.randint(8, 15)
+                time.sleep(_w_think)
 
             submit_body, submit_resp = xxt_api.submit_work_answer_api(
                 cache, submit_data, is_submit=is_submit, retry=3)
@@ -4946,6 +5832,20 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 pass
             if submit_ok:
                 _work_submitted = True
+                # ★ 2026-10-03用户方案: 提交成功后写入题库缓存(替代"即问即存")
+                try:
+                    from logic.core.answer_engine import cache_answer_after_submit
+                    try:
+                        _qt_c = _wt
+                    except NameError:
+                        _qt_c = ""
+                    if cache_answer_after_submit(q_text, answer, q_type=_qt_c,
+                                                 answer_src=answer_src):
+                        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", work_name, "】",
+                                  DarkGray, f"已写入题库缓存(提交成功): {q_text[:36]}...")
+                except Exception:
+                    pass
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", work_name, "】",
                           Green, f"第{qi+1}题回答成功(答题源: {_ans_src_show}, 提交值: {str(answer)[:40]})，服务器返回:{submit_str[:200]}")
@@ -4982,9 +5882,1036 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         f"（未自动交卷模式，答案已保存）")
                 send_user_event_notice(
                     setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE], _notice_line)
+                # ★ 2026-10-09 新增: 答题完成后核对平台正确答案, 差异时更正题库缓存
+                # (需求: 以平台事后展示的正确答案为准, 规避题库错答案; 可在配置关闭)
+                if int(getattr(cc, "cx_verify_answer", 1) or 0) == 1:
+                    try:
+                        _verify_work_answers_action(
+                            cache, course, task_ref_id, str(answer_id or ""),
+                            work_name,
+                            collect=int(getattr(cc, "cx_collect_answers", 1)
+                                        or 0) == 1)
+                    except Exception as _ve:
+                        log_print(INFO, f"[{platform}]", "[", Green, acct,
+                                  Default, "] ",
+                                  "【", course.course_name, "】【", work_name,
+                                  "】", Red,
+                                  f"[答案核对] 异常: {str(_ve)[:120]}")
+
+
+# ============ 答题后"正确答案核对与题库更正"(2026-10-09) ============
+# 需求: 仅对"提交后可从平台查看正确答案"的场景(学习通作业/章测);
+# 任务完成后回读平台正确答案, 与本地题库缓存不一致时以平台为准更正
+# (走 LocalTikuCache.update 既有机制: 仅更正已存在键/原子替换/每日备份/占位词拦截)。
+
+
+def _fetch_work_report_html(cache: XueXiTUserCache, course_id: str,
+                            class_id: str, work_id: str,
+                            work_answer_id: str, retry: int = 3) -> str:
+    """拉取作业/章测的批阅报告页(含每题 正确答案/我的答案/得分)"""
+    if not work_id or not work_answer_id:
+        return ""
+    try:
+        client = xxt_api._build_client(cache)
+        url = ("https://mooc1-api.chaoxing.com/mooc-ans/work/phone/"
+               "selectWorkQuestionYiPiYue"
+               f"?courseId={course_id}&classId={class_id}"
+               f"&workAnswerId={work_answer_id}&workId={work_id}"
+               "&questionLinkId=0&status=4&isReport=false&mooc=1"
+               "&isAccessibility=0&ut=s")
+        body, _ = client.get(
+            url, headers={"User-Agent": client._ua,
+                          "X-Requested-With": "XMLHttpRequest"},
+            retry=retry)
+        return body or ""
+    except Exception:
+        return ""
+
+
+def _html_to_report_text(html: str) -> str:
+    """报告页 HTML -> 纯文本(去脚本/样式/标签)"""
+    if not html:
+        return ""
+    t = re.sub(r"<script.*?</script>", " ", html, flags=re.DOTALL)
+    t = re.sub(r"<style.*?</style>", " ", t, flags=re.DOTALL)
+    t = re.sub(r"<[^>]+>", " ", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def _parse_work_report(txt: str) -> List[Tuple[int, str, str]]:
+    """解析批阅报告 -> [(题号, 题面, 正确答案原文)]; 无"正确答案"的题自动跳过"""
+    items: List[Tuple[int, str, str]] = []
+    for blk in re.split(r"(?=\d+\. \()", txt or ""):
+        m = re.match(r"(\d+)\. \(([^)]*?分)\)", blk)
+        if not m:
+            continue
+        rest = blk[m.end():]
+        qm = re.split(r"\s[A-H]\.\s*", rest, maxsplit=1)
+        qtext = (qm[0] if qm else rest[:100]).strip()
+        cm = re.search(r"正确答案\s*[：:]?\s*(.+?)(?=\s*我的答案|$)", rest)
+        if not cm:
+            continue
+        items.append((int(m.group(1)), qtext, cm.group(1).strip()))
+    return items
+
+
+def _report_correct_to_value(corr: str) -> str:
+    """平台"正确答案"文本 -> 缓存值形态(多空###/多选文本#/判断对错/单选文本)"""
+    c = (corr or "").strip().strip("，,;；;").strip()
+    if not c:
+        return ""
+    if re.search(r"\(\d+\)", c):
+        parts = [p.strip() for p in re.split(r"\(\d+\)", c) if p.strip()]
+        return "###".join(parts)
+    if c in ("对", "错", "正确", "错误"):
+        return c
+    m = re.match(r"^[A-Z]+\s*[，,：:]\s*(.*)$", c, re.DOTALL)
+    body = m.group(1) if m else c
+    body = body.strip().strip("，,;；")
+    parts = [p.strip().strip("，,").strip() for p in body.split(";")]
+    parts = [p for p in parts if p]
+    return "#".join(parts) if len(parts) > 1 else (parts[0] if parts else body)
+
+
+def _canon_answer_cmp(v: str) -> str:
+    """答案比较归一(判断同义词/多选集合序; 多空###保持顺序敏感)"""
+    s = re.sub(r"\s+", "", str(v or "")).lower().replace("&nbsp;", "")
+    if "###" in s:
+        return s
+    if "#" in s:
+        return "#".join(sorted(p for p in s.split("#") if p))
+    if s in ("对", "正确", "true", "√"):
+        return "true"
+    if s in ("错", "错误", "false", "×"):
+        return "false"
+    return s
+
+
+def _collected_cache_path() -> str:
+    """独立采集库路径: 与本地题库同目录下 questions_collected.json"""
+    import os
+    try:
+        from logic.core.answer_engine import get_answer_engine
+        eng = get_answer_engine()
+        lc = getattr(eng, "cache", None) if eng is not None else None
+        p = str(getattr(lc, "path", "") or "") if lc is not None else ""
+        if p:
+            d = os.path.dirname(os.path.abspath(p))
+            if d:
+                return os.path.join(d, "questions_collected.json")
+    except Exception:
+        pass
+    return "questions_collected.json"
+
+
+_COLLECTED_CACHE = None
+
+
+def _get_collected_cache():
+    """获取(懒建)独立采集库实例(机制与现役题库完全一致)"""
+    global _COLLECTED_CACHE
+    if _COLLECTED_CACHE is None:
+        from logic.core.answer_engine import LocalTikuCache
+        _COLLECTED_CACHE = LocalTikuCache(_collected_cache_path(), enable=1)
+    return _COLLECTED_CACHE
+
+
+# ★ 2026-10-13 考试题库采集(MOGO式"采集即高分"): 题+答案先入缓冲, 考试结束批量落采集库
+_EXAM_COLLECT_BUF = []
+
+
+def _collect_exam_qa(q_text, answer, q_type_str=""):
+    """考试题入缓冲(不即写盘; 考试尾统一flush)"""
+    q = str(q_text or "").strip()
+    a = str(answer or "").strip()
+    if not q or not a or a in ("答案",):
+        return
+    _EXAM_COLLECT_BUF.append((q, a))
+
+
+def _flush_exam_collected():
+    """考试结束: 批量写采集库(仅新增, 不覆盖); 返回(新增, 跳过)"""
+    global _EXAM_COLLECT_BUF
+    buf = _EXAM_COLLECT_BUF
+    _EXAM_COLLECT_BUF = []
+    if not buf:
+        return 0, 0
+    try:
+        lc = _get_collected_cache()
+        a1, s1 = lc.save_many(buf)
+        return a1, s1
+    except Exception:
+        return 0, len(buf)
+
+
+def _archive_to_collected(items) -> Tuple[int, int, int]:
+    """把 [(题面, 正确答案值)] 归档到独立采集库(累积去重)
+
+    返回 (新增, 更新, 跳过/失败); 写入走 LocalTikuCache.update/save
+    (原子替换 + 外部修改检测 + 每日自动备份), 不并入现役题库。
+    """
+    lc = _get_collected_cache()
+    try:
+        lc.load()
+    except Exception:
+        return 0, 0, len(items)
+    if getattr(lc, "_load_failed", False):
+        return 0, 0, len(items)
+    from logic.core.answer_engine import _norm_question
+    km = {}
+    try:
+        with lc._lock:
+            for k in lc._data.keys():
+                nk = _norm_question(k)
+                if nk and nk not in km:
+                    km[nk] = k
+    except Exception:
+        km = {}
+    # 2026-10-13: 批量写(内存统一改+两次落盘), 修复大批量采集逐题全量写盘导致的IO爆炸
+    add_pairs, upd_pairs = [], []
+    skip_n = 0
+    for q, v in items:
+        q = str(q or "").strip()
+        v = str(v or "").strip()
+        if not q or not v:
+            skip_n += 1
+            continue
+        nq = _norm_question(q)
+        key = km.get(nq)
+        if key is None:
+            add_pairs.append((q, v))
+            km[nq] = q  # 预登记, 防本批内重复
+        else:
+            old = str(lc._data.get(key, ""))
+            if _canon_answer_cmp(old) == _canon_answer_cmp(v):
+                skip_n += 1
+                continue
+            upd_pairs.append((key, v))
+    add_n = upd_n = 0
+    try:
+        a1, s1 = lc.save_many(add_pairs)
+        add_n += a1
+        skip_n += s1
+    except Exception:
+        skip_n += len(add_pairs)
+    try:
+        u1, _f1 = lc.update_many(upd_pairs)
+        upd_n += u1
+    except Exception:
+        skip_n += len(upd_pairs)
+    return add_n, upd_n, skip_n
+
+
+def _fix_live_cache_items(items, log_fn):
+    """以平台正确答案更正现役题库缓存(仅更正已存在键; 缺失不动)
+
+    返回 (same, fix, miss, fail)。
+    """
+    same_n = miss_n = fix_n = fail_n = 0
+    try:
+        from logic.core.answer_engine import get_answer_engine, _norm_question
+        eng = get_answer_engine()
+    except Exception:
+        eng = None
+    lc = getattr(eng, "cache", None) if eng is not None else None
+    if lc is None:
+        log_fn(Default, "本地题库缓存未启用, 跳过更正")
+        return same_n, fix_n, miss_n, fail_n
+    try:
+        lc.load()
+    except Exception:
+        log_fn(Default, "题库缓存加载失败, 跳过更正")
+        return same_n, fix_n, miss_n, fail_n
+    if getattr(lc, "_load_failed", False):
+        log_fn(Default, "题库缓存读取失败(保护模式), 跳过更正")
+        return same_n, fix_n, miss_n, fail_n
+    key_map = {}
+    try:
+        with lc._lock:
+            for k in lc._data.keys():
+                nk = _norm_question(k)
+                if nk and nk not in key_map:
+                    key_map[nk] = k
+    except Exception:
+        key_map = {}
+    # 2026-10-13: 批量写(收集全部更正后单次落盘), 修复大批量逐题全量写盘
+    pending = []
+    for qno, qtext, corr in items:
+        newval = _report_correct_to_value(corr)
+        if not newval:
+            continue
+        nq = _norm_question(qtext)
+        key = key_map.get(nq)
+        if key is None and len(nq) >= 20:
+            cands = [k for nk, k in key_map.items()
+                     if nk.startswith(nq) or nq.startswith(nk)]
+            key = cands[0] if len(cands) == 1 else None
+        if key is None:
+            miss_n += 1
+            continue
+        oldval = str(lc._data.get(key, ""))
+        if _canon_answer_cmp(oldval) == _canon_answer_cmp(newval):
+            same_n += 1
+            continue
+        pending.append((key, newval, qno, qtext, oldval))
+    if pending:
+        ok_n, fail_extra = 0, 0
+        try:
+            ok_n, fail_extra = lc.update_many(
+                [(k, v) for k, v, _a, _b, _c in pending])
+        except Exception:
+            ok_n, fail_extra = 0, len(pending)
+        fix_n += ok_n
+        fail_n += fail_extra
+        for k, v, qno, qtext, oldval in pending[:20]:
+            log_fn(Default, "更正第%s题: [%s] -> [%s] | %s"
+                   % (qno, oldval[:40], v[:60], qtext[:40]))
+        if len(pending) > 20:
+            log_fn(Default, "... 本报告共更正%d题(日志省略%d条)"
+                   % (ok_n, max(0, len(pending) - 20)))
+    return same_n, fix_n, miss_n, fail_n
+
+
+def _verify_work_answers_action(cache: XueXiTUserCache, course,
+                                work_id: str, work_answer_id: str,
+                                work_name: str,
+                                collect: bool = False) -> int:
+    """答题完成后: 回读平台正确答案 -> 更正现役库 + (可选)归档独立采集库
+
+    生效条件: 平台报告含"正确答案"(已批阅/自动判分); 未批阅/无回显自动跳过;
+    更正策略: "缺失的题不动"(仅修正缓存中已存在的题);
+    采集归档: collect=True 时把全部(题面+正确答案)归档到 questions_collected.json。
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+
+    def _log(color, msg):
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】【", work_name, "】",
+                  Yellow, "[答案核对] ", color, msg)
+
+    html = _fetch_work_report_html(cache, course.course_id, course.key,
+                                   work_id, work_answer_id)
+    if not html:
+        _log(Default, "未获取到批阅报告(可能未批阅/无回显), 跳过")
+        return 0
+    txt = _html_to_report_text(html)
+    items = _parse_work_report(txt)
+    if not items:
+        _log(Default, "报告暂无'正确答案'数据(可能尚未批阅), 跳过")
+        return 0
+    same_n, fix_n, miss_n, fail_n = _fix_live_cache_items(items, _log)
+    _log(Default, "完成: 核对%d题 | 一致%d / 更正%d / 缺失%d / 失败%d"
+         % (len(items), same_n, fix_n, miss_n, fail_n))
+    # ★ 采集归档(独立库, 不并入现役题库, 2026-10-09)
+    if collect:
+        pairs = []
+        for _qno, _q, _c in items:
+            _v = _report_correct_to_value(_c)
+            if _q and _v:
+                pairs.append((_q, _v))
+        if pairs:
+            try:
+                _a, _u, _s = _archive_to_collected(pairs)
+                _log(Default, "采集归档: 新增%d / 更新%d / 跳过%d "
+                     "(questions_collected.json)" % (_a, _u, _s))
+            except Exception as _ce:
+                _log(Default, "采集归档异常: %s" % str(_ce)[:120])
+    return fix_n
+
+
+def collect_answers_manual(cache: XueXiTUserCache,
+                           course_id_filter: str = "") -> dict:
+    """一键采集: 遍历课程 -> 已提交作业 -> 回读批阅报告 -> 归档采集库(+更正现役库)
+
+    参数 course_id_filter 非空时仅采集该课程;
+    返回统计 dict(供 Web 前端展示)。仅对"能回显正确答案"的已提交作业生效,
+    不做任何重做/提交操作; 无回显(未批阅)的作业自动跳过。
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    stats = {"courses": 0, "worksScanned": 0, "reportsOk": 0,
+             "collectedNew": 0, "collectedUpd": 0, "fixed": 0,
+             "skipped": 0, "errors": []}
+
+    def _log(color, msg):
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  Yellow, "[采集] ", color, msg)
+
+    try:
+        courses = _pull_course_action(cache) or []
+    except Exception as e:
+        stats["errors"].append("拉取课程列表异常: %s" % str(e)[:100])
+        return stats
+    if not courses:
+        stats["errors"].append("未拉取到课程列表(登录态可能失效)")
+        return stats
+    for course in courses:
+        try:
+            if course_id_filter and str(course.course_id) != str(course_id_filter):
+                continue
+            stats["courses"] += 1
+            list_body, _ = xxt_api.pull_work_list_api(
+                cache, course.course_id, course.key, str(course.cpi), retry=3)
+            works = _parse_work_list_html(list_body or "")
+            if not works:
+                continue
+            for work in works:
+                if not isinstance(work, dict):
+                    continue
+                status = work.get("status", "")
+                # 已提交类才可能回显(待做无报告可拉)
+                if status not in ("已完成", "待批阅", "已批阅", "待重做"):
+                    continue
+                work_name = str(work.get("name", ""))
+                work_id = str(work.get("taskrefId") or "")
+                enc = str(work.get("enc_task") or "")
+                stats["worksScanned"] += 1
+                try:
+                    body, _ = xxt_api.enter_work_api(
+                        cache, work_id, enc, course.course_id,
+                        course.key, str(course.cpi), retry=3)
+                    body = body or ""
+                    aid = _html_input_get(body, "testUserRelationId")
+                    if not aid:
+                        m = re.search(r'workAnswerId[=:"\'\s]+(\d+)', body)
+                        aid = m.group(1) if m else ""
+                    if not aid:
+                        stats["skipped"] += 1
+                        continue
+                    html = _fetch_work_report_html(
+                        cache, course.course_id, course.key, work_id, aid)
+                    items = _parse_work_report(
+                        _html_to_report_text(html or ""))
+                    if not items:
+                        stats["skipped"] += 1
+                        continue
+                    stats["reportsOk"] += 1
+                    pairs = []
+                    for _qno, _q, _c in items:
+                        _v = _report_correct_to_value(_c)
+                        if _q and _v:
+                            pairs.append((_q, _v))
+                    a, u, s = _archive_to_collected(pairs)
+                    stats["collectedNew"] += a
+                    stats["collectedUpd"] += u
+                    _same, _fix, _miss, _fail = _fix_live_cache_items(
+                        items, _log)
+                    stats["fixed"] += _fix
+                    _log(Default, "%s / %s: 归档新增%d 更新%d | 更正%d"
+                         % (course.course_name, work_name, a, u, _fix))
+                except Exception as e:
+                    stats["errors"].append("%s/%s: %s"
+                                           % (course.course_name, work_name,
+                                              str(e)[:80]))
+        except Exception as e:
+            stats["errors"].append("%s: %s"
+                                   % (course.course_name, str(e)[:80]))
+    _log(Default, "完成: 课程%d 作业%d 有效报告%d | 采集新增%d 更新%d | 更正%d | 跳过%d"
+         % (stats["courses"], stats["worksScanned"], stats["reportsOk"],
+            stats["collectedNew"], stats["collectedUpd"], stats["fixed"],
+            stats["skipped"]))
+    return stats
+
+
+def collect_exams_manual(cache: XueXiTUserCache,
+                         course_id_filter: str = "",
+                         exam_ids_filter=None,
+                         submit: bool = True,
+                         submit_rate: int = 100,
+                         log_fn=None) -> dict:
+    """考试题库采集(MOGO式"考试采集/暴力采集", 2026-10-13)
+
+    进考试 -> 拉全卷 -> 逐题作答(题库+多源+AI) -> (可选)交卷;
+    题+答案全部入采集缓冲(每场考试flush一次)。
+    submit=False: 只拉题记录, 不发任何提交请求。
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    stats = {"courses": 0, "examsScanned": 0, "examsEntered": 0,
+             "examsSubmitted": 0, "questions": 0, "collectedNew": 0,
+             "collectedUpd": 0, "skipped": 0, "errors": []}
+
+    def _log(msg):
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  Yellow, "[考试采集] ", Default, str(msg)[:160])
+        if log_fn:
+            try:
+                log_fn(msg)
+            except Exception:
+                pass
+
+    try:
+        courses = _pull_course_action(cache) or []
+    except Exception as e:
+        stats["errors"].append("拉取课程列表异常: %s" % str(e)[:100])
+        return stats
+    if not courses:
+        stats["errors"].append("未拉取到课程列表(登录态可能失效)")
+        return stats
+    _filt = set(str(x) for x in (exam_ids_filter or []) if str(x).strip())
+    for course in courses:
+        try:
+            if course_id_filter and str(course.course_id) != str(course_id_filter):
+                continue
+            stats["courses"] += 1
+            list_body, _ = xxt_api.pull_exam_list_api(
+                cache, course.course_id, course.key, str(course.cpi), retry=2)
+            exams = _parse_exam_list_html(list_body or "")
+            if not exams:
+                continue
+            for exam in exams:
+                if not isinstance(exam, dict):
+                    continue
+                trid = str(exam.get("taskrefId") or "")
+                if _filt and trid not in _filt:
+                    continue
+                status = str(exam.get("status", ""))
+                if status not in ("待做", "待重考", "待重做"):
+                    stats["skipped"] += 1
+                    continue
+                stats["examsScanned"] += 1
+                ename = exam.get("name", "")
+                try:
+                    _ok = _collect_one_exam(cache, course, exam, submit,
+                                            submit_rate, _log, stats)
+                    if _ok:
+                        stats["examsEntered"] += 1
+                except Exception as e:
+                    stats["errors"].append("%s/%s: %s" % (
+                        course.course_name, ename, str(e)[:80]))
+                try:
+                    _fa, _fs = _flush_exam_collected()
+                    stats["collectedNew"] += _fa
+                    stats["collectedUpd"] += _fs
+                except Exception:
+                    pass
+        except Exception as e:
+            stats["errors"].append("%s: %s" % (
+                course.course_name, str(e)[:80]))
+    _log("完成: 课程%d 扫描考试%d 进入%d 交卷%d 题目%d | 采集新增%d(已存在%d) | 跳过%d"
+         % (stats["courses"], stats["examsScanned"], stats["examsEntered"],
+            stats["examsSubmitted"], stats["questions"],
+            stats["collectedNew"], stats["collectedUpd"], stats["skipped"]))
+    return stats
+
+
+def _collect_one_exam(cache, course, exam, submit, submit_rate,
+                      _log, stats) -> bool:
+    """单场考试采集: 进考试->拉卷->逐题作答->(可选交卷); 返回是否成功进入"""
+    _platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    _acct = display_account(cache.account)
+    task_ref_id = exam.get("taskrefId", "")
+    exam_name = exam.get("name", "")
+    enc_task = exam.get("enc_task", "")
+    enter_body, enter_resp = xxt_api.enter_exam_api(
+        cache, task_ref_id, enc_task, course.course_id, course.key,
+        str(course.cpi), retry=3)
+    if not enter_body:
+        _log("进入考试失败: %s" % exam_name)
+        return False
+    if ("不允许参加考试" in enter_body or "人脸识别" in enter_body
+            or "只能在手机学习通APP参加" in enter_body):
+        _log("该考试受限(限时/人脸/仅APP), 跳过: %s" % exam_name)
+        return False
+    is_redo_exam = "待重做" in enter_body
+    jump_match = re.search(
+        r'id=["\']examJumpUrl["\']\s+value=["\']([^"\']+)["\']', enter_body)
+    if jump_match:
+        jump_url = jump_match.group(1)
+        if not jump_url.startswith("http"):
+            jump_url = "https://mooc1-api.chaoxing.com" + jump_url
+        if is_redo_exam:
+            jump_url = jump_url + "&redo=1"
+        try:
+            _client = xxt_api._build_client(cache, custom_ua=xxt_api.XXTEXAMUA)
+            jump_body, _ = _client.get(jump_url, retry=3)
+            _client.close()
+            if jump_body:
+                enter_body = jump_body
+        except Exception:
+            pass
+    exam_relation_id = (_html_input_get(enter_body, "testPaperId")
+                        or _html_input_get(enter_body, "examRelationId"))
+    answer_id = (_html_input_get(enter_body, "testUserRelationId")
+                 or _html_input_get(enter_body, "answerId"))
+    cpi_val = _html_input_get(enter_body, "cpi") or str(course.cpi)
+    if not (exam_relation_id and answer_id):
+        _log("入口页缺少考试ID, 跳过: %s" % exam_name)
+        return False
+    captcha_id_val = _html_input_get(enter_body, "captchaCaptchaId")
+    captcha_validate = ""
+    if captcha_id_val:
+        try:
+            captcha_validate = xxt_captcha.pass_cx_slider_captcha(
+                cache, captcha_id_val,
+                str(enter_resp.url) if enter_resp is not None else "",
+                attempts=5, log_tag=f"[{_platform}][{_acct}][考试采集] ")
+        except Exception:
+            captcha_validate = ""
+    api_imei = xxt_api._IMEI
+    paper_body, paper_resp = xxt_api.pull_exam_paper_api(
+        cache, course.course_id, course.key, exam_relation_id, cpi_val,
+        exam_answer_id=answer_id, imei=api_imei,
+        captcha_validate=captcha_validate, redo=is_redo_exam, retry=3)
+    if not paper_body or "访问异常" in paper_body:
+        _log("拉取试卷失败/访问异常, 跳过: %s" % exam_name)
+        return False
+    if "人脸识别" in paper_body or "不允许进入考试" in paper_body:
+        _log("人脸监考卷, 跳过: %s" % exam_name)
+        return False
+    if not _is_real_exam_page(paper_body):
+        _log("未进入真实答题页(可能需签名/监控), 跳过: %s" % exam_name)
+        return False
+    paper_entity = _html_exam_question_turn_entity(paper_body)
+    enc_val = paper_entity.get("enc", "")
+    enc_remain_time = paper_entity.get("encRemainTime", "")
+    enc_last_update_time = paper_entity.get("encLastUpdateTime", "")
+    remain_time = paper_entity.get("remainTime", "")
+    test_paper_id = paper_entity.get("testPaperId", exam_relation_id)
+    test_user_relation_id = paper_entity.get("testUserRelationId", answer_id)
+    qt_match = re.search(r'共包含\s*(\d+)\s*道题目', paper_body)
+    question_total = int(qt_match.group(1)) if qt_match else 0
+    if question_total <= 0:
+        _log("题目数量解析为0, 跳过: %s" % exam_name)
+        return False
+    _log("已进入考试[%s], 共%d题, 提交=%s" % (
+        exam_name, question_total, "是" if submit else "否(仅采集)"))
+    _wt_code_map = {'0': 'single_choice', '1': 'multiple_choice', '2': 'fill',
+                    '3': 'judge', '4': 'short', '5': 'term_explanation',
+                    '6': 'essay', '11': 'matching', '8': 'short'}
+    for qi in range(min(question_total, 200)):
+        last_update_param = enc_last_update_time or str(
+            int(time.time() * 1000))
+        q_body, _ = xxt_api.pull_exam_question_api(
+            cache, course.course_id, course.key, test_paper_id,
+            test_user_relation_id, cpi_val, enc_remain_time, enc_val,
+            last_update_param, index=qi, retry=3)
+        if not q_body:
+            continue
+        q_entity = _html_exam_question_turn_entity(q_body)
+        q_text = q_entity.get("questionContent", "")
+        q_type_code = q_entity.get("questionTypeCode", "0")
+        qid = q_entity.get("questionId", "")
+        if not qid or not q_text:
+            break
+        options = q_entity.get("options", [])
+        answer = ""
+        try:
+            from logic.core.answer_engine import answer_query_detail
+            answer, _src = answer_query_detail(
+                q_text, options=options, q_type=_wt_code_map.get(q_type_code, ""))
+        except Exception:
+            answer = ""
+        if not answer:
+            answer = "A" if q_type_code in ("0", "1") else (
+                "true" if q_type_code == "3" else "")
+        if q_type_code in ("0", "1") and options:
+            _lt = _match_answer_to_options(
+                answer, options, multi=(q_type_code == "1"))
+            if not _lt:
+                _lt = _extract_plain_letter(answer)
+            answer = _lt or "A"
+        elif q_type_code == "3":
+            _jl = _match_answer_to_options(answer, options) if options else ""
+            if _jl == "A":
+                answer = "true"
+            elif _jl == "B":
+                answer = "false"
+            else:
+                answer = _normalize_judge_answer(answer)
+        stats["questions"] += 1
+        _collect_exam_qa(q_text, answer, q_entity.get("questionTypeStr", ""))
+        if not submit:
+            continue
+        try:
+            _rate_v = max(0, min(100, int(submit_rate or 100)))
+        except Exception:
+            _rate_v = 100
+        if 0 <= _rate_v < 100 and answer and random.random() * 100 >= _rate_v:
+            _wrong = ""
+            if q_type_code in ("0", "1") and options:
+                _all_letters = [chr(65 + _i) for _i in range(len(options))]
+                _cand = [x for x in _all_letters if x != str(answer)]
+                if _cand:
+                    _wrong = random.choice(_cand)
+            elif q_type_code == "3":
+                _wrong = "false" if str(answer) == "true" else "true"
+            if _wrong:
+                answer = _wrong
+        is_last = (qi + 1 == question_total)
+        submit_data = {
+            "courseId": q_entity.get("courseId", "") or course.course_id,
+            "testPaperId": q_entity.get("testPaperId", "") or test_paper_id,
+            "testUserRelationId": q_entity.get("testUserRelationId", "") or test_user_relation_id,
+            "classId": q_entity.get("classId", "") or course.key,
+            "cpi": q_entity.get("cpi", "") or cpi_val,
+            "userId": q_entity.get("userId", "") or cache.cookie_dict.get("_uid", cache.uid),
+            "enc": q_entity.get("enc", "") or enc_val,
+            "encRemainTime": q_entity.get("encRemainTime", "") or enc_remain_time,
+            "encLastUpdateTime": q_entity.get("encLastUpdateTime", "") or enc_last_update_time,
+            "remainTime": q_entity.get("remainTime", "") or remain_time,
+            "enterPageTime": q_entity.get("enterPageTime", ""),
+            "questionId": qid,
+            "questionTypeCode": q_type_code,
+            "questionTypeStr": q_entity.get("questionTypeStr", ""),
+            "score": q_entity.get("score", ""),
+            "tid": task_ref_id,
+            "answerId": test_user_relation_id,
+            "remainTimeParam": enc_remain_time,
+            "imei": q_entity.get("imei", "") or api_imei,
+            "answer": answer,
+        }
+        try:
+            xxt_api.submit_exam_answer_api(
+                cache, submit_data, is_submit=is_last, retry=2)
+            if is_last:
+                stats["examsSubmitted"] += 1
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+        except Exception as e:
+            stats["errors"].append("%s 第%d题提交异常: %s" % (
+                exam_name, qi + 1, str(e)[:60]))
+    return True
 
 
 # ============ 课程级考试执行 ============
+
+
+def _exam_retake_rounds(setting: Setting, user: User, cache: XueXiTUserCache,
+                        course: XueXiTCourse, exam: dict, rounds: int):
+    """考试自动重考(2026-10-10 实测确立, cx_exam_retake>0 时生效)
+
+    官方重考链(30轮实弹验证): enter(→重考页) → restartOp激活(必先!) →
+    reset封面(task-exam?…&reset=true) → 滑块 → jt=0 + &reset=true
+    → (人脸卷: prepare_exam_face) → jt=1 + &reset=true → 进卷
+    → keeper0 → 逐题暂存 → keeper2 → 等65s → 交卷。
+    每轮独立; 轮间间隔3秒。失败不中断, 继续下一轮。
+    """
+    import re as _re
+    from urllib.parse import quote as _quote2
+    from logic.xuexitong import exam_sign as _exam_sign2
+    # 2026-10-12 修复: Cython编译需要显式赋值(原为跨作用域引用, 打包时报 undeclared)
+    api_imei = xxt_api._IMEI
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    cc = user.courses_custom
+    task_ref_id = exam.get("taskrefId", "")
+    enc_task = exam.get("enc_task", "")
+    exam_name = exam.get("name", "")
+    rounds = max(0, min(200, int(rounds or 0)))
+    ok_n = 0
+    for rk_i in range(1, rounds + 1):
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】【", exam_name, "】",
+                  Purple, f"【重考 {rk_i}/{rounds}】开始...")
+        try:
+            # 1) enter → 重考页 → restartOp → reset封面
+            body, resp = xxt_api.enter_exam_api(
+                cache, task_ref_id, enc_task, course.course_id,
+                course.key, str(course.cpi), retry=3)
+            b0 = body or ""
+            enter_url = str(getattr(resp, "url", "") or "")
+            if "bnt_retake" in b0:
+                _m_ans = _re.search(r'examAnswerId=(\d+)', b0)
+                _ansid = _html_input_get(b0, "testUserRelationId") or (
+                    _m_ans.group(1) if _m_ans else "")
+                _ro_url = ("https://mooc1-api.chaoxing.com/exam/phone/restartOp"
+                           f"?examId={task_ref_id}&examAnswerId={_ansid}"
+                           f"&courseId={course.course_id}&classId={course.key}")
+                _cro = xxt_api._build_client(
+                    cache, custom_ua=xxt_api.get_ua("exam"))
+                try:
+                    _rob, _ = _cro.get(_ro_url, retry=2)
+                finally:
+                    _cro.close()
+                _ro_ok = '"status":true' in str(_rob).replace(" ", "")
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green if _ro_ok else Yellow,
+                          f"restartOp: {str(_rob)[:80]}")
+                time.sleep(2)
+                _m_ru = _re.search(r'data="([^"]*reset=true[^"]*)"', b0)
+                if _m_ru:
+                    _ru = "https://mooc1-api.chaoxing.com" + \
+                        _m_ru.group(1).replace("#INNER", "")
+                    _cr = xxt_api._build_client(
+                        cache, custom_ua=xxt_api.get_ua("exam"))
+                    try:
+                        b0, _ = _cr.get(_ru, retry=2)
+                    finally:
+                        _cr.close()
+                    b0 = b0 or ""
+            tuid = _html_input_get(b0, "testUserRelationId")
+            captcha_id = _html_input_get(b0, "captchaCaptchaId")
+            monitor_enc = _html_input_get(b0, "monitorEnc")
+            if not tuid or not captcha_id:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"重考{rk_i}: 封面获取失败(TUID/captcha为空)，终止本轮")
+                time.sleep(3)
+                continue
+            # 2) 滑块 + 客户端指纹
+            _v = ""
+            try:
+                _v = xxt_captcha.pass_cx_slider_captcha(
+                    cache, captcha_id, enter_url, attempts=5,
+                    log_tag=f"[{platform}][重考{rk_i}] ") or ""
+            except Exception:
+                _v = ""
+            if not _v:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"重考{rk_i}: 滑块验证失败，终止本轮")
+                time.sleep(3)
+                continue
+            docid, sc, _cid_err = xxt_api.fetch_exam_client_id_v2(cache)
+            if not docid:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"重考{rk_i}: 客户端指纹获取失败，终止本轮")
+                time.sleep(3)
+                continue
+
+            def _rk_start(jt, facekey="", captcha_validate=""):
+                # 2026-10-12 修复: Cython编译需要显式赋值(原为跨作用域引用, 打包时报 undeclared)
+                api_imei = xxt_api._IMEI
+                _sg = _exam_sign2.compute_start_exam_sign_v2(
+                    tuid, course.key, docid, sc)
+                _u = ("https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+                      f"?courseId={course.course_id}&classId={course.key}"
+                      f"&examId={task_ref_id}&source=0"
+                      f"&examAnswerId={tuid}&cpi={course.cpi}"
+                      "&keyboardDisplayRequiresUserAction=1"
+                      f"&faceDetectionResult=&jt={jt}"
+                      f"&captchavalidate={captcha_validate}&_v={time.time()}&code="
+                      f"&imei={api_imei}"
+                      f"&cxcid={_quote2(_sg['cxcid'])}&cxtime={_sg['cxtime']}"
+                      f"&signt={_sg['signt']}&_signcode=1&_signc=1&_signe="
+                      f"&signk={_sg['signk']}&reset=true")
+                if facekey:
+                    _u += f"&facekey={facekey}&faceDetection=1"
+                _c = xxt_api._build_client(
+                    cache, custom_ua=xxt_api.get_ua("exam"))
+                try:
+                    _bx, _rx = _c.get(_u, retry=2)
+                    return _bx or "", _rx
+                finally:
+                    _c.close()
+
+            paper = ""
+            b2, _r2 = _rk_start(0, "", _v)
+            if _is_real_exam_page(b2):
+                paper = b2
+            else:
+                # 人脸门(人脸卷)
+                _fk = ""
+                if "人脸识别对比不通过" in b2:
+                    _fk, _fdr, _ferr = xxt_api.prepare_exam_face(
+                        cache, None, task_ref_id, course.course_id,
+                        course.key, str(course.cpi), answer_id=tuid)
+                    if _fk and monitor_enc:
+                        try:
+                            xxt_api.keeper_push_api(
+                                cache, course.course_id, course.key,
+                                str(course.cpi), task_ref_id, tuid, 5, monitor_enc)
+                        except Exception:
+                            pass
+                # 重取滑块(人脸后 validate 经常已消耗)
+                _v2 = ""
+                try:
+                    _v2 = xxt_captcha.pass_cx_slider_captcha(
+                        cache, captcha_id, enter_url, attempts=5,
+                        log_tag=f"[{platform}][重考{rk_i}b] ") or ""
+                except Exception:
+                    _v2 = ""
+                b3, _r3 = _rk_start(1, _fk, _v2 or _v)
+                if _is_real_exam_page(b3):
+                    paper = b3
+                elif "用户登录" not in b3:
+                    time.sleep(2)
+                    _v3 = ""
+                    try:
+                        _v3 = xxt_captcha.pass_cx_slider_captcha(
+                            cache, captcha_id, enter_url, attempts=5,
+                            log_tag=f"[{platform}][重考{rk_i}c] ") or ""
+                    except Exception:
+                        _v3 = ""
+                    b4, _r4 = _rk_start(1, _fk, _v3 or _v2 or _v)
+                    if _is_real_exam_page(b4):
+                        paper = b4
+            if not _is_real_exam_page(paper):
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"重考{rk_i}: 未能进入答卷页，终止本轮")
+                time.sleep(3)
+                continue
+            # 3) 卷字段 + keeper0
+            _pe = _html_exam_question_turn_entity(paper)
+            enc_v = _pe.get("enc", "") or _html_input_get(paper, "enc")
+            ert_v = _pe.get("encRemainTime", "") or _html_input_get(
+                paper, "encRemainTime")
+            elt_v = _pe.get("encLastUpdateTime", "") or _html_input_get(
+                paper, "encLastUpdateTime")
+            tuid = _pe.get("testUserRelationId", tuid) or tuid
+            test_paper_id = _pe.get("testPaperId", task_ref_id) or task_ref_id
+            if monitor_enc:
+                try:
+                    xxt_api.keeper_push_api(
+                        cache, course.course_id, course.key, str(course.cpi),
+                        str(test_paper_id), str(tuid), 0, monitor_enc)
+                except Exception:
+                    pass
+            # 4) 逐题暂存(答题源同主流程: auto_exam 1/2=题库, 3=内置AI, 0=默认)
+            _q_total = 0
+            try:
+                _q_total = int(_pe.get("questionTotal", 0) or 0)
+            except Exception:
+                _q_total = 0
+            if _q_total <= 0:
+                _q_total = 30  # 上限保护, 无qid自动跳出
+            _ok_c = 0
+            _last_qb = ""
+            _seen = set()
+            for qi in range(_q_total):
+                _lu = elt_v or str(int(time.time() * 1000))
+                q_body, _ = xxt_api.pull_exam_question_api(
+                    cache, course.course_id, course.key,
+                    test_paper_id, tuid, course.cpi,
+                    ert_v, enc_v, _lu, index=qi, retry=3)
+                qb = q_body or ""
+                qe = _html_exam_question_turn_entity(qb)
+                qid = qe.get("questionId", "")
+                if not qid or qid in _seen:
+                    break
+                _seen.add(qid)
+                qtc = qe.get("questionTypeCode", "0")
+                # 答题源
+                _ans = ""
+                if cc.auto_exam in (1, 2):
+                    try:
+                        from logic.core.answer_engine import answer_query_detail
+                        _wt_map = {'0': 'single_choice', '1': 'multiple_choice',
+                                   '2': 'fill', '3': 'judge', '4': 'short',
+                                   '5': 'term_explanation', '6': 'essay',
+                                   '11': 'matching', '8': 'short'}
+                        _ans, _src = answer_query_detail(
+                            qe.get("questionContent", ""),
+                            options=qe.get("options", []),
+                            q_type=_wt_map.get(qtc, ''))
+                    except Exception:
+                        _ans = ""
+                elif cc.auto_exam == 3:
+                    try:
+                        _ai_b, _ = xxt_api.xxt_ai_api(
+                            cache, qe.get("questionContent", ""),
+                            course.course_id, course.key, str(course.cpi),
+                            options=qe.get("options", []),
+                            q_type={'0': 'single_choice', '1': 'multiple_choice',
+                                    '2': 'fill', '3': 'judge', '4': 'short',
+                                    '5': 'term_explanation', '6': 'essay',
+                                    '11': 'matching', '8': 'short'}.get(qtc, ''))
+                        _ans = _ai_b.strip() if _ai_b else ""
+                    except Exception:
+                        _ans = ""
+                if not _ans:
+                    _ans = "A" if qtc in ("0", "1") else (
+                        "true" if qtc == "3" else "答案")
+                _sd = {
+                    "courseId": qe.get("courseId", "") or course.course_id,
+                    "testPaperId": qe.get("testPaperId", "") or test_paper_id,
+                    "testUserRelationId": qe.get("testUserRelationId", "") or tuid,
+                    "classId": qe.get("classId", "") or course.key,
+                    "cpi": qe.get("cpi", "") or str(course.cpi),
+                    "userId": qe.get("userId", "") or cache.cookie_dict.get("_uid", cache.user_id),
+                    "enc": qe.get("enc", "") or enc_v,
+                    "encRemainTime": qe.get("encRemainTime", "") or ert_v,
+                    "encLastUpdateTime": qe.get("encLastUpdateTime", "") or elt_v,
+                    "remainTime": qe.get("remainTime", ""),
+                    "enterPageTime": qe.get("enterPageTime", ""),
+                    "questionId": qid,
+                    "questionTypeCode": qtc,
+                    "questionTypeStr": qe.get("questionTypeStr", ""),
+                    "score": qe.get("score", ""),
+                    "tid": qe.get("tid", "") or test_paper_id,
+                    "answerId": tuid,
+                    "remainTimeParam": ert_v,
+                    "imei": qe.get("imei", "") or api_imei,
+                    "answer": _ans,
+                }
+                _sb, _ = xxt_api.submit_exam_answer_api(
+                    cache, _sd, is_submit=False, retry=3)
+                _sbs = _sb if isinstance(_sb, str) else str(_sb)
+                if ("提交成功" in _sbs or '"status":true' in _sbs.replace(" ", "")):
+                    _ok_c += 1
+                _last_qb = qb
+                time.sleep(0.6)
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      f"重考{rk_i}: 暂存 {_ok_c} 题")
+            if not _last_qb:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Red, f"重考{rk_i}: 无题目可答，本轮未交卷")
+                time.sleep(3)
+                continue
+            # 5) keeper2 + 等65秒 + 交卷
+            if monitor_enc:
+                try:
+                    xxt_api.keeper_push_api(
+                        cache, course.course_id, course.key, str(course.cpi),
+                        str(test_paper_id), str(tuid), 2, monitor_enc)
+                except Exception:
+                    pass
+            time.sleep(65)
+            qe = _html_exam_question_turn_entity(_last_qb)
+            _fd = {
+                "courseId": qe.get("courseId", "") or course.course_id,
+                "testPaperId": qe.get("testPaperId", "") or test_paper_id,
+                "testUserRelationId": qe.get("testUserRelationId", "") or tuid,
+                "classId": qe.get("classId", "") or course.key,
+                "cpi": qe.get("cpi", "") or str(course.cpi),
+                "userId": qe.get("userId", "") or cache.cookie_dict.get("_uid", cache.user_id),
+                "enc": qe.get("enc", "") or enc_v,
+                "encRemainTime": qe.get("encRemainTime", "") or ert_v,
+                "encLastUpdateTime": qe.get("encLastUpdateTime", "") or elt_v,
+                "remainTime": qe.get("remainTime", ""),
+                "enterPageTime": qe.get("enterPageTime", ""),
+                "questionId": qe.get("questionId", ""),
+                "questionTypeCode": qe.get("questionTypeCode", ""),
+                "questionTypeStr": qe.get("questionTypeStr", ""),
+                "score": qe.get("score", ""),
+                "tid": qe.get("tid", "") or test_paper_id,
+                "answerId": tuid,
+                "remainTimeParam": ert_v,
+                "imei": qe.get("imei", "") or api_imei,
+                "answer": qe.get("answer", ""),
+            }
+            f_body, _ = xxt_api.submit_exam_answer_api(
+                cache, _fd, is_submit=True, retry=3)
+            f_str = f_body if isinstance(f_body, str) else str(f_body)
+            _ok = "提交成功" in f_str
+            if _ok:
+                ok_n += 1
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      Green if _ok else Red,
+                      f"重考{rk_i}/{rounds}: {'交卷成功' if _ok else '交卷失败'} | {f_str[:100]}")
+        except Exception as _e_rk:
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      BoldRed, f"重考{rk_i}异常: {str(_e_rk)[:120]}")
+        time.sleep(3)
+    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】【", exam_name, "】",
+              Purple, f"【重考完成】成功 {ok_n}/{rounds} 轮")
+    if ok_n:
+        try:
+            send_user_event_notice(
+                setting, user, platform,
+                f"考试【{exam_name}】重考完成（成功{ok_n}/{rounds}轮）")
+        except Exception:
+            pass
+
 
 def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                  course: XueXiTCourse):
@@ -5024,11 +6951,38 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       "【", course.course_name, "】【", exam.get("name", ""), "】",
                       Yellow, f"该考试{status}，无法参加，已跳过")
             continue
-        # 待批阅/已批阅考试: 已完成提交, 无需重复操作（明确告知）
+        # 待批阅/已批阅考试: 已完成提交; cx_exam_retake>0 时自动重考(2026-10-10)
         if status in ("待批阅", "已批阅"):
-            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】【", exam.get("name", ""), "】",
-                      Green, f"该考试已完成提交（状态：{status}），无需重复操作，已跳过")
+            _rk_n = 0
+            try:
+                _rk_n = max(
+                    0, min(200, int(getattr(cc, "cx_exam_retake", 0) or 0)))
+            except Exception:
+                _rk_n = 0
+            if _rk_n > 0:
+                _wk_rk = (cache.account, course.course_id, "exam_retake",
+                          exam.get("taskrefId", ""))
+                with _work_processed_guard:
+                    if _wk_rk in _work_processed:
+                        continue
+                    _work_processed.add(_wk_rk)
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam.get(
+                              "name", ""), "】",
+                          Yellow, f"检测到已完成考试({status})且已配置自动重考{_rk_n}次，开始执行重考...")
+                try:
+                    _exam_retake_rounds(
+                        setting, user, cache, course, exam, _rk_n)
+                except Exception as _e_rk:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam.get(
+                                  "name", ""), "】",
+                              BoldRed, f"重考执行异常: {str(_e_rk)[:120]}")
+            else:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam.get(
+                              "name", ""), "】",
+                          Green, f"该考试已完成提交（状态：{status}），无需重复操作，已跳过")
             continue
         # 待做/待重考/待重做直接作答; 已完成需检查分数(<60且可重考则自动重做)
         if status not in ("待做", "待重考", "待重做", "已完成"):
@@ -5046,6 +7000,26 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if _wk in _work_processed:
                 continue
             _work_processed.add(_wk)
+
+        # ★ 2026-10-09 实测增强: enter 前先拉考试列表验证会话状态
+        #   (实测: 服务端"登录页"回落后 enter/start 全链失效; 列表探测可提前发现并重登)
+        try:
+            _probe_b, _ = xxt_api.pull_exam_list_api(
+                cache, course.course_id, course.key, str(course.cpi), retry=2)
+            _dr = 0
+            while "用户登录" in (_probe_b or "") and _dr < 3:
+                _dr += 1
+                _dr_err = _login_action(cache)
+                if _dr_err:
+                    break
+                _probe_b, _ = xxt_api.pull_exam_list_api(
+                    cache, course.course_id, course.key, str(course.cpi), retry=2)
+            if _dr:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, f"检测到会话掉线, 已重登恢复({_dr}次)")
+        except Exception:
+            pass
 
         # 进入考试 - 对应 Go EnterExamAction
         enter_body, enter_resp = xxt_api.enter_exam_api(
@@ -5276,14 +7250,14 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       Red, f"拉取考试试卷失败 (status={paper_resp.status_code if paper_resp else 'N/A'})")
             continue
 
-        # 检查访问异常 - 对应 Go EnterExamAction 中的XXTEXAMUA切换逻辑
-        # Go: strings.Contains(pullPaperHtml, "访问异常") → XXTEXAMUA = GetUA("iphone") → 递归重试
+        # 检查访问异常 - 修复(2026-10-12): 不再自动切换iPhone UA(乱切UA极易触发风控/账号异常),
+        # 改为保持原UA等待后重试; 仍失败则跳过(如需切UA请人工干预)
         if "访问异常" in paper_body:
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】【", exam_name, "】",
-                      Yellow, "考试访问异常，切换iPhone UA重试...")
-            xxt_api.XXTEXAMUA = xxt_api.get_ua("iphone")
-            # 重试拉取试卷
+                      Yellow, "考试访问异常，等待后重试(保持原UA，不切换)...")
+            time.sleep(random.randint(8, 15))
+            # 重试拉取试卷(原UA不变)
             paper_body, paper_resp = xxt_api.pull_exam_paper_api(
                 cache, course.course_id, course.key,
                 exam_relation_id, cpi_val,
@@ -5293,20 +7267,86 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if not paper_body or "访问异常" in paper_body:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
-                          Red, "考试访问异常，iPhone UA重试仍失败，跳过")
-                xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")  # 恢复
+                          Red, "考试访问异常，重试仍失败(未切换UA)，跳过该考试")
                 continue
 
         # 人脸识别拦截: 服务器明确提示"人脸识别对比不通过，不允许进入考试"
-        # (该考试启用了考前人脸认证，纯HTTP程序无法完成真实人脸采集与比对)
+        # ★ 2026-10突破: 尝试"人脸准备(换基准法) + 带凭证重发start" 自动过人脸
         if "人脸识别对比不通过" in paper_body or (
                 "人脸识别" in paper_body and "不允许进入考试" in paper_body):
-            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                      "【", course.course_name, "】【", exam_name, "】",
-                      Yellow, "该考试要求人脸识别，服务器人脸比对未通过"
-                              "(纯HTTP无法完成考前人脸认证)，已跳过")
-            xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
-            continue
+            _fk_r, _fdr_r, _f_err_r = xxt_api.prepare_exam_face(
+                cache, None, task_ref_id, course.course_id,
+                course.key, cpi_val)
+            if _f_err_r or not _fdr_r:
+                # 2026-10穷举结论: "正式人脸监考卷"的人脸凭证仅由APP监考SDK链路产生,
+                # face-compare不开放("无效参数")——纯协议无法自动, 建议人工APP参加
+                _app_sign = _html_input_get(paper_body, "appExamClientSign")
+                _tip = ("该考试为正式人脸监考卷(需APP监考SDK), 纯协议无法自动, 建议人工APP参加"
+                        if _app_sign else "该考试要求人脸识别")
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow, f"{_tip}(人脸准备失败: {_f_err_r})，已跳过")
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+                continue
+            # ★ 重新过滑块(pull那次已消耗一次性validate, retry必须用新的)
+            _retry_captcha = captcha_validate
+            if captcha_id_val:
+                try:
+                    _new_v = xxt_captcha.pass_cx_slider_captcha(
+                        cache, captcha_id_val,
+                        str(enter_resp.url) if enter_resp is not None else "",
+                        attempts=5,
+                        log_tag=f"[{platform}][{acct}]【{course.course_name}】【{exam_name}】人脸重试 ")
+                    if _new_v:
+                        _retry_captcha = _new_v
+                except Exception:
+                    pass
+            # 带人脸凭证重发 start(带v2签名; 签名不可用时仍尝试裸凭证)
+            try:
+                from urllib.parse import quote as _quote_r
+                from logic.xuexitong import exam_sign as _exam_sign_r
+                _cid_r, _sc_r, _ = xxt_api.fetch_exam_client_id_v2(cache)
+                if _cid_r and _sc_r:
+                    _sig_r = _exam_sign_r.compute_start_exam_sign_v2(
+                        answer_id, course.key, _cid_r, _sc_r)
+                else:
+                    _sig_r = None
+            except Exception:
+                _sig_r = None
+            _retry_url = (
+                f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+                f"?courseId={course.course_id}&classId={course.key}"
+                f"&examId={exam_relation_id}&source=0"
+                f"&examAnswerId={answer_id}&cpi={cpi_val}"
+                f"&keyboardDisplayRequiresUserAction=1&imei={api_imei}"
+                f"&faceDetection=1&facekey={_fk_r}"
+                f"&faceDetectionResult={_quote_r(_fdr_r, safe='')}"
+                f"&captchavalidate={_retry_captcha}&jt=0&code="
+                f"&_v={time.time()}")
+            if _sig_r:
+                _retry_url += (
+                    f"&cxcid={_quote_r(_sig_r['cxcid'])}&cxtime={_sig_r['cxtime']}"
+                    f"&signt={_sig_r['signt']}&_signcode=1&_signc=1&_signe="
+                    f"&signk={_sig_r['signk']}")
+            # 重试start也用mobile UA(2026-10-06)
+            xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+            _c_r = xxt_api._build_client(cache, custom_ua=xxt_api.XXTEXAMUA)
+            try:
+                _rb_r, _ = _c_r.get(_retry_url, retry=2)
+            finally:
+                _c_r.close()
+            _rb_r = _rb_r or ""
+            if _is_real_exam_page(_rb_r):
+                paper_body = _rb_r
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, "考试人脸认证通过(换基准法)，已进入考试答题页")
+            else:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow, f"该考试人脸认证重试未通过({_rb_r[:80]})，已跳过")
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+                continue
 
         # Parse paper to get metadata
         paper_entity = _html_exam_question_turn_entity(paper_body)
@@ -5324,8 +7364,283 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         # 设备特征码登录时已确定(cache.device_flag: 配置的deviceFlag或动态生成)
         if "isStartPage" in paper_body and not enc_val:
             sign_ok = False
+
+            # ★ 考前人脸准备(2026-10突破): faceRecognitionCompare=1时
+            #   上传人脸→换基准(changefaceid)→face-compare→facekey+faceDetectionResult
+            #   人脸照片来源: assets/faces/{账号}.jpg (没有时跳过,保持旧行为)
+            _need_face = False
+            _facekey_v2 = ""
+            _fdr_json_v2 = ""
             try:
-                device_flag = (getattr(cache, "device_flag", "") or "").strip()
+                _frf_val = _html_input_get(
+                    paper_body, "faceRecognitionCompare")
+                _need_face = bool(_frf_val) and _frf_val != "0"
+            except Exception:
+                _need_face = False
+            # ★ 2026-10-09 实测重构: 人脸链不再"前置"——实测正确顺序为
+            #   jt=0 首跳(被拒"人脸识别对比不通过") → 人脸链 → jt=1 重签进卷
+            #   (前置人脸+首跳携faceDetection参数会触发"访问异常"版本门)
+            _facekey_v2 = ""
+            _fdr_json_v2 = ""
+            _keeper_entry_done = False
+            try:
+                _monitor_enc = _html_input_get(paper_body, "monitorEnc")
+            except Exception:
+                _monitor_enc = ""
+
+            # ★ 修复(2026-10-06): pull若触发"访问异常"会把XXTEXAMUA切成iPhone,
+            #   v2签名start前必须恢复mobile UA(实测: iPhone UA下签名start被拒,
+            #   mobile UA直接进卷——四史教育考试案例)
+            xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+            # ★ 修复2(2026-10-06): "访问异常"重试pull会消耗validate(重试页变
+            #   "安全验证不通过"), 签名start前必须重新过滑块拿新validate
+            if captcha_id_val:
+                try:
+                    _v2_val = xxt_captcha.pass_cx_slider_captcha(
+                        cache, captcha_id_val,
+                        str(enter_resp.url) if enter_resp is not None else "",
+                        attempts=5,
+                        log_tag=f"[{platform}][{acct}]【{course.course_name}】【{exam_name}】签名前重验证 ")
+                    if _v2_val:
+                        captcha_validate = _v2_val
+                except Exception:
+                    pass
+
+            # ★ v2优先: 设备指纹链 + APP原生签名(2026-10实测链路)
+            #   cid/sc(设备指纹链) → sig=RSA签("param"+param) → signt=MD5链
+            try:
+                from urllib.parse import quote as _quote2
+                from logic.xuexitong import exam_sign as _exam_sign2
+                cid2, sc2, err2 = xxt_api.fetch_exam_client_id_v2(cache)
+                if err2:
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Yellow, f"v2设备指纹链不可用({err2}), 回退旧签名")
+                elif cid2 and sc2:
+                    sig2 = _exam_sign2.compute_start_exam_sign_v2(
+                        test_user_relation_id, course.key, cid2, sc2)
+                    jump_url2 = (
+                        f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+                        f"?courseId={course.course_id}&classId={course.key}"
+                        f"&examId={test_paper_id}&source=0"
+                        f"&examAnswerId={test_user_relation_id}&cpi={cpi_val}"
+                        f"&keyboardDisplayRequiresUserAction=1"
+                        f"&faceDetectionResult=&jt=0"
+                        f"&captchavalidate={captcha_validate}&_v={time.time()}&code="
+                        f"&imei={api_imei}"
+                        f"&cxcid={_quote2(sig2['cxcid'])}&cxtime={sig2['cxtime']}"
+                        f"&signt={sig2['signt']}&_signcode=1&_signc=1&_signe="
+                        f"&signk={sig2['signk']}")
+                    _client2 = xxt_api._build_client(
+                        cache, custom_ua=xxt_api.XXTEXAMUA)
+                    try:
+                        sign_body2, _resp2 = _client2.get(jump_url2, retry=2)
+                    finally:
+                        _client2.close()
+                    sign_body2 = sign_body2 or ""
+                    if 'id="enc"' in sign_body2 or "id='enc'" in sign_body2:
+                        # 2026-10-09 加固: 排除登录页误判(登录页也含 id=enc 字样)
+                        if not _is_real_exam_page(sign_body2):
+                            # 会话掉线(登录页): 重登+重取滑块+重发首跳(仅一轮, 防死循环)
+                            if "用户登录" in sign_body2:
+                                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                          "【", course.course_name, "】【", exam_name, "】",
+                                          Yellow, "jt=0响应为登录页(会话掉线), 尝试重登重发...")
+                                try:
+                                    _login_action(cache)
+                                    cid2, sc2, err2 = xxt_api.fetch_exam_client_id_v2(
+                                        cache)
+                                    if captcha_id_val:
+                                        _v5 = xxt_captcha.pass_cx_slider_captcha(
+                                            cache, captcha_id_val,
+                                            str(enter_resp.url) if enter_resp is not None else "",
+                                            attempts=5, log_tag=f"[{platform}][{acct}]重登后重验证 ")
+                                        if _v5:
+                                            captcha_validate = _v5
+                                    _sig5 = _exam_sign2.compute_start_exam_sign_v2(
+                                        test_user_relation_id, course.key, cid2, sc2)
+                                    _jump5 = (
+                                        f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+                                        f"?courseId={course.course_id}&classId={course.key}"
+                                        f"&examId={test_paper_id}&source=0"
+                                        f"&examAnswerId={test_user_relation_id}&cpi={cpi_val}"
+                                        f"&keyboardDisplayRequiresUserAction=1"
+                                        f"&faceDetectionResult=&jt=0"
+                                        f"&captchavalidate={captcha_validate}&_v={time.time()}&code="
+                                        f"&imei={api_imei}"
+                                        f"&cxcid={_quote2(_sig5['cxcid'])}&cxtime={_sig5['cxtime']}"
+                                        f"&signt={_sig5['signt']}&_signcode=1&_signc=1&_signe="
+                                        f"&signk={_sig5['signk']}")
+                                    _c5 = xxt_api._build_client(
+                                        cache, custom_ua=xxt_api.XXTEXAMUA)
+                                    try:
+                                        _b5, _ = _c5.get(_jump5, retry=2)
+                                    finally:
+                                        _c5.close()
+                                    sign_body2 = _b5 or ""
+                                except Exception:
+                                    pass
+                        # 2026-10-09: 仅真卷页进入签名成功分支; 非真卷(登录页/提示页)保持原语义(fall through至v1回退)
+                        paper_body = sign_body2
+                        paper_entity = _html_exam_question_turn_entity(
+                            paper_body)
+                        enc_val = paper_entity.get("enc", "")
+                        sign_ok = bool(enc_val)
+                        if sign_ok:
+                            # ★ 修复(2026-10-06): 从enc页重新解析元数据
+                            #   (否则拉题缺remainTimeParam被服务端"无权限"拒绝)
+                            enc_remain_time = (paper_entity.get("encRemainTime", "")
+                                               or enc_remain_time)
+                            enc_last_update_time = (paper_entity.get("encLastUpdateTime", "")
+                                                    or enc_last_update_time)
+                            remain_time = (paper_entity.get("remainTime", "")
+                                           or remain_time)
+                            test_paper_id = (paper_entity.get("testPaperId", test_paper_id)
+                                             or test_paper_id)
+                            test_user_relation_id = (paper_entity.get(
+                                "testUserRelationId", test_user_relation_id)
+                                or test_user_relation_id)
+                            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                      "【", course.course_name, "】【", exam_name, "】",
+                                      Green, "客户端签名v2验证通过，已进入考试答题页")
+                            # keeper事件0(进卷, 考中监控卷)
+                            if _monitor_enc and not _keeper_entry_done:
+                                try:
+                                    xxt_api.keeper_push_api(
+                                        cache, course.course_id, course.key,
+                                        str(cpi_val), str(test_paper_id),
+                                        str(test_user_relation_id), 0, _monitor_enc)
+                                    _keeper_entry_done = True
+                                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                              "【", course.course_name, "】【", exam_name, "】",
+                                              Green, "keeper监控事件0(进卷)已上报")
+                                except Exception:
+                                    pass
+                    elif "人脸" in sign_body2 and "不允许进入考试" in sign_body2:
+                        # ★ 2026-10-09 实测重构: 首跳被拒 → 人脸链(签名版, 两轮) →
+                        #   重取滑块 → jt=1 重签(带facekey) → 重发 → 进卷
+                        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", exam_name, "】",
+                                  Yellow, "该考试需人脸认证(首跳被拒)，开始人脸准备...")
+                        _fk, _fdr, _f_err = xxt_api.prepare_exam_face(
+                            cache, None, test_paper_id, course.course_id,
+                            course.key, cpi_val,
+                            answer_id=test_user_relation_id)
+                        if _f_err:
+                            _app_sign2 = _html_input_get(
+                                paper_body, "appExamClientSign")
+                            _tip2 = ("该考试为正式人脸监考卷(需APP监考SDK), 人脸准备失败"
+                                     if _app_sign2 else "考试人脸准备失败")
+                            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                      "【", course.course_name, "】【", exam_name, "】",
+                                      Yellow, f"{_tip2}({_f_err})，已跳过")
+                            xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+                            continue
+                        _facekey_v2 = _fk
+                        _fdr_json_v2 = _fdr
+                        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", exam_name, "】",
+                                  Green, "考试人脸认证通过(换基准法)，jt=1重签进入")
+                        # keeper事件5(人脸抓拍, 考中监控卷)
+                        if _monitor_enc:
+                            try:
+                                xxt_api.keeper_push_api(
+                                    cache, course.course_id, course.key,
+                                    str(cpi_val), str(test_paper_id),
+                                    str(test_user_relation_id), 5, _monitor_enc)
+                                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                          "【", course.course_name, "】【", exam_name, "】",
+                                          Green, "keeper监控事件5(人脸抓拍)已上报")
+                            except Exception:
+                                pass
+                        # 重取滑块(旧 validate 人脸链耗时中已消耗)
+                        if captcha_id_val:
+                            try:
+                                _v3_val = xxt_captcha.pass_cx_slider_captcha(
+                                    cache, captcha_id_val,
+                                    str(enter_resp.url) if enter_resp is not None else "",
+                                    attempts=5,
+                                    log_tag=f"[{platform}][{acct}]【{course.course_name}】【{exam_name}】人脸后重验证 ")
+                                if _v3_val:
+                                    captcha_validate = _v3_val
+                            except Exception:
+                                pass
+                        # jt=1 重签(带facekey+faceDetection=1, 实测通过姿势)
+                        sig3 = _exam_sign2.compute_start_exam_sign_v2(
+                            test_user_relation_id, course.key, cid2, sc2)
+                        jump_url3 = (
+                            f"https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start"
+                            f"?courseId={course.course_id}&classId={course.key}"
+                            f"&examId={test_paper_id}&source=0"
+                            f"&examAnswerId={test_user_relation_id}&cpi={cpi_val}"
+                            f"&keyboardDisplayRequiresUserAction=1"
+                            f"&faceDetectionResult=&jt=1"
+                            f"&captchavalidate={captcha_validate}&_v={time.time()}&code="
+                            f"&imei={api_imei}"
+                            f"&cxcid={_quote2(sig3['cxcid'])}&cxtime={sig3['cxtime']}"
+                            f"&signt={sig3['signt']}&_signcode=1&_signc=1&_signe="
+                            f"&signk={sig3['signk']}"
+                            f"&facekey={_fk}&faceDetection=1")
+                        _client3 = xxt_api._build_client(
+                            cache, custom_ua=xxt_api.XXTEXAMUA)
+                        try:
+                            _b3, _r3 = _client3.get(jump_url3, retry=2)
+                        finally:
+                            _client3.close()
+                        _b3 = _b3 or ""
+                        if _is_real_exam_page(_b3):
+                            paper_body = _b3
+                            paper_entity = _html_exam_question_turn_entity(_b3)
+                            enc_val = paper_entity.get("enc", "")
+                            sign_ok = bool(enc_val)
+                            if sign_ok:
+                                enc_remain_time = (paper_entity.get("encRemainTime", "")
+                                                   or enc_remain_time)
+                                enc_last_update_time = (paper_entity.get("encLastUpdateTime", "")
+                                                        or enc_last_update_time)
+                                remain_time = (paper_entity.get("remainTime", "")
+                                               or remain_time)
+                                test_paper_id = (paper_entity.get("testPaperId", test_paper_id)
+                                                 or test_paper_id)
+                                test_user_relation_id = (paper_entity.get(
+                                    "testUserRelationId", test_user_relation_id)
+                                    or test_user_relation_id)
+                                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                          "【", course.course_name, "】【", exam_name, "】",
+                                          Green, "人脸认证通过(jt=1重签)，已进入考试答题页")
+                                # keeper事件0(进卷, 考中监控卷)
+                                if _monitor_enc and not _keeper_entry_done:
+                                    try:
+                                        xxt_api.keeper_push_api(
+                                            cache, course.course_id, course.key,
+                                            str(cpi_val), str(test_paper_id),
+                                            str(test_user_relation_id), 0, _monitor_enc)
+                                        _keeper_entry_done = True
+                                        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                                  "【", course.course_name, "】【", exam_name, "】",
+                                                  Green, "keeper监控事件0(进卷)已上报")
+                                    except Exception:
+                                        pass
+                        else:
+                            _face_st = f"jt=1响应非卷页({_b3[:80]})"
+                            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                      "【", course.course_name, "】【", exam_name, "】",
+                                      Yellow, f"该考试人脸比对未通过({_face_st})，已跳过")
+                            xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+                            continue
+            except Exception as e:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow, f"v2签名流程异常({e}), 回退旧签名")
+
+            # v1回退: 旧签名链(设备码+5种message_mode); v2已通过时跳过
+            try:
+                if sign_ok:
+                    raise _V2SignDone
+                # ★ 修复(2026-10-06): v1签名start同样必须用mobile UA
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+                device_flag = (
+                    getattr(cache, "device_flag", "") or "").strip()
                 if not device_flag:
                     log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                               "【", course.course_name, "】【", exam_name, "】",
@@ -5364,7 +7679,9 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         f"&examId={test_paper_id}&source=0"
                         f"&examAnswerId={test_user_relation_id}"
                         f"&faceDetection=1&keyboardDisplayRequiresUserAction=1"
-                        f"&code=&imei={api_imei}&faceDetection={fd_val}&facekey=&sdlkey=&faceDetectionResult="
+                        f"&code=&imei={api_imei}&faceDetection={fd_val}"
+                        f"&facekey={_facekey_v2}&sdlkey="
+                        f"&faceDetectionResult={_quote(_fdr_json_v2, safe='') if _fdr_json_v2 else ''}"
                         f"&captchavalidate={captcha_validate}&jt=0&_v={time.time()}"
                         f"&cxcid={_quote(sig['cxcid'])}&cxtime={sig['cxtime']}&signt={sig['signt']}"
                         f"&_signcode={sig['_signcode']}&_signc={sig['_signc']}&_signe={sig['_signe']}"
@@ -5375,23 +7692,37 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         sign_body, _ = _client.get(jump_url, retry=2)
                     finally:
                         _client.close()
-                    if sign_body and 'id="enc"' in sign_body:
+                    if sign_body and _is_real_exam_page(sign_body):
                         paper_body = sign_body
                         paper_entity = _html_exam_question_turn_entity(
                             paper_body)
                         enc_val = paper_entity.get("enc", "")
                         sign_ok = bool(enc_val)
                         if sign_ok:
+                            # ★ 修复(2026-10-06): 同v2段, 从enc页重新解析元数据
+                            enc_remain_time = (paper_entity.get("encRemainTime", "")
+                                               or enc_remain_time)
+                            enc_last_update_time = (paper_entity.get("encLastUpdateTime", "")
+                                                    or enc_last_update_time)
+                            remain_time = (paper_entity.get("remainTime", "")
+                                           or remain_time)
+                            test_paper_id = (paper_entity.get("testPaperId", test_paper_id)
+                                             or test_paper_id)
+                            test_user_relation_id = (paper_entity.get(
+                                "testUserRelationId", test_user_relation_id)
+                                or test_user_relation_id)
                             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                                       "【", course.course_name, "】【", exam_name, "】",
                                       Green, "客户端签名验证通过，已进入考试答题页")
+            except _V2SignDone:
+                pass  # v2签名已通过, 无需v1回退
             except Exception as e:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Red, f"客户端签名流程异常: {e}")
             if not sign_ok:
                 # 恢复UA，避免影响后续其他考试的请求
-                xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Yellow, "该考试需手机APP客户端签名，签名未通过，已跳过")
@@ -5406,6 +7737,26 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】【", exam_name, "】",
                   Yellow, f"正在考试中(共{question_total}题)...")
+
+        # ★ 2026-10-08 考试"拟人节奏"引擎(A+B方案, 防"答题节奏规律"风控)
+        # 安全红线: 仅做"时间等待"拉长(服务端 monitorparam.duration 自然变长,
+        # 更接近人类阅读+思考); 绝不模拟/伪造任何"切屏/离开/visibilitychange"类
+        # 事件(浏览器靠页面JS上报切屏计数, 纯协议不产生任何此类事件=天然安全)
+        try:
+            _pace_mode = int(getattr(cc, "cx_exam_pace", 1) or 0)
+        except Exception:
+            _pace_mode = 1
+        _pace_mode = max(0, min(2, _pace_mode))
+        # ★ 2026-10-13 人类化节奏引擎(A人类分布+自相关/B个体画像/C疲劳+时段/D回看)
+        from logic.xuexitong.human_pace import HumanPace
+        _pace = HumanPace(cache.account, mode=_pace_mode)
+        _next_long_pause_at = random.randint(8, 15)
+        if _pace_mode >= 1:
+            _read_secs = _pace.read_time()
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】【", exam_name, "】",
+                      DarkGray, f"拟人节奏(模式{_pace_mode}): 开卷阅读 {_read_secs:.0f}s...")
+            time.sleep(_read_secs)
 
         # 逐题回答
         exam_skipped = False
@@ -5537,9 +7888,76 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 if answer_letter:
                     answer = answer_letter
 
+            # ★ 2026-10-13 考试题库采集(MOGO式): 题面+答案入缓冲, 考试结束批量落采集库
+            try:
+                _collect_exam_qa(q_text, answer, q_type_str)
+            except Exception:
+                pass
+            # ★ 2026-10-13 考试提交正确率(MOGO式"正确率提交%"): 默认100=满分作答;
+            #   <100时按比例随机把部分题答案降级(降低"完美卷"嫌疑)
+            try:
+                _rate_v = int(getattr(cc, "exam_submit_rate", 100) or 100)
+            except Exception:
+                _rate_v = 100
+            if 0 <= _rate_v < 100 and answer:
+                if random.random() * 100 >= _rate_v:
+                    _wrong = ""
+                    if q_type_code in ("0", "1"):
+                        _opts = q_entity.get("options", []) or []
+                        _all_letters = [
+                            chr(65 + _i) for _i in range(len(_opts))] or ["A", "B", "C", "D"]
+                        _cand = [x for x in _all_letters if x != str(answer)]
+                        if _cand:
+                            _wrong = random.choice(_cand)
+                    elif q_type_code == "3":
+                        _wrong = "false" if str(answer) == "true" else "true"
+                    if _wrong and _wrong != answer:
+                        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", exam_name, "】",
+                                  DarkGray, f"正确率提交{_rate_v}%: 第{qi+1}题随机降级 {answer}->{_wrong}")
+                        answer = _wrong
+
+            # ★ 拟人节奏: 每题"阅读+思考"时长(拉题→提交间等待, duration自然变长)
+            # 2026-10-13 升级: HumanPace(对数正态+自相关+疲劳+时段感知)
+            if _pace_mode >= 1:
+                _think_secs = _pace.think_time(qi, question_total)
+                if len(str(q_text)) > 50:
+                    _think_secs += random.uniform(1.0, 3.0)   # 长题干多想一会
+                if q_type_code == "1":
+                    _think_secs += random.uniform(1.0, 2.0)   # 多选多核对一会
+                # 阶段长停顿: 每随8~15题一次"集中思考/检查"(仍然是时间等待,不产生事件)
+                if qi >= _next_long_pause_at and qi < question_total - 1:
+                    _long_secs = _pace.pause()
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              DarkGray, f"拟人节奏: 阶段停顿 {_long_secs:.0f}s(重读前题)...")
+                    time.sleep(_long_secs)
+                    # D 行为轨迹(2026-10-13): 停顿后实际"重拉上一题"(只拉不提交,
+                    # 平台侧表现为"学生回看了上一题")
+                    if qi > 0 and _pace.should_review(qi, question_total):
+                        try:
+                            xxt_api.pull_exam_question_api(
+                                cache, course.course_id, course.key,
+                                test_paper_id, test_user_relation_id,
+                                cpi_val, enc_remain_time, enc_val,
+                                enc_last_update_time or str(
+                                    int(time.time() * 1000)),
+                                index=qi - 1, retry=1)
+                        except Exception:
+                            pass
+                    _next_long_pause_at = qi + random.randint(8, 15)
+                time.sleep(_think_secs)
+
             # 构建提交数据 - 对齐Go SubmitExamAnswerApi
             is_last = (qi + 1 == question_total)
             is_submit = cc.exam_auto_submit in (1, 2) and is_last
+            # ★ 拟人节奏: 交卷前"检查时间"(等待期间不产生任何事件)
+            if is_submit and _pace_mode >= 1:
+                _check_secs = max(30.0, min(_pace.pause(scale=10.0), 120.0))
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          DarkGray, f"拟人节奏: 交卷前检查 {_check_secs:.0f}s...")
+                time.sleep(_check_secs)
 
             submit_data = {
                 "courseId": q_entity.get("courseId", "") or course.course_id,
@@ -5564,11 +7982,23 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 "answer": answer,
             }
 
+            # keeper事件2(最终交卷, 考中监控卷) — 交卷请求前上报
+            if is_submit and _monitor_enc:
+                try:
+                    xxt_api.keeper_push_api(
+                        cache, course.course_id, course.key,
+                        str(cpi_val), str(test_paper_id),
+                        str(test_user_relation_id), 2, _monitor_enc)
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Green, "keeper监控事件2(交卷)已上报")
+                except Exception:
+                    pass
             submit_body, submit_resp = xxt_api.submit_exam_answer_api(
                 cache, submit_data, is_submit=is_submit, retry=3)
             # 提交试卷后恢复XXTEXAMUA - 对应 Go SubmitExamAnswerAction
             if is_submit:
-                xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
+                xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
             submit_status = submit_resp.status_code if submit_resp else 0
             submit_str = submit_body or ""
             # 处理限制提交时间的考试 - 从成功进入考试那一刻开始计算，
@@ -5621,7 +8051,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                         fin_body, _ = xxt_api.submit_exam_answer_api(
                             cache, submit_data, is_submit=True, retry=3)
                         # 交卷后恢复UA - 对齐 Go SubmitExamAnswerAction
-                        xxt_api.XXTEXAMUA = xxt_api.get_ua("mobile")
+                        xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
                         fin_str = fin_body or ""
                         fin_ok = False
                         fj = safe_json_parse(fin_str)
@@ -5659,6 +8089,20 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if exam_submit_ok:
                 _exam_submitted = True
                 _last_exam_submit_str = submit_str
+                # ★ 2026-10-03用户方案: 提交成功后写入题库缓存(替代"即问即存")
+                try:
+                    from logic.core.answer_engine import cache_answer_after_submit
+                    try:
+                        _qt_ce = _wt
+                    except NameError:
+                        _qt_ce = ""
+                    if cache_answer_after_submit(q_text, answer, q_type=_qt_ce,
+                                                 answer_src=answer_src):
+                        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】【", exam_name, "】",
+                                  DarkGray, f"已写入题库缓存(提交成功): {q_text[:36]}...")
+                except Exception:
+                    pass
                 log_print(INFO, f"[{platform}]",
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
@@ -5676,6 +8120,17 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                           "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Red, f"第{qi+1}题提交失败(答题源: {_ans_src_show}, status={submit_status})，服务器返回:{submit_str[:300]}")
+
+        # ★ 2026-10-13 考试题库采集: 本场考试全部题(含未提交)批量落采集库(仅新增)
+        try:
+            _fa, _fs = _flush_exam_collected()
+            if _fa or _fs:
+                log_print(INFO, f"[{platform}]",
+                          "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Green, f"考试题库采集: 归档新增{_fa}题(已存在{_fs}题)")
+        except Exception:
+            pass
 
         if exam_skipped:
             log_print(INFO, f"[{platform}]",
@@ -5727,6 +8182,24 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
             status_str = "已结束"
         else:
             status_str = "进行中"
+        # 互动测验(视频弹题)进度(2026-10-12): 拿不到时置None(前端自动隐藏), 不阻塞列表
+        _quiz_fin, _quiz_all = None, None
+        try:
+            from logic.xuexitong.interactive_quiz import (
+                build_session as _iq_build_session,
+                fetch_quiz_plan as _iq_fetch_plan)
+            _iq_sess = _iq_build_session(cache)
+            for _k, _v in (cache.cookie_dict or {}).items():
+                _iq_sess.cookies.set(_k, _v, domain=".stat2-ans.chaoxing.com")
+            _rows_done, _done_n = _iq_fetch_plan(
+                _iq_sess, str(c.key), str(c.course_id), str(c.cpi), status="1")
+            _rows_undo, _undo_n = _iq_fetch_plan(
+                _iq_sess, str(c.key), str(c.course_id), str(c.cpi), status="")
+            if _done_n is not None and _undo_n is not None:
+                _quiz_fin = int(_done_n)
+                _quiz_all = int(_done_n) + int(_undo_n)
+        except Exception:
+            pass
         result.append({
             "courseId": str(c.course_id),
             "courseName": c.course_name,
@@ -5734,7 +8207,59 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
             "jobFinishCount": int(c.job_finish_count or 0),
             "jobCount": int(c.job_count or 0),
             "jobRate": round(float(c.job_rate or 0), 1),
+            "quizFinishCount": _quiz_fin,
+            "quizCount": _quiz_all,
             "hasProgress": True,
             "statusText": status_str,
         })
     return result
+
+
+def web_course_detail_stat(cache: XueXiTUserCache, user: User,
+                           course_id: str) -> dict:
+    """作业x/y + 考试x/y 统计(2026-10-13 新增, 进度页懒加载)
+
+    复用作业列表/考试列表接口(每门课约2次请求); 失败字段置None(前端隐藏)。
+    已完成判定: 作业=已完成/已批阅; 考试=已完成/已批阅/待批阅。
+    """
+    courses = _pull_course_action(cache) or []
+    course = None
+    for c in courses:
+        if str(c.course_id) == str(course_id):
+            course = c
+            break
+    if course is None:
+        return {"supported": True, "workFinish": None, "workCount": None,
+                "examFinish": None, "examCount": None}
+    work_fin = work_all = None
+    exam_fin = exam_all = None
+    # 作业
+    try:
+        list_body, _ = xxt_api.pull_work_list_api(
+            cache, course.course_id, course.key, str(course.cpi), retry=2)
+        works = _parse_work_list_html(list_body or "")
+        if works:
+            work_all = len(works)
+            work_fin = sum(
+                1 for w in works
+                if isinstance(w, dict)
+                and str(w.get("status", "")) in ("已完成", "已批阅"))
+    except Exception:
+        pass
+    # 考试
+    try:
+        _exam_body, _ = xxt_api.pull_exam_list_api(
+            cache, course.course_id, course.key, str(course.cpi), retry=2)
+        exams = _parse_exam_list_html(_exam_body or "")
+        if exams:
+            exam_all = len(exams)
+            exam_fin = sum(
+                1 for e in exams
+                if isinstance(e, dict)
+                and any(k in str(e.get("status", ""))
+                        for k in ("已完成", "已批阅", "待批阅")))
+    except Exception:
+        pass
+    return {"supported": True,
+            "workFinish": work_fin, "workCount": work_all,
+            "examFinish": exam_fin, "examCount": exam_all}

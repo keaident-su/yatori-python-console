@@ -1,3 +1,5 @@
+from logic.weban._deps import is_non_interactive, load_captcha_module
+from logic.weban.api import WeBanAPI
 import json
 import os
 import re
@@ -12,10 +14,8 @@ from uuid import uuid4
 
 from logic.platform_common import get_simple_logger
 
-logger=get_simple_logger('[安全微伴]')
+logger = get_simple_logger('[安全微伴]')
 
-from logic.weban.api import WeBanAPI
-from logic.weban._deps import is_non_interactive, load_captcha_module
 
 if getattr(sys, "frozen", False):
     base_path = os.path.dirname(os.path.abspath(sys.executable))
@@ -33,7 +33,8 @@ if _data_dir:
 else:
     answer_dir = os.path.join(base_path, "answer")
 answer_path = os.path.join(answer_dir, "answer.json")
-root_answer_path = os.path.join(_data_dir, "answer.json") if _data_dir else os.path.join(base_path, "answer.json")
+root_answer_path = os.path.join(
+    _data_dir, "answer.json") if _data_dir else os.path.join(base_path, "answer.json")
 bundle_answer_path = os.path.join(bundle_path, "answer", "answer.json")
 
 
@@ -100,7 +101,10 @@ def _check_code_ok(data: dict, allow_200: bool = True) -> bool:
         num = int(code) if code is not None else 0
     except (TypeError, ValueError):
         return False
-    return num in ((0, 1, 200) if allow_200 else (0, 1))
+    # 拆开三元元组判断: 避免 Cython 对不等长元组条件表达式的类型推断报错
+    if allow_200:
+        return num in (0, 1, 200)
+    return num in (0, 1)
 
 
 def _extract_map(content: str) -> dict:
@@ -117,7 +121,8 @@ def _extract_map(content: str) -> dict:
     ]:
         match = re.search(pattern, content)
         if match:
-            entries = re.findall(r'\[(\d+),\s*[\'"]([^\'"]+)[\'"]\]', match.group(1))
+            entries = re.findall(
+                r'\[(\d+),\s*[\'"]([^\'"]+)[\'"]\]', match.group(1))
             if entries:
                 return {int(step): val for step, val in entries}
     # 退而求其次：匹配任意 Map（变量名未知）
@@ -250,7 +255,8 @@ class WeBanClient:
         self.video_speed = video_speed
         self.jupiter_fallback = jupiter_fallback
         # 时间预估状态（按项目累计实测，样本少时渐进信任实测值）
-        self._eta_course_state: dict = {}  # project_id -> {"started_at", "start_finished"}
+        # project_id -> {"started_at", "start_finished"}
+        self._eta_course_state: dict = {}
         self._eta_exam_avg: float | None = None  # 每场考试实测平均耗时（秒）
         self.browser_path = browser_path
         self.cdp_host = cdp_host
@@ -297,8 +303,10 @@ class WeBanClient:
         return self._captcha_handler
 
     def _emit_event(self, kind, line):
-        try: self.on_event(kind, line)
-        except Exception: pass
+        try:
+            self.on_event(kind, line)
+        except Exception:
+            pass
 
     @staticmethod
     def _format_duration(seconds: float) -> str:
@@ -465,7 +473,8 @@ class WeBanClient:
         if not grey_blocked and active_ok:
             return True, ""
         # 官方仅弹 completion.message；studyStateLabel 只是 message 为空时的兜底
-        message = completion.get("message") or task.get("studyStateLabel") or ""
+        message = completion.get("message") or task.get(
+            "studyStateLabel") or ""
         return False, message
 
     def _build_course_url(self, course: dict, task: dict) -> str:
@@ -578,7 +587,8 @@ class WeBanClient:
             course_est = theoretical_est
         else:
             trust = completed / (completed + 10)
-            course_est = theoretical_est + (measured_avg - theoretical_est) * trust
+            course_est = theoretical_est + \
+                (measured_avg - theoretical_est) * trust
             course_est = max(theoretical_est, course_est)
         eta = course_est * (required + optional + push)
         # 每场考试：默认 50 题 × 每题 4.5s + 固定开销 ≈ 4 分钟（有实测后自动替换）
@@ -631,7 +641,8 @@ class WeBanClient:
                 break
             else:
                 account_id = (
-                    self.api.account or self.api.user.get("userId") or "unknown"
+                    self.api.account or self.api.user.get(
+                        "userId") or "unknown"
                 )
                 captcha_dir = os.path.join(base_path, "logs", account_id)
                 os.makedirs(captcha_dir, exist_ok=True)
@@ -759,7 +770,8 @@ class WeBanClient:
         try:
             parts = str(study_time).split(",")
             self.study_base_time = max(0, int(parts[0]))
-            self.study_random_upper = max(0, int(parts[1])) if len(parts) > 1 else 0
+            self.study_random_upper = max(
+                0, int(parts[1])) if len(parts) > 1 else 0
         except (ValueError, IndexError):
             self.study_base_time = 20
             self.study_random_upper = 10
@@ -955,7 +967,8 @@ class WeBanClient:
             if not ok:
                 self.log.error("检测到行为异常或账号锁定，已停止本账号后续学习")
                 return False
-            progress_after = self.get_progress(task["userProjectId"], project_prefix)
+            progress_after = self.get_progress(
+                task["userProjectId"], project_prefix)
             if progress_after.get("code", -1) == "0":
                 d = progress_after["data"]
                 finished_after = (
@@ -1077,7 +1090,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         # 失败（含课程未开始/未开放）toast 服务端 msg 并跳过本门课
         study_res = self.api.study(course["resourceId"], task["userProjectId"])
         if not _check_code_ok(study_res):
-            msg = study_res.get("message") or study_res.get("msg") or "课程暂时无法学习"
+            msg = study_res.get("message") or study_res.get(
+                "msg") or "课程暂时无法学习"
             self.log.warning(f"{course_prefix}：{msg}，跳过")
             return True
         study_start = time.time()
@@ -1098,7 +1112,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
             if uid and uid[0]:
                 course["userCourseId"] = uid[0]
             else:
-                self.log.warning(f"{course_prefix}：未获取到学习记录（userCourseId 为空），跳过")
+                self.log.warning(
+                    f"{course_prefix}：未获取到学习记录（userCourseId 为空），跳过")
                 return True
 
         course_code = ""
@@ -1214,7 +1229,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                     time.sleep(min(30, remaining))
                     remaining = max(0, deadline - time.monotonic())
                     if remaining > 0:
-                        self.log.info(f"视频剩余 {self._format_duration(remaining)}")
+                        self.log.info(
+                            f"视频剩余 {self._format_duration(remaining)}")
             else:
                 time.sleep(remaining)
 
@@ -1235,7 +1251,15 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         res = self._finish_course(course, task, query, course_url, unique_no)
         # 完课走 JSONP（sdk.js finishWxCourse）：checkCode 只认 code∈{0,1}
         if not _check_code_ok(res, allow_200=False):
-            self.log.error(f"{course_prefix} 完成失败：{res}")
+            # 2026-10-08 增强: 完成失败附带错误码语义+账号状态提示(入运行日志)
+            _dc = str(res.get("detailCode", "")
+                      ) if isinstance(res, dict) else ""
+            _hint = ""
+            if _dc == "-101":
+                _hint = " (-101: 账号状态异常或被顶号, 请检查是否在其他端登录)"
+            elif _dc == "67":
+                _hint = " (67: 验证码校验未通过)"
+            self.log.error(f"{course_prefix} 完成失败：{res}{_hint}")
             return not self._is_account_blocked(res)
 
         self.log.success(f"{course_prefix} 完成")
@@ -1398,7 +1422,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                     and exam_finish_num > 0
                     and exam_score >= pass_score
                 ):
-                    self.log.info(f"{plan_name} 已及格 ({exam_score}分 >= {pass_score}分)，跳过")
+                    self.log.info(
+                        f"{plan_name} 已及格 ({exam_score}分 >= {pass_score}分)，跳过")
                     continue
 
                 if (
@@ -1419,7 +1444,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                     self.log.warning(warning_msg)
 
                 if exam_mode == "true" and exam_finish_num > 0:
-                    self.log.info(f"{plan_name} 已完成 {exam_finish_num} 次，{plan_name} 继续考试以争取更好成绩")
+                    self.log.info(
+                        f"{plan_name} 已完成 {exam_finish_num} 次，{plan_name} 继续考试以争取更好成绩")
 
                 user_exam_plan_id = plan["id"]
                 exam_plan_id = plan["examPlanId"]
@@ -1491,7 +1517,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                     target.append(question)
 
                 match_rate = (
-                    len(have_answer) / len(question_list) * 100 if question_list else 0
+                    len(have_answer) / len(question_list) *
+                    100 if question_list else 0
                 )
                 self.log.info(
                     f"题目总数：{question_num}，有答案的题目数：{len(have_answer)}，"
@@ -1619,7 +1646,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                         for opt in question["optionList"]
                         if clean_text(opt["content"]) in answers
                     ]
-                    use_time = question_base_time + randint(0, question_random_upper)
+                    use_time = question_base_time + \
+                        randint(0, question_random_upper)
                     self.log.info(
                         f"等待 {self._format_duration(use_time)}，模拟答题中..."
                     )
@@ -1640,7 +1668,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                 self.log.success(
                     f"试卷提交成功，考试完成，成绩：{submit_res['data']['score']} 分"
                 )
-                self._emit_event('exam', '考试已交卷, 成绩: ' + str(submit_res['data'].get('score', '')))
+                self._emit_event('exam', '考试已交卷, 成绩: ' +
+                                 str(submit_res['data'].get('score', '')))
                 self._update_exam_eta(time.time() - plan_start_ts)
 
     def _update_exam_eta(self, elapsed: float) -> None:
@@ -1692,7 +1721,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
 
             # 视频课程：提取 <video>/<source> 源，解析实际时长供完课前按 2 倍速等待
             video_match = None
-            video_block = re.search(r"<video\b[^>]*>(.*?)</video>", html, re.DOTALL)
+            video_block = re.search(
+                r"<video\b[^>]*>(.*?)</video>", html, re.DOTALL)
             if video_block:
                 # 去掉注释（被注释掉的备选 m3u8 源不算数），再找 <source>
                 clean = re.sub(
@@ -1769,14 +1799,14 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                             pos = 0
                             while pos + 8 <= len(buf) and not video_duration:
                                 size = int.from_bytes(
-                                    buf[pos : pos + 4], "big"
+                                    buf[pos: pos + 4], "big"
                                 )
-                                box_type = buf[pos + 4 : pos + 8]
+                                box_type = buf[pos + 4: pos + 8]
                                 if size == 1:  # largesize（64 位）
                                     if pos + 16 > len(buf):
                                         break
                                     size = int.from_bytes(
-                                        buf[pos + 8 : pos + 16], "big"
+                                        buf[pos + 8: pos + 16], "big"
                                     )
                                     header = 16
                                 elif size == 0:  # 延伸到文件尾
@@ -1791,31 +1821,31 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                                     end = min(pos + size, len(buf))
                                     while q + 8 <= end:
                                         inner_size = int.from_bytes(
-                                            buf[q : q + 4], "big"
+                                            buf[q: q + 4], "big"
                                         )
                                         if inner_size < 8:
                                             break
-                                        if buf[q + 4 : q + 8] == b"mvhd":
+                                        if buf[q + 4: q + 8] == b"mvhd":
                                             version = buf[q + 8]
                                             if (
                                                 version == 0
                                                 and q + 28 <= len(buf)
                                             ):
                                                 timescale = int.from_bytes(
-                                                    buf[q + 20 : q + 24],
+                                                    buf[q + 20: q + 24],
                                                     "big",
                                                 )
                                                 duration = int.from_bytes(
-                                                    buf[q + 24 : q + 28],
+                                                    buf[q + 24: q + 28],
                                                     "big",
                                                 )
                                             elif q + 40 <= len(buf):
                                                 timescale = int.from_bytes(
-                                                    buf[q + 28 : q + 32],
+                                                    buf[q + 28: q + 32],
                                                     "big",
                                                 )
                                                 duration = int.from_bytes(
-                                                    buf[q + 32 : q + 40],
+                                                    buf[q + 32: q + 40],
                                                     "big",
                                                 )
                                             else:
@@ -1868,7 +1898,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                     continue
                 seen_urls.add(item_url)
                 # JS 由 HTML 加载，Referer 是 HTML 自身的 URL
-                content = _fetch_text(self.api.session, item_url, referer=html_url)
+                content = _fetch_text(
+                    self.api.session, item_url, referer=html_url)
                 if not content:
                     continue
                 result["nonstr_map"] = _extract_map(content)
@@ -1879,7 +1910,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
             # 推导 total_step（finish=2 的调用次数 = finish=1 的 step - 1）
             # 每个题目页会产生 2 次额外 apinext 调用（提交 → 结果页 → 继续）
             nav_pages, question_pages = _count_nav_pages(html)
-            max_nonstr = max(result["nonstr_map"].keys()) if result["nonstr_map"] else 0
+            max_nonstr = max(result["nonstr_map"].keys()
+                             ) if result["nonstr_map"] else 0
             extra_steps = question_pages * 2
             if nav_pages or max_nonstr:
                 base = max(nav_pages, max_nonstr)
@@ -1971,7 +2003,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                 if step_delay:
                     time.sleep(step_delay)
                 # nonstr_map 的 key 对应 finish=2 的 step，完成步 (finish=1) 不在 map 中
-                _send_step(step, 2, nonstr_map.get(step, ""), f"{step}/{total_step}")
+                _send_step(step, 2, nonstr_map.get(
+                    step, ""), f"{step}/{total_step}")
         else:
             if step_delay:
                 time.sleep(step_delay)
@@ -2031,7 +2064,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
                 if clean_text(opt["content"]) in answers_json[title]
             ]
             if answer_ids:
-                save_func(course_id, question["id"], json.dumps(answer_ids), source)
+                save_func(course_id, question["id"],
+                          json.dumps(answer_ids), source)
                 return True
 
         # 题库未命中：先提交第一个选项，从响应中提取正确 answerLabel
@@ -2050,16 +2084,19 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         if not answer_label:
             return False
 
-        correct_letters = {ch for ch in answer_label.replace("-", "") if ch.isalpha()}
+        correct_letters = {
+            ch for ch in answer_label.replace("-", "") if ch.isalpha()}
         if not correct_letters:
             return False
 
-        letter_to_opt = {chr(65 + idx): opt for idx, opt in enumerate(option_list)}
+        letter_to_opt = {chr(65 + idx): opt for idx,
+                         opt in enumerate(option_list)}
         answer_ids = [
             letter_to_opt[ch]["id"] for ch in correct_letters if ch in letter_to_opt
         ]
         if answer_ids:
-            save_func(course_id, question["id"], json.dumps(answer_ids), source)
+            save_func(course_id, question["id"],
+                      json.dumps(answer_ids), source)
         return False
 
     def record_answer(
@@ -2101,7 +2138,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
             return []
 
         api_key = self.ai_config.get("api_key", "").strip()
-        base_url = self.ai_config.get("base_url", "https://api.deepseek.com").strip()
+        base_url = self.ai_config.get(
+            "base_url", "https://api.deepseek.com").strip()
         model = self.ai_config.get("model", "deepseek-v4-pro").strip()
         timeout = int(self.ai_config.get("timeout", 60))
         max_retries = int(self.ai_config.get("max_retries", 2))
@@ -2222,7 +2260,8 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         # 去除 markdown 代码块包裹
         json_str = content
         if "```" in json_str:
-            match = re.search(r"```(?:json)?\s*(.*?)\s*```", json_str, re.DOTALL)
+            match = re.search(r"```(?:json)?\s*(.*?)\s*```",
+                              json_str, re.DOTALL)
             if match:
                 json_str = match.group(1).strip()
 
@@ -2293,8 +2332,9 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
             for entry in merged.values()
         }
 
-    def sync_answers(self) -> None:
+    def sync_answers(self, do_review: bool = True) -> None:
         """同步答案
+        :param do_review: 是否回读平台试卷(答题后核对/更正题库); False=仅加载并保存本地题库
         :return: 无返回值
         """
         os.makedirs(answer_dir, exist_ok=True)
@@ -2352,13 +2392,18 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         # clean 标题 → 原始标题索引，服务器标题按 clean 语义匹配
         key_by_clean = {clean_text(k): k for k in answers_json}
 
-        user_project_ids = [
-            p["userProjectId"] for p in self.api.list_my_project().get("data", [])
-        ]
-        user_project_ids.extend(
-            p["userProjectId"]
-            for p in self.api.list_my_project(ended=1).get("data", [])
-        )
+        # 答题后核对开关(2026-10-12): 关闭时跳过“回读试卷+题库更正”环节(仅保留本地题库加载/保存)
+        if not do_review:
+            self.log.info("答题后核对已关闭(cxVerifyAnswer=0), 跳过试卷回读更正")
+            user_project_ids = []
+        else:
+            user_project_ids = [
+                p["userProjectId"] for p in self.api.list_my_project().get("data", [])
+            ]
+            user_project_ids.extend(
+                p["userProjectId"]
+                for p in self.api.list_my_project(ended=1).get("data", [])
+            )
         completion = self.api.list_completion()
         if not _check_code_ok(completion):
             self.log.error(f"获取模块完成情况失败：{completion}")
@@ -2372,8 +2417,11 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
             if not _check_code_ok(lab_project):
                 self.log.error(f"获取实验室课程失败：{lab_project}")
             user_project_ids.append(
-                lab_project.get("data", {}).get("current", {}).get("userProjectId")
+                lab_project.get("data", {}).get(
+                    "current", {}).get("userProjectId")
             )
+        if not do_review:
+            user_project_ids = []
         for user_project_id in user_project_ids:
             for plan in self.api.exam_list_plan(user_project_id).get("data", []):
                 for history in self.api.exam_list_history(
@@ -2456,6 +2504,7 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         os.makedirs(os.path.dirname(write_path), exist_ok=True)
         with open(write_path, "w", encoding="utf-8") as f:
             f.write(
-                json.dumps(answers_json, indent=2, ensure_ascii=False, sort_keys=True)
+                json.dumps(answers_json, indent=2,
+                           ensure_ascii=False, sort_keys=True)
             )
             f.write("\n")

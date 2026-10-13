@@ -21,7 +21,7 @@ from logic.enaea import api as enaea_api
 from logic.platform_common import generic_filter_account, generic_user_block
 from logic.core.models import safe_json_parse, json_get
 from utils.log import (
-    log_print, model_print, INFO, DEBUG,
+    log_print, model_print, with_log_account, INFO, DEBUG,
     Green, Yellow, Red, Blue, Purple, Default, BoldRed, BoldGreen
 )
 from global_state.global_var import ACCOUNT_TYPE_STR
@@ -105,8 +105,10 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
                 break
         if matched is None:
             continue
-        t = threading.Thread(target=_user_block, args=(
-            setting, matched, cache), daemon=True)
+        t = threading.Thread(
+            target=with_log_account(
+                matched.account, matched.remark_name)(_user_block),
+            args=(setting, matched, cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
@@ -117,6 +119,13 @@ def _user_block(setting: Setting, user: User, cache: EnaeaUserCache):
     """项目→课程→视频三层刷课 - 对齐Go userBlock"""
     # 拉取项目列表
     proj_body, _ = enaea_api.project_list_api(cache, retry=8)
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
     proj_data = safe_json_parse(proj_body)
     projects = []
     for item in json_get(proj_data or {}, "result", "list", default=[]) or []:
@@ -162,6 +171,13 @@ def _user_block(setting: Setting, user: User, cache: EnaeaUserCache):
                   Purple, "正在学习项目 ", f"【{project.cluster_name}】")
 
         for course in courses:
+            # 夜间休息检查(2026-10-10 修复: 课程级——刷课中途到点即停,恢复后继续)
+            try:
+                from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+                _pub_rest_wait(user.account, user.courses_custom,
+                               ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+            except Exception:
+                pass
             if exclude_courses_sub and cmp_course(course.title_tag, exclude_courses_sub):
                 continue
             if include_courses_sub and not cmp_course(course.title_tag, include_courses_sub):

@@ -10,26 +10,160 @@
     - 引擎懒加载 + 单例 + 线程安全, 避免拖慢启动
     - 重依赖(onnxruntime/numpy/PIL)仅在真正识别时导入
     - 缺库时优雅降级: 返回空串并仅提示一次
+    - GPU 自适应: 平台自适应选后端(Windows→DirectML / macOS→CoreML /
+      Linux→CUDA 等), 注入 rapidocr 内部 ORT 会话; 探针验证失败自动回落 CPU
 """
 import threading
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 _engine: Any = None
 _engine_kind: str = ""          # "rapidocr" | "ddddocr" | ""
+_engine_providers: List[str] = []   # 实际生效的 ORT 执行后端
 _init_lock = threading.Lock()
 _warned = False
+_gpu_logged = False
 
 
-def _try_init_rapidocr():
-    """尝试初始化 rapidocr_onnxruntime 引擎, 失败返回 None"""
+def _gpu_providers():
+    """当前可用的 GPU 执行后端(平台自适应单一事实源, 空=仅 CPU)"""
+    try:
+        from logic.core.gpu_accel import detect, pick_ort_providers
+        if not detect().get("has_gpu"):
+            return []
+        return list(pick_ort_providers() or [])
+    except Exception:
+        return []
+
+
+def _construct_rapidocr(providers=None):
+    """构造 RapidOCR 引擎; providers 非空时注入到其内部 ORT 会话
+
+    做法: 临时替换 rapidocr.utils 模块内的 InferenceSession 符号,
+    使 rapidocr 自建的三个会话(det/rec/cls)都使用我们选定的执行后端。
+    与 rapidocr 版本解耦(1.2.x 等), 构造完立即还原; 任何异常均不抛出。
+    """
     try:
         from rapidocr_onnxruntime import RapidOCR
     except Exception:
         return None
+    if not providers:
+        try:
+            return RapidOCR()
+        except Exception:
+            return None
     try:
-        return RapidOCR()
+        from rapidocr_onnxruntime import utils as _rr_utils
+        avail = set()
+        try:
+            import onnxruntime as _ort
+            avail = set(_ort.get_available_providers())
+        except Exception:
+            pass
+        use = [p for p in providers if p in avail]
+        if not use:
+            return RapidOCR()
+        _orig = _rr_utils.InferenceSession
+
+        class _GpuSession(_orig):
+            """把 rapidocr 的 providers 换成我们的 GPU 后端(保留其 CPU 配置)"""
+
+            def __init__(self, path_or_bytes, sess_options=None,
+                         providers=None, **kwargs):
+                cpu_entries = []
+                for item in (providers or []):
+                    name = (item[0] if isinstance(item, (list, tuple)) and item
+                            else item)
+                    if name == "CPUExecutionProvider":
+                        cpu_entries.append(item)
+                if not cpu_entries:
+                    cpu_entries = ["CPUExecutionProvider"]
+                merged = [(p, {"device_id": 0})
+                          for p in use] + cpu_entries
+                try:
+                    super().__init__(path_or_bytes, sess_options=sess_options,
+                                     providers=merged, **kwargs)
+                except Exception:
+                    # 注入失败(如后端不可用): 退回 rapidocr 原始 providers
+                    super().__init__(path_or_bytes, sess_options=sess_options,
+                                     providers=providers, **kwargs)
+
+        _rr_utils.InferenceSession = _GpuSession
+        try:
+            return RapidOCR()
+        finally:
+            _rr_utils.InferenceSession = _orig
     except Exception:
-        return None
+        try:
+            return RapidOCR()
+        except Exception:
+            return None
+
+
+def _probe_engine(eng) -> bool:
+    """最小图真实推理一次, 验证会话可用
+
+    防"会话假可用": 例如 CUDA provider 缺 cuDNN 时建会话成功但推理崩溃。
+    """
+    try:
+        import io
+        import numpy as np
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.fromarray(
+            np.full((24, 80, 3), 255, dtype=np.uint8)).save(buf, "PNG")
+        eng(buf.getvalue())
+        return True
+    except Exception:
+        return False
+
+
+def _real_providers(eng) -> list:
+    """从引擎内部会话读取真实生效的执行后端(用于日志/验证, 避免声明与实际不符)
+
+    注: rapidocr 不同子模块存会话的属性名不同(rec=session, det/cls=infer),
+    两种都尝试。
+    """
+    out = []
+    for attr in ("text_detector", "text_recognizer", "text_cls"):
+        obj = getattr(eng, attr, None)
+        if obj is None:
+            continue
+        holder = None
+        for hattr in ("session", "infer"):
+            cand = getattr(obj, hattr, None)
+            if cand is not None:
+                holder = cand
+                break
+        raw = getattr(holder, "session", None) if holder is not None else None
+        if raw is None and hasattr(holder, "get_providers"):
+            raw = holder
+        try:
+            names = raw.get_providers() if raw is not None else []
+        except Exception:
+            names = []
+        for p in names:
+            if p not in out:
+                out.append(p)
+    return out
+
+
+def _try_init_rapidocr():
+    """初始化 rapidocr 引擎, 返回 (engine, 实际生效的 GPU 后端列表)
+
+    按平台后端优先级逐档尝试([p1,p2] → [p2] → CPU), 每档均以最小图探针验证,
+    验证失败自动降档(防"会话假可用"); 任何异常均不抛出。
+    """
+    providers = _gpu_providers()
+    for i in range(len(providers)):
+        subset = providers[i:]
+        eng = _construct_rapidocr(subset)
+        if eng is not None and _probe_engine(eng):
+            real = _real_providers(eng)
+            return eng, (real or subset)
+    eng = _construct_rapidocr(None)
+    if eng is None:
+        return None, []
+    return eng, _real_providers(eng)
 
 
 def _try_init_ddddocr():
@@ -49,23 +183,54 @@ def _try_init_ddddocr():
 
 def _get_engine():
     """懒加载单例引擎(线程安全)"""
-    global _engine, _engine_kind
+    global _engine, _engine_kind, _engine_providers
     if _engine is not None:
         return _engine
     with _init_lock:
         if _engine is not None:
             return _engine
-        eng = _try_init_rapidocr()
+        eng, used = _try_init_rapidocr()
         if eng is not None:
             _engine = eng
             _engine_kind = "rapidocr"
+            _engine_providers = list(used)
+            _log_gpu_once(_engine_providers)
             return _engine
         eng = _try_init_ddddocr()
         if eng is not None:
             _engine = eng
             _engine_kind = "ddddocr"
+            _engine_providers = []
+            _log_gpu_once(_engine_providers)
             return _engine
     return None
+
+
+def active_providers() -> list:
+    """当前 OCR 引擎实际使用的执行后端(便于日志/排查确认 GPU 是否生效)"""
+    return list(_engine_providers)
+
+
+def _log_gpu_once(providers=None):
+    """首次启用 OCR 时打印一次硬件加速状态(便于用户确认 GPU 是否生效)"""
+    global _gpu_logged
+    try:
+        if _gpu_logged:
+            return
+        _gpu_logged = True
+        from logic.core.gpu_accel import summary
+        s = summary()
+        if s:
+            print(f"[OCR] {s}")
+        if providers is None:
+            return
+        gpu_on = [p for p in providers if p != "CPUExecutionProvider"]
+        if gpu_on:
+            print(f"[OCR] 推理后端: {', '.join(providers)}  — GPU 加速已生效")
+        elif providers:
+            print("[OCR] 推理后端: CPU（未启用 GPU）")
+    except Exception:
+        pass
 
 
 def ocr_available() -> bool:

@@ -62,28 +62,20 @@ _ANSWER_PLACEHOLDER_KW = ("很抱歉", "未找到", "没有找到", "搜索不�
 
 
 def _answer_cacheable(ans: str, q_type: str) -> bool:
-    """判断答案是否允许写入本地题库缓存(防止异常长文本污染题库)
+    """判断答案是否允许写入本地题库缓存(2026-10-03精简)
 
-    背景: 第三方题库/AI 偶发返回整段错误文本作为答案(如多选返回一整段文章),
-    若回写缓存会被后续查询命中, 污染答题正确率。
-    规则:
-      - 选择题/判断题: 正常答案应很短(如 A / ABCD / A,C,D / 对 / 错);
-        长度>20 或含句末标点(。；;!?!)即视为脏数据, 不缓存;
-      - 其它/未知题型: 答案天然可能较长, 仅拦截超长(>500)或含换行的恶劣数据。
+    用户方案变更: 缓存改在"提交成功后"写入(提交成功=答案有效),
+    故此处仅拦截"恶劣数据": 占位词/空/换行/超长(>2000)。
+    不再拦截"选择题>20字符/句末标点"(那会误杀"选项文字"型答案)。
     """
     a = (ans or "").strip()
     if not a:
         return False
     if "\n" in a or "\r" in a:
         return False
-    t = (q_type or "").lower()
-    if t in ("single_choice", "multiple_choice", "judge"):
-        if len(a) > 20:
-            return False
-        if re.search(r"[。；;!?！？]", a):
-            return False
-        return True
-    return len(a) <= 500
+    if any(kw in a for kw in _ANSWER_PLACEHOLDER_KW):
+        return False
+    return len(a) <= 2000
 
 
 # ============ 答题源 ============
@@ -400,16 +392,303 @@ class LocalTikuCache:
                 dir_name = os.path.dirname(os.path.abspath(self.path))
                 if dir_name:
                     os.makedirs(dir_name, exist_ok=True)
-                tmp_path = self.path + ".tmp"
+                # 2026-10-04修复: tmp名加入线程ID+随机后缀, 避免多线程
+                # (多账号并发)写同一tmp文件的WinError 32/5竞争
+                tmp_path = (f"{self.path}.{threading.get_ident()}_"
+                            f"{os.urandom(4).hex()}.tmp")
                 with open(tmp_path, "w", encoding="utf-8") as f:
                     json.dump(self._data, f, ensure_ascii=False, indent=4)
-                os.replace(tmp_path, self.path)
+                # 替换也可能被瞬时占用(Windows): 重试3次
+                last_err = None
+                for _rt in range(3):
+                    try:
+                        os.replace(tmp_path, self.path)
+                        last_err = None
+                        break
+                    except OSError as _oe:
+                        last_err = _oe
+                        time.sleep(0.3)
+                if last_err is not None:
+                    raise last_err
                 self._disk_sig = self._disk_signature()
                 return True
             except Exception as e:
                 log_print(INFO, BoldRed,
                           f"[答题源] 本地题库缓存写入失败({self.path}): {e}")
                 return False
+
+    # ============ 题库管理(方案A, 2026-10-08): 更正/检索/备份 ============
+
+    def _backup_once_daily(self):
+        """每天首次修改前自动备份题库文件(防误改损坏; 同日不重复备份)"""
+        try:
+            import datetime as _dt
+            today = _dt.date.today().isoformat()
+            if getattr(self, "_backup_day", "") == today:
+                return
+            if os.path.exists(self.path):
+                bk = f"{self.path}.bak_{today}"
+                if not os.path.exists(bk):
+                    import shutil as _sh
+                    _sh.copy2(self.path, bk)
+                    log_print(INFO, Green,
+                              f"[题库管理] 已自动备份 -> {bk}")
+            self._backup_day = today
+        except Exception:
+            pass
+
+    def update(self, question: str, answer: str,
+               new_question: str = "") -> bool:
+        """【题库管理】更正已有题目: 覆盖答案值 / 可选重命名题面
+
+        :param question: 原题面(必须是已存在的键)
+        :param answer: 新答案值(空=不改答案)
+        :param new_question: 新题面(空=不改; 非空=键重命名, 答案保留)
+        :return: True=已写入
+        """
+        q = (question or "").strip()
+        if not self.enable or not q:
+            return False
+        a = (answer or "").strip()
+        nq_new = (new_question or "").strip()
+        if not a and (not nq_new or nq_new == q):
+            return False  # 没有任何变更
+        if a and any(kw in a for kw in _ANSWER_PLACEHOLDER_KW):
+            return False
+        self.load()
+        if self._load_failed:
+            return False
+        with self._lock:
+            # 外部修改检测(与 save 一致)
+            cur_sig = self._disk_signature()
+            if (cur_sig is not None and self._disk_sig is not None
+                    and cur_sig != self._disk_sig):
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                if self._load_failed:
+                    return False
+            if q not in self._data:
+                return False  # 仅支持更正已有键(新增走 save)
+            self._backup_once_daily()
+            old_answer = self._data[q]
+            if a:
+                self._data[q] = a
+            if nq_new and nq_new != q:
+                keep_ans = self._data.pop(q)
+                self._data[nq_new] = keep_ans
+            self._rebuild_index()
+            try:
+                dir_name = os.path.dirname(os.path.abspath(self.path))
+                if dir_name:
+                    os.makedirs(dir_name, exist_ok=True)
+                tmp_path = (f"{self.path}.{threading.get_ident()}_"
+                            f"{os.urandom(4).hex()}.tmp")
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(self._data, f, ensure_ascii=False, indent=4)
+                last_err = None
+                for _rt in range(3):
+                    try:
+                        os.replace(tmp_path, self.path)
+                        last_err = None
+                        break
+                    except OSError as _oe:
+                        last_err = _oe
+                        time.sleep(0.3)
+                if last_err is not None:
+                    raise last_err
+                self._disk_sig = self._disk_signature()
+                _show_new = a if a else f"(题面改名->{nq_new[:30]})"
+                log_print(INFO, Green,
+                          f"[题库管理] 已更正: {q[:40]} | 旧值={old_answer[:30]}"
+                          f" -> 新值={_show_new[:30]}")
+                return True
+            except Exception as e:
+                log_print(INFO, BoldRed,
+                          f"[题库管理] 更正写入失败({self.path}): {e}")
+                return False
+
+    # ============ 批量写入(2026-10-13): 修复采集大批量时每pair全量写盘=IO爆炸 ============
+
+    def _write_disk_locked(self) -> bool:
+        """(须持锁) 原子落盘当前内存数据: tmp写入+替换重试+签名刷新"""
+        try:
+            dir_name = os.path.dirname(os.path.abspath(self.path))
+            if dir_name:
+                os.makedirs(dir_name, exist_ok=True)
+            tmp_path = (f"{self.path}.{threading.get_ident()}_"
+                        f"{os.urandom(4).hex()}.tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(self._data, f, ensure_ascii=False, indent=4)
+            last_err = None
+            for _rt in range(3):
+                try:
+                    os.replace(tmp_path, self.path)
+                    last_err = None
+                    break
+                except OSError as _oe:
+                    last_err = _oe
+                    time.sleep(0.3)
+            if last_err is not None:
+                raise last_err
+            self._disk_sig = self._disk_signature()
+            return True
+        except Exception as e:
+            log_print(INFO, BoldRed,
+                      f"[答题源] 本地题库缓存写入失败({self.path}): {e}")
+            return False
+
+    def _reload_if_external_changed(self) -> bool:
+        """(须持锁) 外部修改检测+重载; 返回False=加载失败应中止"""
+        cur_sig = self._disk_signature()
+        if (cur_sig is not None and self._disk_sig is not None
+                and cur_sig != self._disk_sig):
+            old_count = len(self._data)
+            log_print(INFO, Yellow,
+                      f"[答题源] 检测到本地题库文件被外部修改({self.path}), "
+                      f"正在重新加载合并(内存{old_count}条 -> 磁盘最新)...")
+            self.loaded = False
+            self._load_failed = False
+            self.load()
+            if self._load_failed:
+                return False
+            log_print(INFO, Green,
+                      f"[答题源] 已重新加载题目 {len(self._data)} 条")
+        return True
+
+    def save_many(self, pairs) -> tuple:
+        """批量新增: [(题, 答案), ...] 内存统一改 + 单次落盘。
+
+        返回 (新增数, 跳过数); 已存在/空值/占位答案自动跳过。
+        """
+        if not self.enable or not pairs:
+            return 0, 0
+        self.load()
+        if self._load_failed:
+            return 0, len(pairs)
+        with self._lock:
+            if not self._reload_if_external_changed():
+                return 0, len(pairs)
+            add_n = skip_n = 0
+            added = False
+            for q, a in pairs:
+                q = (q or "").strip()
+                a = (a or "").strip()
+                if (not q or not a
+                        or any(kw in a for kw in _ANSWER_PLACEHOLDER_KW)):
+                    skip_n += 1
+                    continue
+                if q in self._data:
+                    skip_n += 1
+                    continue
+                self._data[q] = a
+                add_n += 1
+                added = True
+            if not added:
+                return 0, skip_n
+            self._rebuild_index()
+            self._backup_once_daily()
+            if not self._write_disk_locked():
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                return 0, len(pairs)
+            log_print(INFO, Green,
+                      f"[题库管理] 批量新增完成: 新增{add_n}条 (跳过{skip_n}条)")
+            return add_n, skip_n
+
+    def update_many(self, fixes) -> tuple:
+        """批量更正: [(原题面, 新答案), ...] 内存统一改 + 单次落盘。
+
+        返回 (更正数, 失败数); 仅更正已存在键; 无变化不计入。
+        """
+        if not self.enable or not fixes:
+            return 0, 0
+        self.load()
+        if self._load_failed:
+            return 0, len(fixes)
+        with self._lock:
+            if not self._reload_if_external_changed():
+                return 0, len(fixes)
+            fix_n = fail_n = 0
+            changed = False
+            detail = []
+            for q, a in fixes:
+                q = (q or "").strip()
+                a = (a or "").strip()
+                if (not q or not a
+                        or any(kw in a for kw in _ANSWER_PLACEHOLDER_KW)):
+                    fail_n += 1
+                    continue
+                if q not in self._data:
+                    fail_n += 1
+                    continue
+                old = self._data[q]
+                if old == a:
+                    continue  # 无变化
+                self._data[q] = a
+                fix_n += 1
+                changed = True
+                detail.append((q, old, a))
+            if not changed:
+                return 0, fail_n
+            self._rebuild_index()
+            self._backup_once_daily()
+            if not self._write_disk_locked():
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                return 0, len(fixes)
+            for q, old, a in detail[:20]:
+                log_print(INFO, Green,
+                          f"[题库管理] 已更正: {q[:40]} | 旧值={old[:30]} -> 新值={a[:30]}")
+            if len(detail) > 20:
+                log_print(INFO, Green,
+                          f"[题库管理] ... 共更正{fix_n}条(日志省略{len(detail) - 20}条)")
+            return fix_n, fail_n
+
+    def search(self, keyword: str = "", page: int = 1, size: int = 20,
+               search_in: str = "question") -> dict:
+        """【题库管理】检索: keyword + 分页(字符串包含匹配)
+
+        search_in: question=搜题目 / answer=搜答案 / all=全字段
+        """
+        self.load()
+        kw = (keyword or "").strip()
+        try:
+            page = max(1, int(page or 1))
+        except Exception:
+            page = 1
+        try:
+            size = max(1, min(100, int(size or 20)))
+        except Exception:
+            size = 20
+        need = page * size + 1  # 多取1条判定 hasMore
+        hits: List[Tuple[str, str]] = []
+        with self._lock:
+            for q, a in self._data.items():
+                if kw:
+                    if search_in == "answer":
+                        if kw not in a:
+                            continue
+                    elif search_in == "all":
+                        if kw not in q and kw not in a:
+                            continue
+                    else:
+                        if kw not in q:
+                            continue
+                hits.append((q, a))
+                if len(hits) >= need:
+                    break
+        start = (page - 1) * size
+        page_items = hits[start:start + size]
+        return {
+            "items": [{"q": q, "a": a} for q, a in page_items],
+            "page": page,
+            "size": size,
+            "hasMore": len(hits) > page * size,
+            "total": len(self._data),
+        }
 
 
 # ============ 答题引擎 ============
@@ -419,10 +698,13 @@ class AnswerEngine:
 
     def __init__(self, sources: List[AnswerSource], order: List[str],
                  cache: Optional[LocalTikuCache],
-                 token_check: int = 1):
+                 token_check: int = 1,
+                 fill_collected: bool = False):
         self.sources = _apply_order(list(sources), order or [])
         self.cache = cache
         self.token_check = bool(token_check)
+        # 2026-10-13 采集填充: 现役库未命中时查独立采集库(选项, 默认关)
+        self.fill_collected = bool(fill_collected)
         # 本地缓存是否作为答题源参与(存在已启用的local类型答题源)
         self._cache_active = bool(cache) and any(
             s.type == SOURCE_LOCAL and s.enable for s in self.sources)
@@ -481,6 +763,20 @@ class AnswerEngine:
                         src.name,
                         f"{tag} 命中答案: {ans[:80]} | 题目: {question[:40]}")
                     return ans, src.name
+                # 2026-10-13 采集填充(可选): 现役库未命中时查独立采集库
+                if self.fill_collected:
+                    try:
+                        from logic.xuexitong.part import _get_collected_cache
+                        _cc = _get_collected_cache()
+                        _cc.load()
+                        _cans, _ = _cc.lookup(question)
+                        if _cans:
+                            log_debug_source(
+                                src.name,
+                                f"{tag} 采集库填充命中: {_cans[:60]} | 题目: {question[:40]}")
+                            return _cans, src.name + "+采集库"
+                    except Exception:
+                        pass
                 log_debug_source(src.name, f"{tag} 未命中, 继续下一个答题源")
                 continue
             # ---- 第三方题库/AI ----
@@ -496,23 +792,12 @@ class AnswerEngine:
                 ans = ""
             if ans:
                 ans = ans.strip()
-                # 外部题库/AI 成功 -> 将题目与答案回写本地题库缓存
-                # 防污染(2026-09-21): 疑似异常答案(超长/含句末标点的脏数据)不写入
+                # 2026-10-03用户方案: 取消"即问即存"——统一改在"提交成功后"写入
+                # (提交成功=答案有效, 且用"提交链路的题目", 彻底避免误杀/失败题污染)
                 if use_cache:
-                    if not _answer_cacheable(ans, q_type):
-                        log_debug_source(
-                            "本地题库缓存",
-                            f"本次未写入(答案疑似异常数据, 已拦截防污染): "
-                            f"{ans[:60]}")
-                    elif self.cache.save(question, ans):
-                        log_debug_source(
-                            "本地题库缓存",
-                            f"已写入本地题库缓存: 题目: {question[:40]}... "
-                            f"-> 答案: {ans[:60]}")
-                    else:
-                        log_debug_source(
-                            "本地题库缓存",
-                            "本次未写入(题目已存在缓存或缓存不可写)")
+                    log_debug_source(
+                        "本地题库缓存",
+                        f"答案待提交成功后写入(新策略): 题目: {question[:40]}...")
                 log_debug_source(
                     src.name, f"{tag} 命中答案: {ans[:80]} | 题目: {question[:40]}")
                 return ans, src.name
@@ -597,15 +882,33 @@ def _build_engine(setting) -> Optional[AnswerEngine]:
                 token=ai.api_key, ai_type=ai.ai_type, model=ai.model,
                 url=ai.ai_url)]
 
+    # 2026-10-13 兜底: AI源字段缺失(旧配置/WP保存丢字段) -> 从全局 aiSetting 继承
+    # 典型症状: 启动自检报"请先填写AIType参数"
+    _ai_cfg = getattr(setting, "ai_setting", None)
+    if _ai_cfg is not None:
+        for _s in sources:
+            if _s.type == SOURCE_AI:
+                if not _s.ai_type:
+                    _s.ai_type = (
+                        getattr(_ai_cfg, "ai_type", "") or "").strip()
+                if not _s.token:
+                    _s.token = (getattr(_ai_cfg, "api_key", "") or "").strip()
+                if not _s.url:
+                    _s.url = (getattr(_ai_cfg, "ai_url", "") or "").strip()
+                if not _s.model:
+                    _s.model = (getattr(_ai_cfg, "model", "") or "").strip()
+
     cache_enable = 1
     cache_path = "questions_answers.json"
     order: List[str] = []
     token_check = 1
+    fill_collected = 0
     if ans_cfg:
         cache_enable = getattr(ans_cfg, "local_cache_enable", 1)
         cache_path = getattr(ans_cfg, "local_cache_path", "") or cache_path
         order = list(getattr(ans_cfg, "order", None) or [])
         token_check = getattr(ans_cfg, "token_check", 1)
+        fill_collected = int(getattr(ans_cfg, "fill_from_collected", 0) or 0)
 
     # 本地题库缓存作为独立答题源: 未显式配置 local 类型源时,
     # 按旧配置(localCacheEnable)自动补一个并置于最前(保持旧行为: 缓存优先)
@@ -621,7 +924,8 @@ def _build_engine(setting) -> Optional[AnswerEngine]:
             break
 
     cache = LocalTikuCache(cache_path, enable=1)
-    return AnswerEngine(sources, order, cache, token_check)
+    return AnswerEngine(sources, order, cache, token_check,
+                        fill_collected=bool(fill_collected))
 
 
 def configure_answer_engine(setting, do_check: bool = False) -> AnswerEngine:
@@ -633,6 +937,7 @@ def configure_answer_engine(setting, do_check: bool = False) -> AnswerEngine:
               (_flatten_sources(ans_cfg) if ans_cfg else [])),
         str(getattr(ans_cfg, "local_cache_enable", 1)) if ans_cfg else "1",
         str(getattr(ans_cfg, "local_cache_path", "")) if ans_cfg else "",
+        str(getattr(ans_cfg, "fill_from_collected", 0)) if ans_cfg else "0",
         tuple(getattr(ans_cfg, "order", None) or []) if ans_cfg else (),
         str(getattr(getattr(setting, "ai_setting", None), "api_key", "")),
     )
@@ -662,6 +967,34 @@ def answer_query_detail(question: str, options: Optional[List[str]] = None,
     if eng is None:
         return "", ""
     return eng.query(question, options, q_type, only_ai=only_ai)
+
+
+def cache_answer_after_submit(question: str, answer: str,
+                              q_type: str = "",
+                              answer_src: str = "") -> bool:
+    """提交成功后写入题库缓存(2026-10-03用户方案)
+
+    仅当: 全局引擎已初始化 + 本地缓存答题源已启用 + 答案非空且通过
+    _answer_cacheable(占位词/换行/超长拦截) + 来源非"本地缓存"(避免重复写入)。
+    返回是否写入成功。
+    """
+    eng = _engine
+    if eng is None or eng.cache is None or not eng._cache_active:
+        return False
+    q = (question or "").strip()
+    a = (answer or "").strip()
+    if not q or not a:
+        return False
+    # 来源为本地缓存本身则无需重复写入
+    src = (answer_src or "").strip()
+    if src and ("本地" in src or src.lower() == SOURCE_LOCAL):
+        return False
+    if not _answer_cacheable(a, q_type):
+        return False
+    try:
+        return eng.cache.save(q, a)
+    except Exception:
+        return False
 
 
 def answer_query(question: str, options: Optional[List[str]] = None,

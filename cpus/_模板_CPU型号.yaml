@@ -1,0 +1,32 @@
+# =====================================================================
+# CPU 性能配置模板 —— 复制本文件, 重命名为 "{CPU型号}.yaml" 即可使用
+# (空格换成下划线, 例: AMD_Ryzen_7_8845HS.yaml; 详见 README_CPU配置规范.md)
+# 所有参数都可留空: 留空 = 按内置公式自动计算(按逻辑核数)
+# =====================================================================
+
+# ---- 识别部分 ----
+model: "" # 【建议填】CPU型号(启动日志 [CPU] 检测到: xxx 处复制)
+aliases: [] # 【可选】别名列表, 例: ["Ryzen 7 8845H"]
+
+# ---- 硬件信息(可留空, 仅供参考) ----
+logicalCores: 0 # 逻辑核数(线程数); 0=自动检测
+physicalCores: 0 # 物理核数; 0=自动检测
+tier: "" # 档位备注: low / mid / high / ultra
+
+
+# ---- 性能参数(留空或注释掉 = 自动公式) ----
+# loginWorkers: 22          # 登录并发线程数
+# workConcurrency: 15       # 答题提交(作业/考试/章测)并发
+# aiConcurrency: 7          # AI 请求并发
+# fastVideoWorkers: 11      # 快速视频刷课并发
+# nodeStartInterval: 0.133  # 多任务点节点启动间隔(秒), 下限 0.06
+# httpMaxConnections: 240   # HTTP 连接池上限
+# cpuPoolWorkers: 6         # CPU 密集解析进程池 worker 数
+
+# ---- 运行期动态微调(可覆盖全局默认) ----
+# tuner:
+#   enable: true
+#   lowLoad: 50             # 负载低于此值(%) → 提速
+#   highLoad: 85            # 负载高于此值(%) → 降速
+#   minScale: 0.5
+#   maxScale: 1.5

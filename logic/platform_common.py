@@ -4,6 +4,7 @@
 为每个平台提供 filter_account, login, run_brush 的标准实现框架
 """
 import json
+import time
 import threading
 from typing import List, Any
 
@@ -22,6 +23,79 @@ def generic_filter_account(config_data: JSONDataForConfig,
                            platform_type: str) -> List[User]:
     """通用账号过滤"""
     return [u for u in config_data.users if u.account_type == platform_type]
+
+
+# ============ 夜间休息(全平台公共, 2026-10-10) ============
+# 历史: 原实现仅学习通 part.py 私有且只在启动阶段检查(中途到点不停) → 抽为公共函数,
+# 各平台 _user_block(入口/课程循环/任务循环)均可调用, 到点即暂停等待, 到点自动恢复。
+
+def in_rest_period(cc) -> bool:
+    """判断当前是否处于夜间休息时段(支持跨天如23:00-06:00)
+
+    未开启 rest_sw(默认0)或时间非法返回 False。全平台通用。
+    """
+    try:
+        if int(getattr(cc, "rest_sw", 0) or 0) != 1:
+            return False
+        import datetime
+        now = datetime.datetime.now().time()
+        sh, sm = map(int, str(cc.rest_start).split(":"))
+        eh, em = map(int, str(cc.rest_end).split(":"))
+        start = datetime.time(sh, sm)
+        end = datetime.time(eh, em)
+        if start <= end:
+            return start <= now < end
+        # 跨天时段(如23:00-06:00): 当日>=start 或 次日<end
+        return now >= start or now < end
+    except Exception:
+        return False
+
+
+def rest_wait_if_needed(account: str, cc, platform_name: str,
+                        stop_fn=None) -> bool:
+    """若处于夜间休息时段则暂停等待到结束(全平台通用)
+
+    :param account: 账号(用于日志)
+    :param cc: 用户 courses_custom 配置(含 rest_sw/rest_start/rest_end)
+    :param platform_name: 平台中文名(日志前缀)
+    :param stop_fn: 可选停止回调(返回True则提前退出); 不传则无视
+    :return: True=曾等待(或等待中被停止)
+    """
+    if not in_rest_period(cc):
+        return False
+    import datetime
+    try:
+        eh, em = map(int, str(cc.rest_end).split(":"))
+    except Exception:
+        return False
+    now = datetime.datetime.now()
+    end_dt = now.replace(hour=eh, minute=em, second=0, microsecond=0)
+    if end_dt <= now:
+        end_dt += datetime.timedelta(days=1)
+    wait_s = int((end_dt - now).total_seconds())
+    log_print(INFO, f"[{platform_name}]",
+              "[", Green, account, Default, "] ",
+              Yellow,
+              f"夜间休息中({cc.rest_start}-{cc.rest_end})，"
+              f"暂停等待约{wait_s/3600:.1f}小时后自动继续...")
+    # 分段睡眠(每15秒检查停止回调, 支持Web端随时"停止刷课")
+    while wait_s > 0:
+        if stop_fn is not None:
+            try:
+                if stop_fn():
+                    log_print(INFO, f"[{platform_name}]",
+                              "[", Green, account, Default, "] ",
+                              Yellow, "休息等待期间收到停止请求，已退出")
+                    return True
+            except Exception:
+                pass
+        chunk = min(15, wait_s)
+        time.sleep(chunk)
+        wait_s -= chunk
+    log_print(INFO, f"[{platform_name}]",
+              "[", Green, account, Default, "] ",
+              Green, "夜间休息结束，恢复刷课")
+    return True
 
 
 def generic_user_block(setting: Setting, user: User,

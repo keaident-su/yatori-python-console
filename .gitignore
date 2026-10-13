@@ -35,9 +35,69 @@ Thumbs.db
 # Config files (contains account info)
 config.yaml
 config/config.yaml
+config/xxt_device.json
 
 # Assets & Logs
 assets/
+
+# ===== 2026-10-13 发布前扩增 =====
+# 题库数据(体积大/不入库)
+questions*.json
+questions*.json.*
+
+# 调试工具目录(仅本地)
+_zhs_tools/
+
+# 遗留数据库
+/test_verify.db
+
+# 编译产物
+**/*.pyd
+**/*.c
+build_mid/
+build_stage/
+
+# ===== 2026-10-13 发布前扩增(调试产物隔离) =====
+# 本地调试脚本/输出(_开头全部仅本地)
+_*.py
+_*.txt
+_*.js
+_*.mjs
+_*.json
+_*.log
+_*.md
+_*.png
+_*.html
+_*.jsonl
+_*.spec
+_*.db
+
+# 例外: 正式包的 __init__.py(_开头但必须入库)
+!logic/**/__init__.py
+
+# 情报/工具目录
+_zhs_tools/
+_zhs_intel/
+_mogo_intel/
+
+# 废弃/备份
+*.bak
+*.broken_*
+*.tmp
+
+# 逆向参考素材(仅本地)
+chaoxing_app_*/
+
+# 一次性验证脚本(非正式入口)
+video_brush_viewer.py
+standalone_app_exam_pull*.py
+bt_deploy.py
+bump_version.py
+yatori_build*.spec
+
+# MOGO情报类文档(内部资料, 不入开源)
+logic/zhihuishu/MOGO_*.md
+logic/zhihuishu/_zhs_*.md
 
 # 私有部署增强模块（不参与开源）
 web-s/
@@ -75,3 +135,25 @@ questions.json
 *tiku_python_sdk/
 *_sdk/
 logic/weban/answer/
+
+# 参考项目/素材目录（不入库）
+ikun*/
+mogo*/
+参照网站文件*/
+
+# 垃圾副本目录(部署遗留, 不入库)
+后端/ikun20260601/
+ikun20260601/
+ikun_backup_20261001/
+后端/ikun_backup_20261001/
+
+# 部署遗留副本(整目录不入库)
+后端/
+
+# 根级调试残留txt
+*_test.txt
+*_head.txt
+step1_a.txt
+writetest*.txt
+html_head.txt
+gpu_test.txt

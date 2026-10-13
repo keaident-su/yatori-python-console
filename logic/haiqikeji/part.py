@@ -3,7 +3,7 @@
 海旗科技平台逻辑 - 对应 Go 项目的 logic/haiqikeji/HqkjPart.go
 普通模式（30秒间隔）+快速模式（并发提交100%）、作业/考试AI自动答题
 """
-from utils.log import log_print, INFO, Green, Yellow, Default
+from utils.log import log_print, with_log_account, INFO, Green, Yellow, Default
 from config.config import User, Setting, JSONDataForConfig
 from typing import List, Any
 import threading
@@ -16,7 +16,7 @@ from logic.haiqikeji.models import HqkjUserCache, HqkjCourse, HqkjNode
 from logic.haiqikeji import api as hqkj_api
 from logic.platform_common import generic_filter_account, generic_user_block
 from logic.core.models import safe_json_parse, json_get
-from logic.core.parallel import FAST_VIDEO_WORKERS
+from logic.core import parallel as _par  # 动态并发取值(全速开关/档位/运行期微调)
 from utils.log import (
     log_print, model_print, INFO, Green, Yellow, Red, Blue,
     Purple, Default, BoldRed, BoldGreen
@@ -69,8 +69,9 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
     for i, cache in enumerate(user_caches):
         if i >= len(users):
             break
-        t = threading.Thread(target=_user_block, args=(
-            setting, users[i], cache), daemon=True)
+        t = threading.Thread(
+            target=with_log_account(users[i].account, users[i].remark_name)(_user_block),
+            args=(setting, users[i], cache), daemon=True)
         threads.append(t)
         t.start()
     for t in threads:
@@ -79,6 +80,13 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
 
 def _user_block(setting: Setting, user: User, cache: HqkjUserCache):
     body, _ = hqkj_api.course_list_api(cache, retry=8)
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
     data = safe_json_parse(body)
     courses = []
     if data:
@@ -91,6 +99,13 @@ def _user_block(setting: Setting, user: User, cache: HqkjUserCache):
 
     cc = user.courses_custom
     for course in courses:
+        # 夜间休息检查(2026-10-10 修复: 课程级——刷课中途到点即停,恢复后继续)
+        try:
+            from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+            _pub_rest_wait(user.account, user.courses_custom,
+                           ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+        except Exception:
+            pass
         if cc.exclude_courses and cmp_course(course.course_name, cc.exclude_courses):
             continue
         if cc.include_courses and not cmp_course(course.course_name, cc.include_courses):
@@ -132,7 +147,7 @@ def _node_list_study(setting: Setting, user: User, cache: HqkjUserCache, course:
             _video_normal_mode(setting, user, cache, course, node)
     elif cc.video_model == 2:
         # 快速模式：并发提交100%（多核优化：并发数随CPU核心数动态扩展）
-        with concurrent.futures.ThreadPoolExecutor(max_workers=FAST_VIDEO_WORKERS) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=_par.tuned_fast_video_workers()) as executor:
             futures = []
             for node in nodes:
                 f = executor.submit(_video_fast_mode, setting,

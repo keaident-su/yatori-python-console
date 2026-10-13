@@ -4,11 +4,13 @@
 >
 > 独立程序、不依赖浏览器，支持多账号并行、多任务点并发刷课。
 >
-> **当前版本：V1.2.0**
+> **当前版本：V2.0.4-beta8**
 
 ## 📢 作者有话说
 
 我也是用 AI 协助重构的，学习通测试通过了，其他的没试过。
+
+> **特别鸣谢**：本项目的完成离不开多位热心人士提供的各种帮助，特此感谢。
 
 > **功能精简说明**：因程序原有的一些功能之间存在严重冲突，本版本不得不精简掉了一部分功能模块。
 
@@ -337,11 +339,37 @@ users:
 - 依赖已包含在 `requirements.txt`，安装即用（会自动带上 onnxruntime/numpy/opencv）
 - **Intel Mac 注意**：`requirements.txt` 已将 onnxruntime 钉扎至 1.23.2（官方 1.24+ 停止发布 macOS x86_64 轮子），安装会自动适配，无需手动处理
 - 引擎懒加载 + 单例 + 线程安全，不影响启动速度；缺库时优雅降级，**不会中断刷课**
-- Windows 单文件 exe 已内置 OCR 模型，开箱即用
+- Windows 单文件 exe 已内置 OCR 模型与 GPU 推理运行库，开箱即用
+
+#### GPU 硬件加速（全厂商 / 跨平台，自动适配）
+
+OCR 推理会自动选择当前平台可用的最优后端，**无需任何手动配置**；任一环节不可用则静默回落 CPU，功能不受影响：
+
+| 平台 | GPU 后端 | 覆盖显卡 |
+|------|----------|----------|
+| Windows | **DirectML**（exe 内置）→ 有 CUDA 时优先 CUDA | NVIDIA / AMD / Intel / 核显 **全厂商** |
+| macOS | CoreML | Apple GPU / 神经引擎 |
+| Linux | CUDA → ROCm | NVIDIA / AMD（需自行换装对应 onnxruntime 变体） |
+| 无 GPU / 老显卡 / 驱动不全 | CPU（自动回落） | 任意机器，功能完整 |
+
+> [!NOTE]
+> **关于更老的显卡**：DirectML 需要 DirectX 12 硬件（约 2015 年后的显卡）；更早的显卡（2008–2014）不在任何现代推理框架的 GPU 支持范围内（CUDA 最低要求 2014+ Maxwell，DX12 硬件同年起步），这类机器会自动使用 CPU 推理——**功能完全不受影响，仅速度用 CPU**。
+
+**随时验证 GPU 是否生效**（源码或 exe 均可）：
+
+```bash
+yatori-python刷课系统V2.0.4-beta8.exe --gpu-check   # Windows exe
+python main.py --gpu-check                     # 源码运行
+```
+
+输出会明确列出：检测到的显卡、平台后端优先级、onnxruntime 可用后端、**实际生效的推理后端**（如 `DmlExecutionProvider`）。想强制用 CPU 对比：设环境变量 `YATORI_OCR_CPU=1`。
+
+> [!TIP]
+> **源码安装时确保 Windows GPU 生效**：`rapidocr-onnxruntime` 会以依赖形式带入 CPU 版 onnxruntime 并可能覆盖 DirectML 版。若 `--gpu-check` 显示可用后端里没有 `DmlExecutionProvider`，执行一次：`pip install --force-reinstall onnxruntime-directml`。
 
 ## 🪟 Windows 单文件 exe
 
-打包产物：`yatori-python刷课系统V1.2.0.exe`（单文件、免安装 Python 环境）。
+打包产物：`yatori-python刷课系统V2.0.4-beta8.exe`（单文件、免安装 Python 环境）。
 
 ### 使用方法
 
@@ -360,6 +388,12 @@ python build_protected.py
 
 上面一条命令会自动完成构建与打包，产物输出到 `dist/`。
 
+> [!IMPORTANT]
+> **Windows 构建需要 DirectML 版 ONNX Runtime**（否则包内只有 CPU，GPU 加速不可用）：
+> 构建脚本会自动在本机搜寻含 `DirectML.dll` 的 onnxruntime 安装，找不到时会直接报错并给出安装指引；
+> 也可用环境变量显式指定：`set YATORI_ORT_SRC=<含 onnxruntime-directml 的 site-packages 目录>`。
+> 构建完成后脚本会自动核验包内 `DirectML.dll`（Windows 缺则拒绝发布）。
+
 ## 🍎 macOS 安装与使用指南
 
 > 本章专为不熟悉 Mac 操作的同学编写，跟着步骤一步步做即可，全程约 5 分钟。
@@ -372,8 +406,8 @@ python build_protected.py
 
 | 芯片类型 | 下载文件 |
 |----------|----------|
-| Apple Silicon（M1/M2/M3/M4…） | `...-V1.2.0-macos-arm64.zip` / `.dmg` |
-| Intel（x86_64） | `...-V1.2.0-macos-x86_64.zip` / `.dmg` |
+| Apple Silicon（M1/M2/M3/M4…） | `...-V2.0.4-beta8-macos-arm64.zip` / `.dmg` |
+| Intel（x86_64） | `...-V2.0.4-beta8-macos-x86_64.zip` / `.dmg` |
 
 ### 获取 config.yaml（安装前先准备好）
 
@@ -394,8 +428,8 @@ python build_protected.py
 
 1. 浏览器打开 Releases 页面：https://github.com/keaident-su/yatori-python-console/releases
 2. 在最新版本的「Assets」文件列表里，按第 0 步确认的芯片类型下载：
-   - Apple 芯片 → `yatori-python-console-V1.2.0-macos-arm64.dmg`
-   - Intel 芯片 → `yatori-python-console-V1.2.0-macos-x86_64.dmg`
+   - Apple 芯片 → `yatori-python-console-V2.0.4-beta8-macos-arm64.dmg`
+   - Intel 芯片 → `yatori-python-console-V2.0.4-beta8-macos-x86_64.dmg`
 
    （版本号以你看到的最新版为准，认准结尾的 **arm64** / **x86_64** 即可）
 3. 下载完成后，在「访达 → 下载」里能找到这个 `.dmg` 文件
@@ -424,7 +458,7 @@ python build_protected.py
 2. 把下面一整行（含引号）复制粘贴进终端，按回车（此命令只是去掉下载隔离标记，无其他影响）：
 
    ```bash
-   xattr -cr "/Applications/yatori-python-console-V1.2.0-macos-arm64.app"
+   xattr -cr "/Applications/yatori-python-console-V2.0.4-beta8-macos-arm64.app"
    ```
 
    - 版本号以你下载的为准；记不住名字？先把「应用程序」里的程序图标**拖进终端窗口**，路径会自动补全，再在最前面补上 `xattr -cr ` 即可
@@ -434,7 +468,7 @@ python build_protected.py
 #### 第 4 步：把 config.yaml 放进程序内部（只需做一次）
 
 1. 打开「**访达**」→ 左边栏点「**应用程序**」
-2. 找到程序图标（名字如 yatori-python-console-V1.2.0-macos-arm64），**右键 → 选择「显示包内容」**
+2. 找到程序图标（名字如 yatori-python-console-V2.0.4-beta8-macos-arm64），**右键 → 选择「显示包内容」**
 3. 弹出的新窗口里，依次双击进入 **`Contents` → `MacOS`** 文件夹
 4. 把准备好的 `config.yaml` **拖进 MacOS 文件夹**（放进去就行，不用改名）
 5. 完成 ✅ 以后正常使用不再需要重复此步
@@ -453,7 +487,7 @@ python build_protected.py
 > 进阶：也可以直接在「终端」里运行程序体（适合脚本化/服务场景），二进制位于应用包内：
 >
 > ```bash
-> "/Applications/yatori-python-console-V1.2.0-macos-arm64.app/Contents/MacOS/yatori-python-console-V1.2.0-macos-arm64-bin"
+> "/Applications/yatori-python-console-V2.0.4-beta8-macos-arm64.app/Contents/MacOS/yatori-python-console-V2.0.4-beta8-macos-arm64-bin"
 > ```
 
 #### 第 6 步：卸载
@@ -464,7 +498,7 @@ python build_protected.py
 
 #### 第 1 步：解压并放配置
 
-1. 下载自己芯片对应的 `yatori-python-console-V1.2.0-macos-arm64.zip`（Intel 则为 `-x86_64`），**双击解压**，得到一个无图标后缀的程序文件（如 `yatori-python刷课系统V1.2.0-macos-arm64`）
+1. 下载自己芯片对应的 `yatori-python-console-V2.0.4-beta8-macos-arm64.zip`（Intel 则为 `-x86_64`），**双击解压**，得到一个无图标后缀的程序文件（如 `yatori-python刷课系统V2.0.4-beta8-macos-arm64`）
 2. 把准备好的 `config.yaml` **拖到与该文件同一个文件夹**（只要放一起就行）
 3. （可选）建议把程序文件重命名为简单的 `yatori`（右键 → 重新命名），后续命令更好输入
 
@@ -539,11 +573,11 @@ docker logs -f yatori   # 实时查看运行日志
 | 标签         | 说明                       |
 |--------------|----------------------------|
 | latest       | 最新版本（多架构，自动适配处理器） |
-| V1.2.0       | 版本标签（自动从 logo.txt 解析，多架构） |
+| V2.0.4-beta8       | 版本标签（自动从 logo.txt 解析，多架构） |
 
 ```bash
 # amd64/arm64 自动分发，无需指定架构
-docker pull ghcr.io/keaident-su/yatori-python-console:V1.2.0
+docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.4-beta8
 ```
 
 ## 💻 跨平台支持与部署矩阵
@@ -552,7 +586,7 @@ docker pull ghcr.io/keaident-su/yatori-python-console:V1.2.0
 
 | 平台 | 架构 | 分发形式 | 说明 |
 |------|------|----------|------|
-| Windows 10/11 | x86_64 | 单文件 exe | 开箱即用（内置 OCR 模型/tls 原生库） |
+| Windows 10/11 | x86_64 | 单文件 exe | 开箱即用（内置 OCR 模型/tls 原生库/**全厂商 GPU 推理运行库**） |
 | macOS 13+ | Intel x86_64 | ZIP / DMG | 单文件可执行；未签名时首次运行需右键→打开 |
 | macOS 13+ | Apple Silicon arm64 | ZIP / DMG | 同上 |
 | Linux | x86_64 | 单文件二进制 | 或源码运行 |
@@ -605,6 +639,14 @@ python main.py
 | 多答题源顺序调用（题库/AI/本地缓存，失败自动回退） | ✅ |
 | 本地题库缓存自动回写（命中优先） | ✅ |
 | 本地图片题 OCR 识别（离线，内置模型） | ✅ |
+| GPU 硬件加速（Windows 全厂商 DirectML / macOS CoreML / Linux CUDA·ROCm；无 GPU 自动回落 CPU；`--gpu-check` 可验证） | ✅ |
+| 低配机性能自适应（自动下调并发防卡顿） | ✅ |
+| 后端配置在线读写 + 在线连通测试（免重启） | ✅ |
+| 内置图形界面（Web 模式，启动自动打开浏览器） | ✅ |
+| 课程列表与总进度查询（全平台，含任务点 x/y） | ✅ |
+| 人脸照片上传（多张随机轮换，降低风控） | ✅ |
+| SSL 证书管理（多证书 SNI，即时生效） | ✅ |
+| 前后端分离部署（web-s 前端 + AES-256-GCM 加密通道） | ✅ |
 | Windows 单文件 exe（免安装 Python 环境） | ✅ |
 | 考试客户端签名（deviceFlag）  | ✅ |
 | 灵活配置文件                  | ✅ |
@@ -627,7 +669,7 @@ python main.py
 | 青书学堂         | 只支持普通模式                                              | 已完成 ✅ |
 | 微学（WELEARN）   | 移植自 Go 版                                                 | 已完成 ✅ |
 | 安全微伴（WeBan） | 课程学习+考试自动作答(题库+AI), 验证码自动识别; 无浏览器环境自动降级(登录/学习照常, 考试跳过) | 已完成 ✅ |
-| 智慧树（ZHIHUISHU） | 共享课/新版AI课视频进度刷取, 速度可配 | 已完成 ✅ |
+| 智慧树（ZHIHUISHU） | 共享课/新版AI课视频进度刷取, 速度可配 | 验证中 🧪 |
 
 > [!TIP]
 > 英华"限制性暴力模式"指：如果你学校英华平台的课程视频没有前置视频观看限制就可以开。前置视频观看限制 = 一个章节的视频必须先把前面章节的视频看完才能看。重庆工程学院 CQIE 可以做到真正意义上的秒刷，使用暴力模式即可。
@@ -644,7 +686,7 @@ python main.py
 | Docker 异形架构（linux/arm/v7、ppc64le、s390x 等） | ⚙️ 轻量模式：Dockerfile 按 TARGETARCH 自动切换轻量依赖并跳过 Chromium |
 | Android（APK：arm64-v8a / armeabi-v7a / x86_64） | 🧪 适配底座已就绪：本地 OCR 登录可用、浏览器类验证码自动降级跳过；打包依赖子集见 requirements-android.txt |
 
-> 程序启动时会打印 `[平台]`（系统/架构/容器 + OCR 与浏览器验证码能力状态）与 `[CPU拓扑]` 画像，便于确认当前运行环境与降级状态。
+> 程序启动时会打印 `[平台]`（系统/架构/容器 + OCR 与浏览器验证码能力状态）与 `[CPU拓扑]` 画像，便于确认当前运行环境与降级状态；加 `--gpu-check` 参数可打印含 GPU/推理后端在内的完整硬件自检报告。
 
 ## 🖥 图形界面（Web 模式）使用指南
 
@@ -699,30 +741,18 @@ python main.py
 
 最近的版本更新与问题修复摘要（**详细记录见根目录 [CHANGELOG.md](./CHANGELOG.md)**）：
 
-**V1.2.0（2026-09-21）— 学习通作业 / 考试 / 任务点重大修复**
+**V2.0.4-beta6（2026-10-13）— 智慧树协议秒刷 + 全系采集 + 题库体系升级**
 
-- **版本号升级至 V1.2.0**：`config/logo.txt`、Web 服务版本、Windows 单文件 exe、Docker 镜像标签与 Release 附件名已同步更新
+- **智慧树协议级秒刷全链路**：不再依赖浏览器播放，登录/进度同步全自动，24 节课程约 10 分钟全部完成变绿（实测）；方案已固化为独立模块与文档（获热心人士参考资料帮助攻克）
+- **学习通题库采集全模式**：考试采集（进考拉卷归档）/ 指定考试采集 / 采集填充策略；新增"考试提交正确率(%)"参数
+- **题库"一键并入"新增投票清洗模式**（多源投票 + AI 复核 + 无法判定隔离）；学习次数/时长上限提升至 1000 次 / 10000 分钟
+- **Web 控制台进度大屏升级**：只刷/排除课程过滤显示、无任务点提示、人脸照片面板、作业/考试完成度；"加载课程列表（勾选）"历史遗留点击无反应已修复；进度页等待 15~45 秒降至 1.5~2.3 秒
+- **配套前端**：WordPress 控制台插件升级 1.3.6；题库全功能六层体检全部通过
 
-- 作业：修复新版页面**选项解析失效**与**提交字段（answerId）缺失**，并彻底修复「**翻页失效**」（提交成功但大量题目空白）与「**无效的作答记录**」两大缺陷——实测全部作业逐题独立作答、真实提交成功
-- 章测：修复「**作业提交失败**」——学习通将判断题渲染为“【单选题】”的陷阱已识别（panduan 结构 > 隐藏域 > 显示文本三层判定），判断题正确转为 true/false——实测 5 个失败章测全部重提成功
-- 文档/PPT/PDF：修复文档任务点被静默跳过的问题，并修复「**无效的请求参数**」（仅附件顶层 jobid 的文档才视为任务点上报），新增**阅读行为上报**（模拟滑动到底部）——实测任务点可正常变绿、非任务点不再误报
-- 空任务点：停留**不低于 30 秒**并模拟点击/滑动浏览（不再单纯等待）
-- 考试：人脸识别 / 客户端签名 / 已过期 / 已截止 / 课程已结课等异常状态均输出**明确原因**；考试同样新增题目去重保护
-- 新增「**已完成但显示待批阅**」提示：章测 / 作业 / 考试已提交但等待批阅时会明确告知，无需重复操作
-- EveryAPI 题库迁移至新域名 `q.icodef.com`（旧地址自动纠正）并适配服务端限流
+**V2.0.4-beta5（2026-10-12）— 学习通互动测验全链路**
 
-**2026-09-20 — 学习公社修复 + 多答题源升级 + 跨平台适配**
-
-- 学习公社（ENAEA）登录修复与全接口重写；新增暴力模式倍速 `bruteSpeed`（默认 2.4，实测上限 12x）
-- 学习通新增「增加学习次数/学习时长」功能（setlog 机制，每账号可配）
-- 新增 N1 / ZE / EveryAPI 题库接入；本地题库缓存独立成答题源；全量日志体系（命中源/课程归属）
-- Intel Mac / Linux / Docker 全平台依赖适配（详情见 CHANGELOG）
-
-**2026-09-21 — 新平台接入：安全微伴 + 智慧树**
-
-- 安全微伴（WEBAN）：课程学习+自动考试，登录/课程验证码自动识别，答题走项目多答题源引擎
-- 智慧树（ZHIHUISHU）：共享课/新版AI课视频进度刷取，速度倍率可配（zhsSpeed）
-- 配置文件生成器已同步支持两个新平台的全部配置项与中文提示
+- 互动测验（视频弹题）自动补齐：课程完成后拉取未完成清单、双接口轮换扫描、多源答题提交
+- 课程进度卡片新增"互动测验 x/y"显示；5 账号 540 题实测全部通过
 
 ## 📁 项目结构
 
@@ -753,7 +783,8 @@ yatori-python-console/
 │   ├── weban/             # 安全微伴
 │   └── zhihuishu/         # 智慧树
 ├── utils/                 # 日志、通知、邮件等工具
-└── web/                   # FastAPI Web 服务
+├── web/                   # FastAPI Web 服务（含内置图形界面 static）
+└── web-s/                 # 独立前端（前后端分离部署，宝塔面板用）
 ```
 
 ## ⚠️ 免责声明

@@ -99,14 +99,9 @@ yatori_build*.spec
 logic/zhihuishu/MOGO_*.md
 logic/zhihuishu/_zhs_*.md
 
-# 私有部署增强模块（不参与开源）
+# 前端 / Web 模块（因严重问题已移除，不参与开源）
+web/
 web-s/
-web/auth.py
-web/crypto_channel.py
-web/cert_manager.py
-web/controller/cert_controller.py
-web/controller/face_controller.py
-web/static/index.html
 
 # 本地部署/参考资料/私有目录
 _deploy/

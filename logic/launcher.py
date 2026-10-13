@@ -335,9 +335,15 @@ def _start_web_service(web_port: int = 8080,
     # 初始化数据库(多实例可共用同一 yatori.db, WAL+busy_timeout 保证并发安全)
     sqlite_init()
 
-    # 启动 FastAPI
-    import uvicorn
-    from web.server import create_app
+    # 启动 FastAPI(前端/Web 功能因严重问题已移除; 发布版不含 web 模块时友好提示)
+    try:
+        import uvicorn
+        from web.server import create_app
+    except ImportError:
+        log_print(INFO, Red,
+                  "前端(Web)功能因严重问题已移除, 当前版本不支持 Web 模式; "
+                  "请将 config.yaml 的 webModel 设为 0 使用控制台模式")
+        return
 
     # 通信加密密钥初始化(config 优先 → assets/web_secret.txt → 自动生成)
     # 必须在 create_app 之前: 认证/加密模块会读取密钥并缓存, 提前统一来源

@@ -30,6 +30,12 @@ APP_NAME = "yatori-python刷课系统V2.0.4-beta8"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 
+# 本地调试/一次性脚本(不打包): 相对 ROOT 的 posix 路径
+# (此类脚本常写死本机路径或劫持 stdout, 混入打包会导致导入校验崩溃)
+EXCLUDE_FILES = {
+    "logic/zhihuishu/video_brush.py",
+}
+
 # __init__.py 是否保持源码(打包兼容回退开关)。False=一并编译
 KEEP_INIT_SOURCE = os.environ.get("YATORI_KEEP_INIT_SOURCE", "0") == "1"
 
@@ -64,6 +70,9 @@ def copy_sources() -> list:
             for fn in filenames:
                 src = Path(dirpath) / fn
                 rel = src.relative_to(ROOT)
+                # 排除本地调试脚本(写死本机路径/劫持 stdout, 混入会导致构建校验崩溃)
+                if rel.as_posix() in EXCLUDE_FILES:
+                    continue
                 dst = STAGE / rel
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 # 只复制 .py 与必要数据文件(如 config/logo.txt), 跳过编译产物
@@ -186,30 +195,41 @@ def dotted(rel_py: str) -> str:
 
 def verify_imports(modules: list) -> bool:
     names = sorted({dotted(m) for m in modules})
+    # 逐模块打印进度 + 每轮恢复 stdout/stderr
+    # (防御: 个别模块顶层劫持 stdout 会导致后续输出丢失、无法定位问题)
     code = (
         "import sys, importlib, traceback\n"
         "sys.path.insert(0, '.')\n"
+        "_real_out, _real_err = sys.stdout, sys.stderr\n"
         "names = %r\n"
         "bad = []\n"
         "for n in names:\n"
+        "    sys.stdout, sys.stderr = _real_out, _real_err\n"
+        "    print('IMPORT', n, flush=True)\n"
         "    try:\n"
         "        importlib.import_module(n)\n"
         "    except Exception as e:\n"
         "        bad.append((n, repr(e)))\n"
-        "print('IMPORT-FAILED:', len(bad))\n"
+        "        traceback.print_exc()\n"
+        "sys.stdout, sys.stderr = _real_out, _real_err\n"
+        "print('IMPORT-FAILED:', len(bad), flush=True)\n"
         "for n, e in bad:\n"
-        "    print('  -', n, '->', e)\n"
+        "    print('  -', n, '->', e, flush=True)\n"
         "sys.exit(1 if bad else 0)\n"
     ) % (names,)
     log("verifying imports in stage ...")
     proc = subprocess.run([sys.executable, "-c", code], cwd=str(STAGE),
                           capture_output=True, text=True, encoding="utf-8",
                           errors="replace")
-    tail = (proc.stdout or "").strip().splitlines()
-    for line in tail[:12]:
-        log(line)
+    out = (proc.stdout or "").strip().splitlines()
+    err = (proc.stderr or "").strip().splitlines()
+    # 展示输出尾部(含 stderr), 崩溃/失败时可定位最后导入的模块
+    for line in out[-40:]:
+        log("  " + line)
+    for line in err[-20:]:
+        log("  [stderr] " + line)
     if proc.returncode != 0:
-        log("IMPORT VERIFY FAILED")
+        log(f"IMPORT VERIFY FAILED (rc={proc.returncode})")
         return False
     log(f"import verify OK ({len(names)} modules)")
     return True

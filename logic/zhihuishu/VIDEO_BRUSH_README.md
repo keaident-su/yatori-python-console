@@ -71,7 +71,7 @@ python logic/zhihuishu/video_brush.py
 - **profile锁**: 浏览器异常退出会残留 Singleton* 锁, 重启前需清理 + 杀对应chrome进程
 
 ### 2026-10-12 战果
-- 账号(徐婉婷 18286610553)课程《从课堂走出来的创新》首轮慢刷
+- 账号(测试学员 138****0553)课程《从课堂走出来的创新》首轮慢刷
 - 5账号540题学习通互动测验(另见 XXT_INTERACTIVE_QUIZ_PROTOCOL.md)
 
 ---

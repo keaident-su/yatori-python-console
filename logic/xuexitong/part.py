@@ -792,16 +792,39 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
 # ============ 课程拉取 ============
 
 def _pull_course_action(cache: XueXiTUserCache) -> Optional[List[XueXiTCourse]]:
-    """拉取课程 - 对应 Go 的 XueXiTPullCourseAction"""
-    body, resp = xxt_api.course_list_api(cache, retry=8)
-    data = safe_json_parse(body)
-    if not data:
-        # 诊断: 拉取失败时输出 HTTP 状态与响应片段(便于排查含空响应/风控页)
+    """拉取课程 - 对应 Go 的 XueXiTPullCourseAction
+
+    2026-10-15 加固: HTTP202/HTML风控页 → 退避重试(最多3次, 30s/60s递增);
+    仍失败给出"疑似风控, 建议网页验证/换IP"的清晰提示。
+    """
+    body, resp = None, None
+    for _try in range(3):
+        body, resp = xxt_api.course_list_api(cache, retry=8)
+        data = safe_json_parse(body)
+        if data:
+            break
+        _sc = getattr(resp, "status_code", "?")
+        _is_html = str(body or "").lstrip()[
+            :20].lower().startswith(("<!doctype", "<html"))
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
-                  "[", Green, display_account(
-                      cache.account), Default, "] ",
-                  Red, f"课程接口响应异常(HTTP={getattr(resp, 'status_code', '?')}, "
-                  f"长度={len(body or '')}, 片段={(body or '')[:120]!r})")
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  Red, f"课程接口响应异常(HTTP={_sc}, HTML={_is_html}, "
+                  f"长度={len(body or '')}, 第{_try + 1}/3次)")
+        if not _is_html and _sc not in (202, 203):
+            break  # 非风控类异常不重试
+        if _try < 2:
+            _wait = 30 if _try == 0 else 60
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      Yellow, f"疑似平台风控(202/HTML), {_wait}秒后自动重试...")
+            time.sleep(_wait)
+    else:
+        data = None
+    if not data:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, display_account(cache.account), Default, "] ",
+                  Red, "拉取课程失败(已退避重试3次); 如持续出现请登录网页确认是否有手机验证/滑块, 或更换IP后再试")
         return None
 
     channel_list = data.get("channelList", [])
@@ -3189,16 +3212,105 @@ def _execute_hyperlink(cache: XueXiTUserCache, course: XueXiTCourse,
 
 # ============ 直播执行 ============
 
+def _execute_live_new_chain(setting: Setting, cache: XueXiTUserCache,
+                            course: XueXiTCourse, knowledge: KnowledgeItem,
+                            ldto: PointLiveDto, pass_value: float):
+    """新版直播/回放链(2026-10-16 浏览器抓包实测)
+
+    ① getLiveDetail -> liveStatus(4=已结束可回放; 其他=直播中/未开)
+    ② saveTimePc 观看会话循环: isStart=0 -> 等待 -> isStart=1 (每轮计入等待秒数)
+    ③ ananas/live/liveinfo -> percentValue 查询真实进度
+    返回 True=已完成; False=新链不可用(回退旧链); None=已处理但未完成(不再回退)
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    _tag = (f"[{platform}]")
+
+    # ① 拿直播详情
+    detail_body, _ = xxt_api.live_detail_new_api(
+        cache, ldto.stream_name, ldto.vdoid, retry=3)
+    detail = safe_json_parse(detail_body) if detail_body else None
+    if not detail or "liveStatus" not in detail:
+        return False  # 新接口不可用, 回退旧链
+    live_status = int(detail.get("liveStatus", 0) or 0)
+    new_live_id = str(detail.get("liveId", "") or ldto.live_id)
+    log_print(INFO, _tag, "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              "【", ldto.title, "】",
+              f"新版直播接口可用(liveStatus={live_status}), 开始观看会话...")
+
+    # ② 进度查询函数
+    _uid = getattr(cache, "uid", "") or cache.cookie_dict.get("UID", "")
+
+    def _progress():
+        _pb, _ = xxt_api.live_progress_api(
+            cache, new_live_id, _uid, course.key,
+            str(ldto.knowledge_id), course.course_id, retry=2)
+        _pd = safe_json_parse(_pb) if _pb else None
+        if _pd:
+            _dd = ((_pd.get("temp") or {}).get("data")) or {}
+            return float(_dd.get("percentValue", 0) or 0), \
+                int(_dd.get("timeLong", 0) or 0), \
+                int(_dd.get("duration", 0) or 0)
+        return 0.0, 0, 0
+
+    # ③ 观看会话循环
+    max_rounds = 200
+    for _ri in range(max_rounds):
+        pct, seen, dur = _progress()
+        if pct >= pass_value:
+            log_print(INFO, _tag, "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", ldto.title, "】 >>> ",
+                      Green, f"直播任务点已完成(进度{pct:.1f}%)")
+            return None
+        # 一轮观看会话: 开始->等待->结束
+        _sess = 55  # 等待秒数(接近真实观看)
+        xxt_api.live_save_time_api(
+            cache, ldto.stream_name, ldto.vdoid, _uid, 0,
+            course_id=course.course_id, retry=2)
+        time.sleep(_sess)
+        xxt_api.live_save_time_api(
+            cache, ldto.stream_name, ldto.vdoid, _uid, 1,
+            course_id=course.course_id, retry=2)
+        log_print(INFO, _tag, "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】",
+                  "【", ldto.title, "】 ",
+                  f"第{_ri + 1}轮观看完成(上轮进度{pct:.1f}%/{seen}s/{dur}s)")
+    log_print(INFO, _tag, "[", Green, acct, Default, "] ",
+              "【", course.course_name, "】",
+              "【", ldto.title, "】",
+              BoldRed, f"观看会话达上限{max_rounds}轮, 停止")
+    return None
+
+
 def _execute_live(setting: Setting, user: User, cache: XueXiTUserCache,
                   course: XueXiTCourse, knowledge: KnowledgeItem,
                   ldto: PointLiveDto):
     """执行直播任务 - 对应 Go ExecuteLive
-    流程: PullLiveInfo → 检查开播 → LiveCreateRelation → 循环提交进度直到>=90%
+    新链(2026-10-16): getLiveDetail 拿状态 -> saveTimePc 观看会话循环 -> 进度>=90%
+    旧链回退: PullLiveInfo -> LiveCreateRelation -> submitLiveProgress
     """
     platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
     acct = display_account(cache.account)
     pass_value = 90.0
 
+    # ===== 新链优先: 新版回放接口(saveTimePc) =====
+    if ldto.stream_name and ldto.vdoid:
+        try:
+            _new_ok = _execute_live_new_chain(
+                setting, cache, course, knowledge, ldto, pass_value)
+            if _new_ok is None:
+                return  # 新链已处理(完成或达上限)
+            # _new_ok is False -> 新接口不可用, 继续旧链回退
+        except Exception as _ne:
+            log_print(INFO, f"[{platform}]",
+                      "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      "【", ldto.title, "】",
+                      BoldRed, f"新链异常, 回退旧链: {type(_ne).__name__}: {_ne}")
+
+    # ===== 旧链回退 =====
     # 拉取直播信息
     body, _ = xxt_api.pull_live_info_api(
         cache, ldto.live_id, course.course_id, course.key, retry=5)

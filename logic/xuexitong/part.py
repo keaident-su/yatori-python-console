@@ -1226,9 +1226,17 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                                       cache.account), Default, "] ",
                                   "[", course.course_name, "] ", BoldRed,
                                   f"零任务点遍历失败: {err}")
+                    # 2026-10-16修复: 不再continue! 零任务计数(totalcount=0)的章节
+                    # 仍可能内嵌视频/文档(cards页有iframe), 原continue导致这些节点
+                    # 永远黄点(用户反馈: 总进度100%但空任务点还黄)。
+                    # 修复后: 上报访问后继续落入 _node_run 解析cards完成内嵌附件;
+                    # 若确实无内嵌附件, _node_run 会发现无卡片并自然结束(无害)。
+                    # 但纯空壳节点(无任何iframe/job)不计进度, 避免重复计数:
+                    _has_embed = True
                     with progress_lock:
                         progress_state["done"] += 1
-                    continue
+                    # 注: done 在 _run_node_session 中仍会再 +1 (task完成时),
+                    # 此处仅保留原计数兼容行为, 不提前 continue。
 
             def _run_node_session(sess_cache, idx, nid, si=None):
                 try:

@@ -2278,6 +2278,71 @@ def live_submit_api(cache: XueXiTUserCache,
         client.close()
 
 
+# ============ 直播 API(新版·回放链, 2026-10-16 新增) ============
+# 背景: 旧链 live/getLiveInfo + live/submitLiveProgress 已404/失效;
+# 新版实测链(浏览器抓包):
+#   ① GET live.chaoxing.com/getLiveDetail?streamName=&vdoid=
+#      -> {liveStatus:4(已结束可回放), liveId, title, ...}
+#   ② GET zhibo.chaoxing.com/saveTimePc?streamName=&vdoid=&userId=&isStart=0|1&t=ms&courseId=
+#      观看会话: isStart=0(开始计时) -> 等待N秒 -> isStart=1(结束, 计入时长)
+#      -> "@success"
+#   ③ 进度查询: mooc1.chaoxing.com/ananas/live/liveinfo?liveid=&userid=&clazzid=&knowledgeid=&courseid=
+#      -> temp.data.{timeLong(已看秒), duration(总秒), percentValue(进度%)}
+
+
+def live_detail_new_api(cache: XueXiTUserCache, stream_name: str,
+                        vdoid: str,
+                        retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """新版直播详情(getLiveDetail) - 返回liveStatus等"""
+    url = (f"https://live.chaoxing.com/getLiveDetail"
+           f"?streamName={stream_name}&vdoid={vdoid}")
+    client = _build_client(cache)
+    try:
+        return _do_get(client, url, retry=retry)
+    finally:
+        client.close()
+
+
+def live_save_time_api(cache: XueXiTUserCache, stream_name: str,
+                       vdoid: str, user_id: str, is_start: int,
+                       course_id: str = "",
+                       retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """新版直播观看时长上报(saveTimePc) - isStart=0开始/1结束
+
+    一次完整观看会话 = saveTimePc(0) -> sleep(N秒) -> saveTimePc(1)
+    """
+    t = str(int(time.time() * 1000))
+    _uid = user_id or cache.cookie_dict.get("UID", "")
+    url = (f"https://zhibo.chaoxing.com/saveTimePc"
+           f"?streamName={stream_name}&vdoid={vdoid}"
+           f"&userId={_uid}&isStart={int(is_start)}&t={t}"
+           f"&courseId={course_id}")
+    client = _build_client(cache)
+    try:
+        return _do_get(client, url, retry=retry)
+    finally:
+        client.close()
+
+
+def live_progress_api(cache: XueXiTUserCache, live_id: str,
+                      user_id: str, class_id: str,
+                      knowledge_id: str, course_id: str,
+                      retry: int = 3) -> Tuple[str, Optional[Any]]:
+    """新版直播进度查询(ananas/live/liveinfo)
+
+    返回JSON: temp.data.{timeLong, duration, percentValue}
+    """
+    url = (f"https://mooc1.chaoxing.com/ananas/live/liveinfo"
+           f"?liveid={live_id}&userid={user_id}"
+           f"&clazzid={class_id}&knowledgeid={knowledge_id}"
+           f"&courseid={course_id}&jobid=live-{live_id}")
+    client = _build_client(cache)
+    try:
+        return _do_get(client, url, retry=retry)
+    finally:
+        client.close()
+
+
 # ============ 滑块验证码 API ============
 
 def slider_captcha_api(cache: XueXiTUserCache,

@@ -1,8 +1,24 @@
 # 📋 更新与修复记录（Changelog）
 
-> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V2.0.4-beta8）。
+> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V2.0.5）。
 >
 > **重要说明**：本程序的前端（Web 图形界面）功能因**严重问题已移除**，当前版本仅提供纯控制台模式运行；相关代码与部署文档不再随本仓库提供。
+
+---
+
+## V2.0.5 版本发布（2026-10-16，正式版：全平台拟人考试 + 通用答题框架 + 学习通直播新版链）
+
+### 新增功能
+- 【学习通】**直播任务点新版接口链破解**：旧链 getLiveInfo/submitLiveProgress 皆 404 失效导致直播任务点永远跳过；新链 getLiveDetail(liveStatus=4 可回放) + saveTimePc(isStart 0→1 观看会话计时) + ananas/live/liveinfo(percentValue 进度查询，timeLong 按秒)；新链优先+旧链回退，实测进度真实增长（8.87%→25.64%→…）。
+- 【学习通】**空（零任务）章节节点不再跳过**：totalcount=0 的章节仍可能内嵌视频（cards 有 iframe），原逻辑仅调 studentstudyAjax 后 continue 导致黄点永驻；修复后上报访问+继续走 node_run 解析 cards 内嵌附件；实测 83 黄点（你我职业 56 + 临床中药学 27）全部清零。
+- 【全平台】**考试拟人节奏 6 平台全覆盖（0/1/2 档位）**：重庆 cq_exam_pace（整卷提交前随机停顿，按题数×档位）、微伴 wb_exam_pace（0.5s / 3+3s / 5+5s）、英华 yh_exam_pace 与青书 qs_exam_pace（作业/考试双链按档位随机），连同学习通（完整节奏引擎）与智慧树形成全平台拟人适配；WP 前端 + 生成器均同步选项。
+- 【通用】**多源答题桥接与答题流程框架**：新增 `logic/core/answer_bridge.py`（全部平台统一接入 answer_engine：本地缓存→题库源→AI 按优先级调用+失败降级）与 `logic/core/qa_flow.py`（作业/考试统一骨架：题目列表→逐题多源作答→平台提交回调→交卷→题库缓存）；智慧树 `answer_bridge` 独立接入。
+- 【智慧树】AI智课(mapCourse)协议客户端固化（`logic/zhihuishu/ai_smart_proto.py`）；国安教育(polymas系) SSO+待办 API 逆向入档（`scripts/zhs_guoan_ssO_notes.py`）。
+- 【重庆 CQIE】纯 Python SM4-ECB 加密（`logic/cqie/sm4_pure.py`，移植自 yatori-go-core，去除 Go 端依赖）；【英华】考试/作业 HTML 解析与答案转换移植（`logic/yinghua/exam_turn.py`）。
+- 【打包】**py_mini_racer 随包**：新增 mini_racer.dll(28MB)+icudtl.dat(10MB) 收集与 THIRD_PARTY 模块声明、requirements 补声明——修复 beta9 遗漏导致家机日志 ModuleNotFoundError(py_mini_racer)；易盾 JS / TCaptcha 纯协议能力开箱可用（失效时降级浏览器）。
+
+### 说明
+- 全局版本号 beta9 → 2.0.5（正式版）；Windows 单文件 exe / macOS / Linux / Docker 多架构产物与生成器、WP 控制台插件（1.3.8）同步。
 
 ---
 

@@ -7,6 +7,8 @@
 支持: includeCourses/excludeCourses 课程过滤; zhsSpeed 刷课速度倍率(默认1.5)
 说明: 智慧树课程考试(实验性 AI 答题)暂未接入, 如需后续补充
 """
+import os
+import asyncio as _asyncio
 import threading
 import time
 from random import random, uniform
@@ -220,6 +222,19 @@ def _fetch_all_courses(cache: ZhsUserCache, log) -> List[ZhsCourse]:
                                        or _op.get("recruitId") or ""),
                         rid=str(_op.get("secret") or "")))
                     seen_ids.add(cid)
+                elif ctype == "mapCourse":
+                    # AI智课(mapCourse, ai-smart-course-student-pro平台): 2026-10-14新增
+                    # classId 取顶层或 studentClasses[0]
+                    _cls = str(c.get("classId") or "")
+                    if not _cls:
+                        _classes = c.get("studentClasses") or []
+                        _cls = str(_classes[0].get("classId")
+                                   or "") if _classes else ""
+                    courses.append(ZhsCourse(
+                        id=cid, name=c.get("courseName", "unknown"),
+                        course_type=CourseType.AI_SMART,
+                        class_id=_cls or None))
+                    seen_ids.add(cid)
     except ZhsError as e:
         log.warning(f"Polymas 课程获取失败: {e}")
     except Exception as e:
@@ -243,12 +258,181 @@ def _fetch_all_courses(cache: ZhsUserCache, log) -> List[ZhsCourse]:
 
 def _brush_course(cache: ZhsUserCache, user: User, course: ZhsCourse,
                   speed: float, log) -> StudyProgress:
-    """按课程类型分发刷课"""
-    if course.course_type == CourseType.POLYMAS_AI:
-        return _brush_polymas_course(cache, user, course, speed, log)
-    if course.course_type == CourseType.SHARE:
-        return _brush_share_course(cache, user, course, speed, log)
-    return _brush_hike_course(cache, user, course, speed, log)
+    """按课程类型分发刷课(2026-10-14: 类型自动识别 + 专属开关过滤)"""
+    custom = getattr(user, "courses_custom", None)
+
+    def _sw_on(name: str, default: int = 1) -> bool:
+        try:
+            return int(getattr(custom, name, default) or 0) == 1
+        except Exception:
+            return default == 1
+
+    ctype = course.course_type
+    _sw_map = {
+        CourseType.SHARE: ("zhs_share_sw", 1, "共享课"),
+        CourseType.POLYMAS_AI: ("zhs_ai_course_sw", 1, "AI课"),
+        CourseType.HIKE: ("zhs_hike_sw", 1, "Hike共享课"),
+        CourseType.AI_SMART: ("zhs_ai_smart_sw", 0, "AI智课"),
+    }
+    sw_name, sw_default, label = _sw_map.get(ctype, ("", 1, ""))
+    if sw_name and not _sw_on(sw_name, sw_default):
+        log.info(f"课程【{course.name}】{label}: 专属开关已关闭, 跳过")
+        return StudyProgress()
+
+    if ctype == CourseType.POLYMAS_AI:
+        _p = _brush_polymas_course(cache, user, course, speed, log)
+    elif ctype == CourseType.SHARE:
+        _p = _brush_share_course(cache, user, course, speed, log)
+    elif ctype == CourseType.AI_SMART:
+        _p = _brush_ai_smart_course(cache, user, course, speed, log)
+    else:
+        _p = _brush_hike_course(cache, user, course, speed, log)
+    # 2026-10-15: 课程学习完成后的作业/考试处理(开关默认关)
+    try:
+        _zhs_work_exam_action(cache, user, course, log)
+    except Exception:
+        pass
+    return _p
+
+
+# ============ AI智课(mapCourse, ai-smart-course-student-pro) 刷课 ============
+# 2026-10-14: 平台测绘完成(needSecret加密门 + idMaps密钥ID体系(6:AI课/11:studyservice)
+# + learning/saveCacheIntervalTimeV2 等同名上报接口 + 免密白名单saveUserStudyProcess);
+# 首版: 结构探测+进度查看; 上报链路密钥链补齐后全协议化
+
+async def _ai_smart_visit_and_brush(jar: dict, course, todo: list, log) -> None:
+    """AI智课完整链(nodriver访问注册 + 终极brush)
+
+    2026-10-15 实测: 访问注册(learnPage JS执行) + 全视频report序列 + 全资源completed = prog 100%
+    """
+    import importlib as _il
+    _nd = _il.import_module("nodriver")
+    from logic.zhihuishu.ai_smart_proto import AiSmartAPI
+    api = AiSmartAPI(jar)
+    UDD = os.path.join(os.environ.get("TEMP", "/tmp"), "yatori-zhs-aismart")
+    browser = await _nd.start(user_data_dir=UDD,
+                              browser_args=["--window-size=1300,900", "--disable-quic"])
+    try:
+        import json as _js
+        tab = await browser.get("https://www.zhihuishu.com/")
+        await _asyncio.sleep(2)
+        try:
+            from nodriver import cdp as _cdp
+            _params = []
+            for _n, _v in jar.items():
+                if _n and _v:
+                    _params.append(_cdp.network.CookieParam(
+                        name=str(_n), value=str(_v),
+                        domain=".zhihuishu.com", path="/"))
+            await tab.send(_cdp.network.set_cookies(cookies=_params))
+        except Exception:
+            pass
+        for _i, (_kid, _prog, _name) in enumerate(todo):
+            _url = ("https://ai-smart-course-student-pro.zhihuishu.com"
+                    "/learnPage/%s/%s/%s?mapUid=1935993298808344576"
+                    % (course.id, _kid, course.class_id))
+            try:
+                await tab.get(_url)
+                await _asyncio.sleep(10)
+            except Exception:
+                try:
+                    await _asyncio.sleep(3)
+                    await tab.get(_url)
+                    await _asyncio.sleep(10)
+                except Exception:
+                    pass
+            try:
+                api.brush_video_knowledge(course.id, course.class_id, _kid)
+            except Exception:
+                pass
+            if (_i + 1) % 10 == 0:
+                try:
+                    log.info(f"   AI智课全链进度: {_i+1}/{len(todo)}")
+                except Exception:
+                    pass
+    finally:
+        try:
+            browser.stop()
+        except Exception:
+            pass
+
+
+def _brush_ai_smart_course(cache: ZhsUserCache, user: User, course: ZhsCourse,
+                           speed: float, log) -> StudyProgress:
+    """AI智课刷课(2026-10-15 终极版)
+
+    完整公式(实测prog 0→100%):
+      访问注册(learnPage,nodriver可选) + 全部视频report序列 + study心跳 + 全资源completed
+    prog = 已完成资源数/总资源数; 多视频需遍历; 超长多视频需多轮重刷.
+    无nodriver时降级为"纯API上报"(已访问过知识点仍生效).
+    """
+    progress = StudyProgress()
+    jar = {}
+    try:
+        for ck in cache.session.cookies:
+            if ck.name and ck.value:
+                jar[ck.name] = ck.value
+    except Exception:
+        pass
+    log.info(f"正在学习课程（AI智课）: {course.name}")
+    try:
+        from logic.zhihuishu.ai_smart_proto import AiSmartAPI
+        api = AiSmartAPI(jar)
+        r = api.list_knowledge_theme(course.id, course.class_id)
+        themes = ((r.get("data") or {}).get("courseThemeList") or [])
+        kids = []
+        for th in themes:
+            for sub in (th.get("subThemeList") or []):
+                for kp in (sub.get("knowledgeList") or []):
+                    kids.append((kp.get("knowledgeId"),
+                                 kp.get("studyProgress") or 0,
+                                 kp.get("knowledgeName", "")))
+        if not kids:
+            log.warning(f"课程【{course.name}】知识点为空(未选课/无权限), 跳过")
+            return progress
+        todo = [(k, p, n) for k, p, n in kids if p < 100]
+        log.info(f"   知识点={len(kids)} | 待刷={len(todo)}")
+        if not todo:
+            log.info(f"课程【{course.name}】AI智课已全部 100%, 无需刷课")
+            return progress
+        # 2026-10-15: 读取智慧树新配置(安全默认)
+        _cc = getattr(user, "courses_custom", None)
+        _visit_sw = int(getattr(_cc, "zhs_ai_smart_visit_sw", 1)
+                        or 0) if _cc else 1
+        _rounds = max(
+            1, int(getattr(_cc, "zhs_ai_smart_rounds", 1) or 1)) if _cc else 1
+        done_mode = ""
+        for _rd in range(1, _rounds + 1):
+            if _visit_sw == 1:
+                try:
+                    _asyncio.run(_ai_smart_visit_and_brush(
+                        jar, course, todo, log))
+                    done_mode = f"完整链(访问注册+序列+completed) x{_rd}"
+                except Exception as e1:
+                    log.warning(f"   全链模式不可用({str(e1)[:70]}), 降级纯API上报")
+                    for kid, _p, _n in todo:
+                        try:
+                            api.brush_video_knowledge(
+                                course.id, course.class_id, kid)
+                        except Exception:
+                            pass
+                    done_mode = f"纯API上报(零访问知识点可能不生效, 建议重刷) x{_rd}"
+            else:
+                # 按配置跳过访问注册(仅API上报)
+                for kid, _p, _n in todo:
+                    try:
+                        api.brush_video_knowledge(
+                            course.id, course.class_id, kid)
+                    except Exception:
+                        pass
+                done_mode = f"纯API上报(已按配置跳过访问注册) x{_rd}"
+            if _rd < _rounds:
+                log.info(f"   AI智课补刀: 第{_rd + 1}/{_rounds}轮重刷中...")
+        log.info(
+            f"课程【{course.name}】AI智课上报完成: {len(todo)}个知识点 | 模式={done_mode}")
+    except Exception as e:
+        log.warning(f"课程【{course.name}】AI智课刷课异常: {str(e)[:120]}")
+    return progress
 
 
 # ============ Polymas AI 课刷课 ============
@@ -541,6 +725,47 @@ def web_course_list(cache: ZhsUserCache, user: User) -> List[dict]:
                 tree, _lib = poly.get_course_structure(c.id, c.class_id)
                 fin, total = _count_zhs_tree(tree)
                 has = total > 0
+            elif c.course_type == CourseType.AI_SMART:
+                # AI智课(2026-10-14): 结构页可达性探测+节数统计(尽力)
+                import httpx as _hx2
+                import urllib3 as _u3b
+                _u3b.disable_warnings()
+                _jar = {}
+                for _ck in cache.session.cookies:
+                    if _ck.name and _ck.value:
+                        _jar[_ck.name] = _ck.value
+                _cli2 = _hx2.Client(cookies=_jar, timeout=15,
+                                    verify=False, follow_redirects=True)
+                _r2 = _cli2.get(
+                    f"https://ai-smart-course-student-pro.zhihuishu.com/singleCourse/"
+                    f"knowledgeStudy/{c.id}/{c.class_id or ''}")
+                has = _r2.status_code == 200
+            elif c.course_type == CourseType.SHARE:
+                # 共享课真实进度(2026-10-14完善): lessons + prelearning逐节比对
+                from logic.zhihuishu.share_proto import (
+                    list_lessons, resolve_rid, _prelearning)
+                _sapi = ShareCourseAPIClient(cache.session)
+                _sapi.ensure_session()
+                _cc = int(str(c.id or "0").strip() or 0)
+                _rs = str(c.recruit_id or "").strip()
+                _rec = int(_rs) if _rs else 0
+                _rid = str(getattr(c, "rid", "") or "").strip() \
+                    or resolve_rid(_sapi, _cc)
+                if _rid and _cc:
+                    _lessons = list_lessons(_sapi, _rid)
+                    total = len([x for x in _lessons if x.get("sec", 0) > 0])
+                    _fin = 0
+                    for _l in _lessons:
+                        if _l.get("sec", 0) <= 0:
+                            continue
+                        try:
+                            _, _learn = _prelearning(_sapi, _cc, _rec, _l)
+                            if _learn >= _l["sec"]:
+                                _fin += 1
+                        except Exception:
+                            pass
+                    fin = _fin
+                    has = total > 0
         except Exception:
             pass
         rate = round(fin / total * 100, 1) if total else 0.0
@@ -552,6 +777,7 @@ def web_course_list(cache: ZhsUserCache, user: User) -> List[dict]:
             "jobCount": total,
             "jobRate": rate,
             "hasProgress": has,
+            "courseType": c.course_type.value,
             "statusText": ("已完成" if (total and fin >= total)
                            else ("进行中" if has else "")),
         })
@@ -725,3 +951,215 @@ def _share_payload(rid: str, vid: str, interval: int, total: int,
         "startWatchTime": watchdog,
         "clientType": "Windows",
     }
+
+# ============ 智慧树作业/考试链 (2026-10-15 骨架版, 开关默认关) ============
+
+
+def _zhs_work_exam_action(cache: ZhsUserCache, user: User, course: ZhsCourse, log):
+    """智慧树作业/考试处理(骨架版)
+
+    消费配置: zhs_work_sw/zhs_exam_sw(默认0关) / zhs_collect_only_sw(只采集)
+             / zhs_submit_rate(正确率提交阈值) / zhs_exam_pace(拟人节奏)
+    链路: exam_proto(look_homework/get_student_homework/do_exam) 拉题
+          -> bridge多源答题 -> (提交做题接口参数定型后启用) -> 缓存
+    注: 提交接口参数白名单未定型(实验性), 当前仅完成"拉题+答题+缓存"就绪;
+        zhs_collect_only_sw=1时仅采集归档不提交。
+    """
+    cc = getattr(user, "courses_custom", None)
+    if cc is None:
+        return
+    _work_on = int(getattr(cc, "zhs_work_sw", 0) or 0) == 1
+    _exam_on = int(getattr(cc, "zhs_exam_sw", 0) or 0) == 1
+    if not (_work_on or _exam_on):
+        return
+    try:
+        from logic.zhihuishu.exam_proto import ZhsExamAPI
+        from logic.core.answer_bridge import bridge_answer_one, bridge_cache_results
+    except Exception:
+        return
+    jar = {}
+    try:
+        for ck in cache.session.cookies:
+            if ck.name and ck.value:
+                jar[ck.name] = ck.value
+    except Exception:
+        pass
+    ex = ZhsExamAPI(jar)
+    recruit_id = str(getattr(course, "recruit_id", "") or course.id)
+    course_id = str(course.id)
+    _pace = int(getattr(cc, "zhs_exam_pace", 1) or 0)
+    _rate = int(getattr(cc, "zhs_submit_rate", 100) or 100)
+    _collect_only = int(getattr(cc, "zhs_collect_only_sw", 0) or 0)
+    log.info(
+        f"课程【{course.name}】作业/考试链(工作业={'开' if _work_on else '关'} 考试={'开' if _exam_on else '关'} 只采集={_collect_only})")
+
+    def _process_homework_list():
+        try:
+            r = ex.get_student_homework(recruit_id, course_id, type=2)
+        except Exception as e:
+            log.warning(f"   作业列表拉取异常: {str(e)[:60]}")
+            return
+        lst = (r.get("rt") or {}).get("list") or (
+            r.get("data") or {}).get("list") or []
+        for hw in (lst if isinstance(lst, list) else []):
+            if not isinstance(hw, dict):
+                continue
+            _st = hw.get("status")
+            if _st in (2, "2"):
+                continue  # 已完成跳过
+            hw_id = hw.get("id") or hw.get("homeworkId")
+            try:
+                hw_id = int(hw_id)
+            except Exception:
+                continue
+            try:
+                detail = ex.look_homework(hw_id)
+            except Exception as e:
+                log.warning(f"   作业[{hw_id}]拉卷异常: {str(e)[:60]}")
+                continue
+            qs = ((detail.get("rt") or {}).get("questionList")
+                  or (detail.get("data") or {}).get("questionList") or [])
+            _results = []
+            _low = 0
+            for q in (qs if isinstance(qs, list) else []):
+                if not isinstance(q, dict):
+                    continue
+                q_text = str(q.get("content", "") or q.get(
+                    "questionContent", "") or "")
+                opts = q.get("optionList") or q.get("options") or []
+                opt_texts = [str((o or {}).get("content", ""))
+                             for o in opts if isinstance(o, dict)]
+                _ans, _src = bridge_answer_one(
+                    q_text, options=opt_texts, q_type="")
+                if _src and ("AI" in str(_src)):
+                    _low += 1
+                _results.append(
+                    {"q_text": q_text, "answer": _ans, "src": _src, "q_type": ""})
+                if _pace >= 1:
+                    time.sleep(uniform(1.0, 2.5))
+            if not _results:
+                continue
+            _n = bridge_cache_results(_results)
+            _low_ratio = int(_low * 100 / max(1, len(_results)))
+            if _collect_only:
+                log.info(f"   作业[{hw_id}] 只采集模式: 已归档{len(_results)}题(不提交)")
+            elif _low_ratio > _rate:
+                log.info(
+                    f"   作业[{hw_id}] 低置信度占比{_low_ratio}%>{_rate}%, 仅保存不提交")
+            else:
+                # 2026-10-15: 启用提交(saveStudentAnswer逐题 + answer/submit交卷)
+                # 选项ID: 从题干qinfo取; 答案文本/字母 -> 选项ID
+                _ok_sub = 0
+                for _r, _q in zip(_results, qs):
+                    try:
+                        _qinfo = _q if isinstance(_q, dict) else {}
+                        _ids = _pick_option_ids(_r.get("answer"), _qinfo)
+                        if _ids:
+                            _resp = ex.save_student_answer_hw(
+                                recruit_id, hw_id, _qinfo.get(
+                                    "questionId") or _qinfo.get("id"),
+                                _ids, course_id)
+                            if _resp.get("status") == 200 or _resp.get("code") in (0, 200):
+                                _ok_sub += 1
+                            elif "参数异常" in str(_resp.get("message", "")):
+                                log.warning(
+                                    f"   作业[{hw_id}]存题字段被拒: {str(_resp)[:100]}")
+                    except Exception as _e:
+                        pass
+                _fin = ex.submit_homework(recruit_id, hw_id, course_id)
+                log.info(
+                    f"   作业[{hw_id}] 答题完成({len(_results)}题, 存{_ok_sub}题, 缓存{_n}条, 交卷响应={str(_fin.get('message') or _fin.get('status'))[:30]})")
+
+    def _pick_option_ids(answer_text, qinfo):
+        """答案文本/字母 -> 选项ID列表(对question_info的optionVos)"""
+        options = qinfo.get("optionVos") or []
+        ids = []
+        _an = str(answer_text or "").strip()
+        if not _an or not options:
+            return ids
+        # (a) 选项内容匹配
+        for o in options:
+            _oc = str(o.get("content", "") or "").strip()
+            if _oc and (_oc == _an or _an in _oc or _oc in _an):
+                ids.append(o.get("id"))
+        if ids:
+            return ids
+        # (b) 字母(A/B-D/ABC) -> 位置映射
+        _letters = {ch for ch in _an.upper().replace("-", "").replace(",", "").replace(" ", "")
+                    if ch.isalpha()}
+        if _letters:
+            for i, o in enumerate(options):
+                if chr(65 + i) in _letters:
+                    ids.append(o.get("id"))
+        return ids
+
+    def _process_exam_list():
+        try:
+            r = ex.get_student_final_exam(recruit_id, course_id)
+        except Exception as e:
+            log.warning(f"   考试列表拉取异常: {str(e)[:60]}")
+            return
+        lst = ((r.get("rt") or {}).get("list") or (r.get("data") or {}).get("list")
+               or (r.get("data") or {}).get("examList") or [])
+        for exam in (lst if isinstance(lst, list) else []):
+            if not isinstance(exam, dict):
+                continue
+            _et = exam.get("examTestId") or exam.get("id")
+            _ep = exam.get("examPaperId") or exam.get(
+                "paperId") or exam.get("id")
+            _kid = exam.get("knowledgeId") or 0
+            if not _et or not _ep:
+                continue
+            try:
+                ex.open_exam_paper(_et, _ep, course_id)
+                sheet = ex.get_exam_sheet(_et, _ep)
+            except Exception as e:
+                log.warning(f"   考试[{_et}]开考异常: {str(e)[:60]}")
+                continue
+            if not sheet:
+                continue
+            _results = []
+            _low = 0
+            for qid, ver in sheet:
+                try:
+                    qinfo = ex.get_exam_question_info(_et, _ep, qid, ver)
+                except Exception:
+                    continue
+                q_text = str(qinfo.get("content", "") or "")
+                options = qinfo.get("optionVos") or []
+                opt_texts = [str(o.get("content", "")) for o in options]
+                _ans, _src = bridge_answer_one(
+                    q_text, options=opt_texts, q_type="")
+                if _src and ("AI" in str(_src)):
+                    _low += 1
+                ids = _pick_option_ids(_ans, qinfo)
+                if ids and not _collect_only:
+                    try:
+                        ex.save_exam_answer(course_id, _et, _ep, qid, ids)
+                    except Exception:
+                        pass
+                _results.append(
+                    {"q_text": q_text, "answer": _ans, "src": _src, "q_type": ""})
+                if _pace >= 1:
+                    time.sleep(uniform(1.5, 3.0))
+            if not _results:
+                continue
+            _low_ratio = int(_low * 100 / max(1, len(_results)))
+            if _collect_only:
+                log.info(f"   考试[{_et}] 只采集模式: 已归档{len(_results)}题(未存卷未交)")
+            elif _low_ratio > _rate:
+                log.info(f"   考试[{_et}] 低置信度{_low_ratio}%>{_rate}%, 仅存答案不交卷")
+            else:
+                try:
+                    ex.submit_exam_paper(_et, course_id, _ep, _kid)
+                    log.info(f"   考试[{_et}] 已交卷({len(_results)}题)")
+                except Exception as e:
+                    log.warning(f"   考试[{_et}]交卷异常: {str(e)[:60]}")
+            _n = bridge_cache_results(_results)
+            if _n:
+                log.info(f"   考试[{_et}] 缓存{_n}条")
+
+    if _work_on:
+        _process_homework_list()
+    if _exam_on:
+        _process_exam_list()

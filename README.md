@@ -4,7 +4,7 @@
 >
 > 独立程序、不依赖浏览器，支持多账号并行、多任务点并发刷课。
 >
-> **当前版本：V2.0.4-beta8**
+> **当前版本：V2.0.5**
 
 ## 📢 作者有话说
 
@@ -323,7 +323,7 @@ OCR 推理会自动选择当前平台可用的最优后端，**无需任何手�
 **随时验证 GPU 是否生效**（源码或 exe 均可）：
 
 ```bash
-yatori-python刷课系统V2.0.4-beta8.exe --gpu-check   # Windows exe
+yatori-python刷课系统V2.0.5.exe --gpu-check   # Windows exe
 python main.py --gpu-check                     # 源码运行
 ```
 
@@ -334,7 +334,7 @@ python main.py --gpu-check                     # 源码运行
 
 ## 🪟 Windows 单文件 exe
 
-打包产物：`yatori-python刷课系统V2.0.4-beta8.exe`（单文件、免安装 Python 环境）。
+打包产物：`yatori-python刷课系统V2.0.5.exe`（单文件、免安装 Python 环境）。
 
 ### 使用方法
 
@@ -371,8 +371,8 @@ python build_protected.py
 
 | 芯片类型 | 下载文件 |
 |----------|----------|
-| Apple Silicon（M1/M2/M3/M4…） | `...-V2.0.4-beta8-macos-arm64.zip` / `.dmg` |
-| Intel（x86_64） | `...-V2.0.4-beta8-macos-x86_64.zip` / `.dmg` |
+| Apple Silicon（M1/M2/M3/M4…） | `...-V2.0.5-macos-arm64.zip` / `.dmg` |
+| Intel（x86_64） | `...-V2.0.5-macos-x86_64.zip` / `.dmg` |
 
 ### 获取 config.yaml（安装前先准备好）
 
@@ -393,8 +393,8 @@ python build_protected.py
 
 1. 浏览器打开 Releases 页面：https://github.com/keaident-su/yatori-python-console/releases
 2. 在最新版本的「Assets」文件列表里，按第 0 步确认的芯片类型下载：
-   - Apple 芯片 → `yatori-python-console-V2.0.4-beta8-macos-arm64.dmg`
-   - Intel 芯片 → `yatori-python-console-V2.0.4-beta8-macos-x86_64.dmg`
+   - Apple 芯片 → `yatori-python-console-V2.0.5-macos-arm64.dmg`
+   - Intel 芯片 → `yatori-python-console-V2.0.5-macos-x86_64.dmg`
 
    （版本号以你看到的最新版为准，认准结尾的 **arm64** / **x86_64** 即可）
 3. 下载完成后，在「访达 → 下载」里能找到这个 `.dmg` 文件
@@ -423,7 +423,7 @@ python build_protected.py
 2. 把下面一整行（含引号）复制粘贴进终端，按回车（此命令只是去掉下载隔离标记，无其他影响）：
 
    ```bash
-   xattr -cr "/Applications/yatori-python-console-V2.0.4-beta8-macos-arm64.app"
+   xattr -cr "/Applications/yatori-python-console-V2.0.5-macos-arm64.app"
    ```
 
    - 版本号以你下载的为准；记不住名字？先把「应用程序」里的程序图标**拖进终端窗口**，路径会自动补全，再在最前面补上 `xattr -cr ` 即可
@@ -433,7 +433,7 @@ python build_protected.py
 #### 第 4 步：把 config.yaml 放进程序内部（只需做一次）
 
 1. 打开「**访达**」→ 左边栏点「**应用程序**」
-2. 找到程序图标（名字如 yatori-python-console-V2.0.4-beta8-macos-arm64），**右键 → 选择「显示包内容」**
+2. 找到程序图标（名字如 yatori-python-console-V2.0.5-macos-arm64），**右键 → 选择「显示包内容」**
 3. 弹出的新窗口里，依次双击进入 **`Contents` → `MacOS`** 文件夹
 4. 把准备好的 `config.yaml` **拖进 MacOS 文件夹**（放进去就行，不用改名）
 5. 完成 ✅ 以后正常使用不再需要重复此步
@@ -449,7 +449,7 @@ python build_protected.py
 > 进阶：也可以直接在「终端」里运行程序体（适合脚本化/服务场景），二进制位于应用包内：
 >
 > ```bash
-> "/Applications/yatori-python-console-V2.0.4-beta8-macos-arm64.app/Contents/MacOS/yatori-python-console-V2.0.4-beta8-macos-arm64-bin"
+> "/Applications/yatori-python-console-V2.0.5-macos-arm64.app/Contents/MacOS/yatori-python-console-V2.0.5-macos-arm64-bin"
 > ```
 
 #### 第 6 步：卸载
@@ -460,7 +460,7 @@ python build_protected.py
 
 #### 第 1 步：解压并放配置
 
-1. 下载自己芯片对应的 `yatori-python-console-V2.0.4-beta8-macos-arm64.zip`（Intel 则为 `-x86_64`），**双击解压**，得到一个无图标后缀的程序文件（如 `yatori-python刷课系统V2.0.4-beta8-macos-arm64`）
+1. 下载自己芯片对应的 `yatori-python-console-V2.0.5-macos-arm64.zip`（Intel 则为 `-x86_64`），**双击解压**，得到一个无图标后缀的程序文件（如 `yatori-python刷课系统V2.0.5-macos-arm64`）
 2. 把准备好的 `config.yaml` **拖到与该文件同一个文件夹**（只要放一起就行）
 3. （可选）建议把程序文件重命名为简单的 `yatori`（右键 → 重新命名），后续命令更好输入
 
@@ -513,7 +513,7 @@ python build_protected.py
 docker pull ghcr.io/keaident-su/yatori-python-console:latest
 
 # 指定版本
-docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.4-beta8
+docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.5
 ```
 
 ### 运行（挂载本地 config.yaml）
@@ -539,7 +539,7 @@ docker logs -f yatori   # 实时查看运行日志
 | 标签         | 说明                       |
 |--------------|----------------------------|
 | latest       | 最新版本（多架构，自动适配处理器） |
-| V2.0.4-beta8       | 版本标签（自动从 logo.txt 解析，多架构） |
+| V2.0.5       | 版本标签（自动从 logo.txt 解析，多架构） |
 
 ## 💻 跨平台支持与部署矩阵
 
@@ -643,6 +643,14 @@ python main.py
 ## 📋 更新与修复记录
 
 最近的版本更新与问题修复摘要（**详细记录见根目录 [CHANGELOG.md](./CHANGELOG.md)**）：
+
+**V2.0.5（2026-10-16）— 正式版：全平台拟人考试 + 通用答题框架 + 学习通直播新版链**
+
+- 【学习通】直播任务点新版接口链破解（进度真实增长）；空任务点（零任务）黄点清零（实测 83 个）
+- 【全平台】考试拟人节奏 6 平台全覆盖：学习通 / 智慧树 / 微伴 / 英华 / 青书 / 重庆，均为 0/1/2 档位可选
+- 【通用】新增多源答题桥接与答题流程框架（`answer_bridge` / `qa_flow`）：各平台作业/考试统一接入多源引擎
+- 【智慧树】AI智课协议客户端固化 + 国安教育 SSO 逆向入档；【重庆】纯 Python SM4 加密；【英华】考试解析移植
+- 【打包】py_mini_racer 随包（易盾 JS / TCaptcha 纯协议能力）
 
 **V2.0.4-beta8（2026-10-13晚）— AI修复 + 拟人化升级 + 协议体系扩展**
 

@@ -2056,6 +2056,37 @@ jupiter_fallback=true 时也补翻页轨迹。再答题，最后完课。
         if not option_list:
             return False
 
+        # ★ 2026-10-15: 优先项目多答题源引擎(本地缓存->题库->AI, 降级回退)
+        try:
+            from logic.core.answer_bridge import bridge_answer_one
+            _opts = [clean_text(o.get("content", "")) for o in option_list]
+            _ans_text, _src = bridge_answer_one(
+                title, options=_opts, q_type="")
+            if _ans_text:
+                _an = clean_text(_ans_text)
+                answer_ids = []
+                # (a) 答案文本直接匹配选项
+                for opt in option_list:
+                    _oc = clean_text(opt["content"])
+                    if _oc and (_oc == _an or _an in _oc or _oc in _an):
+                        answer_ids.append(opt["id"])
+                # (b) 答案是字母(A/B-D/ABC)→ 位置映射
+                if not answer_ids:
+                    _letters = {ch for ch in _an.upper().replace(
+                        "-", "").replace(",", "").replace(" ", "") if ch.isalpha()}
+                    if _letters and len(_letters) <= len(option_list):
+                        _l2o = {chr(65 + i): o for i,
+                                o in enumerate(option_list)}
+                        if _letters <= set(_l2o.keys()):
+                            answer_ids = [_l2o[c]["id"]
+                                          for c in sorted(_letters)]
+                if answer_ids:
+                    save_func(course_id, question["id"],
+                              json.dumps(answer_ids), source)
+                    return True
+        except Exception:
+            pass
+
         # 题库命中，直接提交正确答案
         if title in answers_json:
             answer_ids = [

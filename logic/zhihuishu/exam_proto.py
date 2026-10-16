@@ -124,3 +124,116 @@ class ZhsExamAPI:
     def get_stu_answer_info_new(self, **params: Any) -> Dict[str, Any]:
         """批阅详情/答案回读(参数待样本定型)"""
         return self._post("/answer/getStuAnswerInfoNew", params)
+
+    # ---------- 考试链完整实现(2026-10-15 参数白名单定型, 源码转自 fuckzhs SDK exam_ctx) ----------
+    # 答案格式: "#@#" 连接选项ID; courseType固定8; aiKnlowledgeId为智慧树侧拼写(照抄)
+
+    def _post_exam(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """考试链POST(studentexamtest域优先, 回退studentexam-api)"""
+        for base in ("https://studentexamtest.zhihuishu.com/gateway/t/v1",
+                     "https://studentexam-api.zhihuishu.com/studentExam/gateway/t/v1"):
+            try:
+                r = httpx.post(base + path,
+                               data={"secretStr": self.encrypt_params(payload),
+                                     "date": str(int(time.time() * 1000))},
+                               headers={
+                                   "Content-Type": "application/x-www-form-urlencoded"},
+                               timeout=30, verify=False)
+                j = r.json()
+                if j.get("code") in (0, 200):
+                    return j
+                return j
+            except Exception:
+                continue
+        return {}
+
+    def _get_exam(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """考试链GET(studentexamtest域优先)"""
+        import urllib.parse as _up
+        for base in ("https://studentexamtest.zhihuishu.com/gateway/t/v1",
+                     "https://studentexam-api.zhihuishu.com/studentExam/gateway/t/v1"):
+            try:
+                qs = _up.urlencode({"secretStr": self.encrypt_params(payload),
+                                    "date": str(int(time.time() * 1000))})
+                r = httpx.get(base + path + "?" + qs, timeout=30, verify=False)
+                return r.json()
+            except Exception:
+                continue
+        return {}
+
+    def open_exam_paper(self, exam_test_id, exam_paper_id, course_id) -> Dict[str, Any]:
+        """打开试卷: POST /exam/user/openExam {examTestId,examPaperId,courseId}"""
+        return self._post_exam("/exam/user/openExam", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id,
+            "courseId": course_id})
+
+    def get_exam_sheet(self, exam_test_id, exam_paper_id):
+        """试题列表: GET /exam/user/getExamSheetInfo -> [(questionId, version)]"""
+        j = self._get_exam("/exam/user/getExamSheetInfo", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id})
+        try:
+            vos = (((j.get("data") or {}).get("partSheetVos") or [{}])[0]
+                   .get("questionSheetVos") or [])
+            return [(q.get("questionId"), q.get("version", 1)) for q in vos]
+        except Exception:
+            return []
+
+    def get_exam_question_info(self, exam_test_id, exam_paper_id, qid, version=1) -> Dict[str, Any]:
+        """题目详情: GET /question/getExamQuestionInfo (交卷后含批改isCorrect)"""
+        j = self._get_exam("/question/getExamQuestionInfo", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id,
+            "questionId": qid, "version": version})
+        return j.get("data") or {}
+
+    def save_exam_answer(self, recruit_id, exam_test_id, exam_paper_id, qid,
+                         answer_ids) -> Dict[str, Any]:
+        """存单题答案: POST /answer/saveAnswer {..., answer: "#@#"连接选项ID}"""
+        return self._post_exam("/answer/saveAnswer", {
+            "recruitId": recruit_id, "examTestId": exam_test_id,
+            "examPaperId": exam_paper_id, "questionId": qid,
+            "dataVos": None,
+            "answer": "#@#".join(str(a) for a in (answer_ids or []))})
+
+    def submit_exam_paper(self, exam_test_id, course_id, exam_paper_id,
+                          knowledge_id) -> Dict[str, Any]:
+        """交卷: POST /exam/user/submit {courseType:8, aiKnlowledgeId:...}"""
+        return self._post_exam("/exam/user/submit", {
+            "examTestId": exam_test_id, "courseId": course_id,
+            "courseType": 8, "examPaperId": exam_paper_id,
+            "aiKnlowledgeId": knowledge_id})
+
+    def exam_heartbeat_once(self, exam_test_id, exam_paper_id,
+                            beat: int = 10) -> Dict[str, Any]:
+        """考试心跳: POST /exam/user/updateUserUsedTime"""
+        return self._post_exam("/exam/user/updateUserUsedTime", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id,
+            "heartbeatTime": beat})
+
+    # ---------- 作业提交链(2026-10-15 基于stuExamWeb.js拦截器证据定型) ----------
+    # 证据: /answer/saveStudentAnswer 与 /answer/submit 与 getStudentHomework 同属
+    #      "uuid加密组"(拦截器列表), 即与本模块已验通的加密同系; 答案格式沿用考试链"#@#"选项ID。
+
+    def save_student_answer_hw(self, recruit_id, homework_id, qid,
+                               answer_ids, course_id: str = "") -> Dict[str, Any]:
+        """作业存单题: POST /answer/saveStudentAnswer(同加密组)
+
+        参数按同济结构尽力: {recruitId, homeworkId, questionId, answer:"#@#"连接}
+        (服务端白名单未逐字段实测, 响应含"传入参数异常"时按返回诊断调整)
+        """
+        payload = {
+            "recruitId": recruit_id,
+            "homeworkId": homework_id,
+            "questionId": qid,
+            "answer": "#@#".join(str(a) for a in (answer_ids or [])),
+        }
+        if course_id:
+            payload["courseId"] = course_id
+        return self._post("/answer/saveStudentAnswer", payload)
+
+    def submit_homework(self, recruit_id, homework_id,
+                        course_id: str = "") -> Dict[str, Any]:
+        """作业交卷: POST /answer/submit(同加密组)"""
+        payload = {"recruitId": recruit_id, "homeworkId": homework_id}
+        if course_id:
+            payload["courseId"] = course_id
+        return self._post("/answer/submit", payload)

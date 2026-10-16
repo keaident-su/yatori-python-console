@@ -6,6 +6,8 @@
 import re
 import threading
 import time
+# 2026-10-15: 修复Cython编译 undeclared name not builtin: uniform
+from random import uniform
 from typing import List, Any
 
 from config.config import User, Setting, JSONDataForConfig, cmp_course
@@ -114,7 +116,8 @@ def run_brush_operation(setting: Setting, users: List[User],
         if i >= len(users):
             break
         t = threading.Thread(
-            target=with_log_account(users[i].account, users[i].remark_name)(_user_block),
+            target=with_log_account(
+                users[i].account, users[i].remark_name)(_user_block),
             args=(setting, users[i], cache),
             daemon=True,
         )
@@ -474,13 +477,68 @@ def _work_action(setting: Setting, user: User, cache: YingHuaUserCache,
                     f"【{course.name}】【{node.name}】 ",
                     Yellow, "正在外置题库自动写章节作业...")
 
-    # TODO: 完整的作业答题逻辑需要对接 AI/外置题库
-    # 此处保留框架，具体答题实现参考 Go 源码的 StartWorkAction
+    # 作业答题流程(2026-10-15 移植Go StartWorkAction + 多源答题桥)
+    from logic.yinghua import api as yinghua_api
+    from logic.yinghua.exam_turn import turn_exam_topic, turn_ai_answer
+    from logic.core.answer_bridge import bridge_answer_one, bridge_cache_results
+    from types import SimpleNamespace
+    _YH_QTYPE = {"单选": "single_choice", "多选": "multiple_choice",
+                 "判断": "judge", "填空": "fill", "简答": "short"}
+    # 2026-10-16: 拟人节奏(0关/1标准/2谨慎)
+    _yh_pace = int(getattr(cc, "yh_exam_pace", 1) or 0)
     for work in work_list:
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[", Green, cache.account, Default, "] ",
                   f"【{course.name}】【{node.name}】 ",
-                  Yellow, f"作业 [{work.title}] - 答题功能待完善")
+                  Yellow, f"作业 [{work.title}] 开始答题...")
+        try:
+            # ① 开始作业
+            yinghua_api.start_work_api(
+                cache, work.course_id or course.id, work.node_id, work.work_id)
+            # ② 拿题
+            w_html, _ = yinghua_api.get_work_api(
+                cache, work.node_id, work.work_id)
+            topics = turn_exam_topic(w_html or "")
+            if not topics:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          Yellow, f"作业 [{work.title}] 无题目, 跳过")
+                continue
+            # ③ 逐题: 多源答题 -> 提交
+            _results = []
+            _last = None
+            for tp in topics:
+                _qt = _YH_QTYPE.get(tp.get("type", ""), "")
+                _ans_text, _src = bridge_answer_one(
+                    tp.get("content", ""), options=tp.get("options"), q_type=_qt)
+                _answers = turn_ai_answer(_ans_text, tp)
+                _qobj = SimpleNamespace(answers=_answers)
+                yinghua_api.submit_work_api(
+                    cache, work.work_id, tp.get("answer_id", ""), _qobj, "0")
+                _results.append({"q_text": tp.get("content", ""),
+                                 "answer": _ans_text, "src": _src, "q_type": _qt})
+                _last = (tp, _qobj)
+                if _yh_pace >= 2:
+                    time.sleep(uniform(1.5, 3.0))
+                elif _yh_pace >= 1:
+                    time.sleep(uniform(1.0, 2.0))
+                else:
+                    time.sleep(0.3)
+            # ④ 交卷(用最后一题, 移植Go finish="1")
+            if cc.exam_auto_submit == 1 and _last:
+                yinghua_api.submit_work_api(
+                    cache, work.work_id, _last[0].get("answer_id", ""),
+                    _last[1], "1")
+            # ⑤ 提交成功后写题库缓存
+            _n = bridge_cache_results(_results)
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】",
+                      Green, f"作业 [{work.title}] 答题完毕({len(topics)}题, 缓存{_n}条)")
+        except Exception as e:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      BoldRed, f"作业 [{work.title}] 答题异常: {str(e)[:100]}")
 
         if cc.exam_auto_submit == 1:
             score, err = yinghua.worked_finally_score_action(cache, work)
@@ -543,12 +601,68 @@ def _exam_action(setting: Setting, user: User, cache: YingHuaUserCache,
                     f"【{course.name}】【{node.name}】 ",
                     Yellow, "正在外置题库自动考试...")
 
-    # TODO: 完整的考试答题逻辑需要对接 AI/外置题库
+    # 考试答题流程(2026-10-15 移植Go StartExamAction + 多源答题桥)
+    from logic.yinghua import api as yinghua_api
+    from logic.yinghua.exam_turn import turn_exam_topic, turn_ai_answer
+    from logic.core.answer_bridge import bridge_answer_one, bridge_cache_results
+    from types import SimpleNamespace
+    _YH_QTYPE = {"单选": "single_choice", "多选": "multiple_choice",
+                 "判断": "judge", "填空": "fill", "简答": "short"}
+    # 2026-10-16: 拟人节奏(0关/1标准/2谨慎)
+    _yh_pace = int(getattr(cc, "yh_exam_pace", 1) or 0)
     for exam in exam_list:
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[", Green, cache.account, Default, "] ",
                   f"【{course.name}】【{node.name}】 ",
-                  Yellow, f"考试 [{exam.title}] - 答题功能待完善")
+                  Yellow, f"考试 [{exam.title}] 开始答题...")
+        try:
+            # ① 开始考试
+            s_body, _ = yinghua_api.start_exam_api(
+                cache, exam.course_id or course.id, exam.node_id, exam.exam_id)
+            # ② 拿题
+            t_html, _ = yinghua_api.get_exam_topic_api(
+                cache, exam.node_id, exam.exam_id)
+            topics = turn_exam_topic(t_html or "")
+            if not topics:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          Yellow, f"考试 [{exam.title}] 无题目, 跳过")
+                continue
+            # ③ 逐题: 多源答题 -> 提交
+            _results = []
+            _last = None
+            for tp in topics:
+                _qt = _YH_QTYPE.get(tp.get("type", ""), "")
+                _ans_text, _src = bridge_answer_one(
+                    tp.get("content", ""), options=tp.get("options"), q_type=_qt)
+                _answers = turn_ai_answer(_ans_text, tp)
+                _qobj = SimpleNamespace(answers=_answers)
+                yinghua_api.submit_exam_api(
+                    cache, exam.exam_id, tp.get("answer_id", ""), _qobj, "0")
+                _results.append({"q_text": tp.get("content", ""),
+                                 "answer": _ans_text, "src": _src, "q_type": _qt})
+                _last = (tp, _qobj)
+                if _yh_pace >= 2:
+                    time.sleep(uniform(1.5, 3.0))
+                elif _yh_pace >= 1:
+                    time.sleep(uniform(1.0, 2.0))
+                else:
+                    time.sleep(0.3)
+            # ④ 交卷(用最后一题, 移植Go finish="1")
+            if cc.exam_auto_submit == 1 and _last:
+                yinghua_api.submit_exam_api(
+                    cache, exam.exam_id, _last[0].get("answer_id", ""),
+                    _last[1], "1")
+            # ⑤ 提交成功后写题库缓存
+            _n = bridge_cache_results(_results)
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】",
+                      Green, f"考试 [{exam.title}] 答题完毕({len(topics)}题, 缓存{_n}条)")
+        except Exception as e:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      BoldRed, f"考试 [{exam.title}] 答题异常: {str(e)[:100]}")
 
         if cc.exam_auto_submit == 1:
             score, err = yinghua.exam_finally_score_action(cache, exam)
@@ -562,3 +676,47 @@ def _exam_action(setting: Setting, user: User, cache: YingHuaUserCache,
                           f"【{course.name}】【{node.name}】",
                           Green, f"AI考试完毕,最终分：{score}分",
                           f" 试卷总分：{exam.score:.2f}分")
+
+
+# ============ Web端课程列表(2026-10-15 补, 对齐统一结构) ============
+
+def web_course_list(cache: YingHuaUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度(courseId/courseName/jobCount/jobFinishCount/jobRate)"""
+    try:
+        courses, _ = yinghua.course_list_action(cache)
+    except Exception:
+        return []
+    result = []
+    for course in courses or []:
+        fin = total = 0
+        has = False
+        try:
+            nodes, _ = yinghua.videos_list_action(cache, course)
+            for nd in (nodes or []):
+                total += 1
+                has = True
+                try:
+                    _vd = float(getattr(nd, "viewed_duration", 0) or 0)
+                    _td = float(getattr(nd, "total_duration", 0) or 0)
+                    if _td > 0 and _vd >= _td:
+                        fin += 1
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        if total:
+            rate = round(fin / total * 100, 1)
+        else:
+            rate = round(float(getattr(course, "progress", 0) or 0) * 100, 1)
+        result.append({
+            "courseId": str(course.id),
+            "courseName": course.name,
+            "teacher": "",
+            "jobFinishCount": fin,
+            "jobCount": total,
+            "jobRate": rate,
+            "hasProgress": has or rate > 0,
+            "statusText": ("已完成" if rate >= 100
+                           else ("进行中" if rate > 0 else "")),
+        })
+    return result

@@ -194,6 +194,8 @@ class CoursesCustom:
     # 【安全微伴】视频速度档位(对齐MOGO): 1.0(常规) / 8 / 30 / ≥120(秒刷近似; 0=不等时长直接完课)
     # 【暴力模式】各平台暴刷倍速(对齐MOGO秒刷理念): 常规2.4 / 极速8 / 秒刷≥30
     wb_exam_question_time: int = 3          # 【安全微伴】每道考试题答题等待时长(秒, 随机追加0~3秒)
+    # 【安全微伴】考试拟人节奏档位(2026-10-16): 0=固定0.5s / 1=标准(3+随机3s) / 2=谨慎(5+随机5s)
+    wb_exam_pace: Optional[int] = 1
     wb_exam_submit_match_rate: int = 90     # 【安全微伴】允许交卷的最低题库匹配率(%)
     # 【安全微伴】未加载apicenext.js的课程是否补发翻页轨迹: 0=否 1=是(个别学校需要)
     wb_jupiter_fallback: int = 0
@@ -525,6 +527,8 @@ def _default_value(config: JSONDataForConfig):
             cc.wb_video_speed = 60.0
         cc.wb_exam_question_time = max(
             0, _safe_int(cc.wb_exam_question_time, 3))
+        # 【安全微伴】拟人节奏档位归一化(0/1/2)
+        cc.wb_exam_pace = max(0, min(2, _safe_int(cc.wb_exam_pace, 1)))
         cc.wb_exam_submit_match_rate = max(
             0, min(100, _safe_int(cc.wb_exam_submit_match_rate, 90)))
         cc.wb_jupiter_fallback = 1 if _safe_int(

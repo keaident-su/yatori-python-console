@@ -60,6 +60,7 @@ hiddenimports = [
     'Crypto.Util.Padding',
     'bs4',
     'jmespath',
+    'pyaes', 'nodriver',
     'tls_client',
     'nodriver',
     'websockets',

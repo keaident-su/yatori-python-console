@@ -11,6 +11,13 @@ class CqieUserCache(UserCacheBase):
     pre_url: str = "https://jxjy.cqie.edu.cn"
     session_id: str = ""
     study_id: str = ""
+    # ---- 2026-10-15 App链(study.cqie.edu.cn) ----
+    access_token: str = ""
+    student_id: str = ""
+    dept_id: str = ""
+    major_id: str = ""
+    org_id: str = ""
+    version: str = ""
 
 
 @dataclass

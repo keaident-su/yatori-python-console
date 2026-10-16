@@ -8,11 +8,18 @@ from logic.core.models import UserCacheBase, CourseBase
 class QsxtUserCache(UserCacheBase):
     pre_url: str = "https://degree.qingshuxuetang.com"
     session_str: str = ""
+    token: str = ""            # App端Authorization-QS令牌(2026-10-15)
+    school_id: str = ""
+    class_id: str = ""
+    user_id: str = ""
 
 
 @dataclass
 class QsxtCourse(CourseBase):
     course_name: str = ""
+    school_id: str = ""     # 2026-10-15 作业链App参数
+    class_id: str = ""
+    period_id: str = ""
 
 
 @dataclass

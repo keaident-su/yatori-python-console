@@ -20,6 +20,17 @@ import threading
 
 _JS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                         "yidun_ms.js")
+# 2026-10-15: 打包/编译环境下 __file__ 可能是 .pyd 的临时目录; 加 exe 旁 fallback
+if not os.path.isfile(_JS_PATH):
+    import sys as _sys
+    if getattr(_sys, "frozen", False):
+        for _alt in (
+                os.path.join(os.path.dirname(
+                    os.path.abspath(_sys.executable)), "yidun_ms.js"),
+                os.path.join(os.path.dirname(os.path.abspath(_sys.executable)), "logic", "zhihuishu", "yidun", "yidun_ms.js")):
+            if os.path.isfile(_alt):
+                _JS_PATH = _alt
+                break
 
 _ctx = None
 _ctx_lock = threading.Lock()

@@ -307,12 +307,20 @@ _weban_answer = os.path.join("logic", "weban", "answer", "answer.json")
 if os.path.isfile(_weban_answer):
     datas.append((_weban_answer, "answer"))
 
-# 2026-10-16: py_mini_racer V8 引擎原生文件(mini_racer.dll + icudtl.dat 必须随包,
-# 否则易盾JS/TCaptcha 报 ModuleNotFoundError 或运行时报 dll 缺失)
+# 2026-10-16: mini-racer(PyPI正式包名; 旧名 py-mini-racer 仅到0.6.0无arm64轮子)
+# V8 引擎原生库必须随包, 且必须按平台过滤(同 tls_client 教训:
+# macOS 上 PyInstaller 会把 Linux 的 ELF .so 当 Mach-O 解析而报错):
+#   Windows=mini_racer.dll / macOS=libmini_racer.dylib / Linux=libmini_racer.so + icudtl.dat
 try:
     import py_mini_racer as _pmr  # noqa
     _pmr_dir = os.path.dirname(os.path.abspath(_pmr.__file__))
-    for _pf in ("mini_racer.dll", "icudtl.dat"):
+    if sys.platform == "win32":
+        _pmr_libs = ("mini_racer.dll",)
+    elif sys.platform == "darwin":
+        _pmr_libs = ("libmini_racer.dylib",)
+    else:
+        _pmr_libs = ("libmini_racer.so",)
+    for _pf in _pmr_libs + ("icudtl.dat",):
         _pfp = os.path.join(_pmr_dir, _pf)
         if os.path.isfile(_pfp):
             datas.append((_pfp, "py_mini_racer"))

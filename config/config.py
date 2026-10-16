@@ -236,6 +236,8 @@ class CoursesCustom:
     yh_exam_pace: Optional[int] = 1
     # 【青书】考试/作业拟人节奏(默认1; uniform随机思考时间)
     qs_exam_pace: Optional[int] = 1
+    # 【重庆】作业拟人节奏(默认1; 整卷提交前随机停顿, 按题数×档位)
+    cq_exam_pace: Optional[int] = 1
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)
@@ -542,6 +544,7 @@ def _default_value(config: JSONDataForConfig):
         # 【英华/青书】拟人节奏归一化(0/1/2)
         cc.yh_exam_pace = max(0, min(2, _safe_int(cc.yh_exam_pace, 1)))
         cc.qs_exam_pace = max(0, min(2, _safe_int(cc.qs_exam_pace, 1)))
+        cc.cq_exam_pace = max(0, min(2, _safe_int(cc.cq_exam_pace, 1)))
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)

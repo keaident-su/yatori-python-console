@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent
 # 构建临时目录(可迁移): 目标盘空间不足时用环境变量 YATORI_BUILD_STAGE
 # 指向其他盘, 如 $env:YATORI_BUILD_STAGE="C:\yatori_build_stage" (输出仍回 ROOT/dist)
 STAGE = Path(os.environ.get("YATORI_BUILD_STAGE", str(ROOT / "build_stage")))
-APP_NAME = "yatori-python刷课系统V2.0.4-beta8"
+APP_NAME = "yatori-python刷课系统V2.0.4-beta9"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 
@@ -76,8 +76,9 @@ def copy_sources() -> list:
                 dst = STAGE / rel
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 # 只复制 .py 与必要数据文件(如 config/logo.txt), 跳过编译产物
+                # 2026-10-15: 加 .onnx(安全微伴登录验证码模型 captcha_model.onnx 必须随包)
                 if fn.endswith((".py", ".txt", ".yaml", ".yml", ".json",
-                                ".html", ".css", ".js")):
+                                ".html", ".css", ".js", ".onnx")):
                     shutil.copy2(src, dst)
                 if fn.endswith(".py"):
                     if KEEP_INIT_SOURCE and fn == "__init__.py":
@@ -298,6 +299,26 @@ _weban_captcha = os.path.join("logic", "weban", "captcha_model.onnx")
 if os.path.isfile(_weban_captcha):
     datas.append((_weban_captcha, "."))
 
+# 2026-10-15: 易盾 JS 引擎(智慧树登录滑块) + 安全微伴内置答案库 必须随包
+_yidun_ms = os.path.join("logic", "zhihuishu", "yidun", "yidun_ms.js")
+if os.path.isfile(_yidun_ms):
+    datas.append((_yidun_ms, "logic/zhihuishu/yidun"))
+_weban_answer = os.path.join("logic", "weban", "answer", "answer.json")
+if os.path.isfile(_weban_answer):
+    datas.append((_weban_answer, "answer"))
+
+# 2026-10-16: py_mini_racer V8 引擎原生文件(mini_racer.dll + icudtl.dat 必须随包,
+# 否则易盾JS/TCaptcha 报 ModuleNotFoundError 或运行时报 dll 缺失)
+try:
+    import py_mini_racer as _pmr  # noqa
+    _pmr_dir = os.path.dirname(os.path.abspath(_pmr.__file__))
+    for _pf in ("mini_racer.dll", "icudtl.dat"):
+        _pfp = os.path.join(_pmr_dir, _pf)
+        if os.path.isfile(_pfp):
+            datas.append((_pfp, "py_mini_racer"))
+except Exception:
+    pass
+
 # tls_client 原生库(运行时按 dirname(__file__)/dependencies 加载)
 # 必须按平台过滤: Win=.dll / Linux=.so / macOS=.dylib
 # (不能全收: macOS 上 PyInstaller 会把 Linux 的 ELF .so 当 Mach-O 解析而报错)
@@ -336,6 +357,8 @@ THIRD_PARTY = [
     "tls_client", "cffi",
     "rapidocr_onnxruntime", "onnxruntime", "numpy", "cv2",
     "shapely", "pyclipper", "six",
+    "pyaes", "nodriver", "websockets",
+    "py_mini_racer",  # 2026-10-16: 易盾JS(yidun_js)/TCaptcha(tcaptcha_solver) V8引擎
     "jmespath", "multipart",
 ]
 hiddenimports = []

@@ -191,14 +191,51 @@ class CoursesCustom:
     wb_study_time: int = 20                 # 【安全微伴】每门课学习时长(秒, 随机追加0~10秒)
     # 【安全微伴】视频课程倍速: 0=不按时长等待 1=原速等待 2=半速等待(视频时长/倍速)
     wb_video_speed: float = 1.0
+    # 【安全微伴】视频速度档位(对齐MOGO): 1.0(常规) / 8 / 30 / ≥120(秒刷近似; 0=不等时长直接完课)
+    # 【暴力模式】各平台暴刷倍速(对齐MOGO秒刷理念): 常规2.4 / 极速8 / 秒刷≥30
     wb_exam_question_time: int = 3          # 【安全微伴】每道考试题答题等待时长(秒, 随机追加0~3秒)
     wb_exam_submit_match_rate: int = 90     # 【安全微伴】允许交卷的最低题库匹配率(%)
     # 【安全微伴】未加载apicenext.js的课程是否补发翻页轨迹: 0=否 1=是(个别学校需要)
     wb_jupiter_fallback: int = 0
     wb_debug: int = 0                       # 【安全微伴】调试日志开关: 0关 1开
     # ===== 智慧树(ZHIHUISHU) =====
-    # 【智慧树】刷课速度倍率(默认1.5, 越大越快; 范围0.3~20)
+    # 【智慧树】刷课速度倍率(默认1.5; 范围0.3~120)
+    # 常用档位(对齐MOGO): 1.5(常规) / 8(快刷) / 30(极速) / ≥120(秒刷——服务端仍有限流)
     zhs_speed: float = 1.5
+    # ---- 课程类型专属开关(自动识别课程类型, 开启后对相应类型课程生效; 0关1开) ----
+    # 【智慧树】共享课(shareCourse)协议秒刷开关(默认1)
+    zhs_share_sw: Optional[int] = 1
+    # 【智慧树】AI课(Polymas hikeAiCourse)刷课开关(默认1)
+    zhs_ai_course_sw: Optional[int] = 1
+    # 【智慧树】Hike共享课(spocCourse)刷课开关(默认1)
+    zhs_hike_sw: Optional[int] = 1
+    # 【智慧树】AI智课(mapCourse, ai-smart-course平台)刷课开关(默认0; 纯协议收口后开启)
+    zhs_ai_smart_sw: Optional[int] = 0
+    # ---- 作业/考试开关(参照学习通体系) ----
+    # 【智慧树】作业开关(0关1开, 默认0; 协议链已验证getStudentHomework/lookHomework)
+    zhs_work_sw: Optional[int] = 0
+    # 【智慧树】考试开关(0关1开, 默认0; 协议链exam_proto已验证列表接口)
+    zhs_exam_sw: Optional[int] = 0
+    # 【智慧树】考试采集开关(0关1开, 默认0; 采集考试题目归档到独立采集库)
+    zhs_exam_collect_sw: Optional[int] = 0
+    # 【智慧树】考试拟人节奏(0=旧行为 1=标准防“答题节奏规律”风控)
+    zhs_exam_pace: Optional[int] = 1
+    # 【智慧树】刷课后回读平台核对答案(0关1开, 默认1; 与本地缓存不一致时以平台为准)
+    zhs_verify_answer: Optional[int] = 1
+    # ---- 2026-10-15 新增(对齐MOGO, 安全默认) ----
+    # 【智慧树】AI智课访问注册(learnPage浏览器访问; 维持现有行为=1; 0=跳过访问仅API上报)
+    zhs_ai_smart_visit_sw: Optional[int] = 1
+    # 【智慧树】AI智课补刀轮数(1=单轮; 超长多视频知识点建议2-3轮多轮重刷堆进度)
+    zhs_ai_smart_rounds: Optional[int] = 1
+    # 【智慧树】作业/考试正确率提交阈值(%): 低置信度答案占比过高时放弃提交(100=不限制)
+    zhs_submit_rate: Optional[int] = 100
+    # 【智慧树】只采集模式(0正常; 1=只采集考试题目归档不提交, 对齐MOGO“只采集考试”)
+    zhs_collect_only_sw: Optional[int] = 0
+    # ---- 2026-10-16 新增: 其他平台拟人考试节奏(0=关闭固定节奏/1=标准拟人/2=谨慎) ----
+    # 【英华】考试/作业拟人节奏(默认1; uniform随机思考时间)
+    yh_exam_pace: Optional[int] = 1
+    # 【青书】考试/作业拟人节奏(默认1; uniform随机思考时间)
+    qs_exam_pace: Optional[int] = 1
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)
@@ -502,6 +539,9 @@ def _default_value(config: JSONDataForConfig):
             cc.zhs_speed = 0.3
         elif cc.zhs_speed > 20:
             cc.zhs_speed = 20.0
+        # 【英华/青书】拟人节奏归一化(0/1/2)
+        cc.yh_exam_pace = max(0, min(2, _safe_int(cc.yh_exam_pace, 1)))
+        cc.qs_exam_pace = max(0, min(2, _safe_int(cc.qs_exam_pace, 1)))
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)

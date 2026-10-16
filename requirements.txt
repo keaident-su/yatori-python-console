@@ -32,3 +32,7 @@ onnxruntime; sys_platform != "darwin" or platform_machine != "x86_64"
 # 验证码图像处理复用上方 rapidocr-onnxruntime 带入的 opencv-python(cv2)
 nodriver>=0.50.3
 pyaes>=1.6.1
+
+# 2026-10-16: V8引擎——易盾JS(智慧树登录滑块)/腾讯TCaptcha(微伴)纯协议求解
+# 缺此依赖时将降级到浏览器方案(慢且依赖Chrome)
+py_mini_racer>=0.12.4

@@ -8,6 +8,7 @@ from config.config import User, Setting, JSONDataForConfig
 from typing import List, Any
 import threading
 import time
+from random import uniform  # 2026-10-16: 拟人节奏
 from datetime import datetime
 from typing import List, Any, Optional
 
@@ -67,7 +68,8 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
         if i >= len(users):
             break
         t = threading.Thread(
-            target=with_log_account(users[i].account, users[i].remark_name)(_user_block),
+            target=with_log_account(
+                users[i].account, users[i].remark_name)(_user_block),
             args=(setting, users[i], cache), daemon=True)
         threads.append(t)
         t.start()
@@ -76,6 +78,7 @@ def run_brush_operation(setting: Setting, users: List[User], user_caches: List[A
 
 
 def _user_block(setting: Setting, user: User, cache: CqieUserCache):
+    _app_login_try(cache)  # 2026-10-15: 尝试App登录备作业链token
     course_body, _ = cqie_api.course_list_api(cache, retry=8)
     # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
     try:
@@ -190,6 +193,11 @@ def _video_action(setting: Setting, user: User, cache: CqieUserCache, node: Cqie
             new_study = json_get(sub_data, "data", "studyTime", default=None)
             if new_study is not None:
                 node.study_time = int(new_study)
+            # 2026-10-15: 作业处理(视频学习后, referenceAnswer平台直给)
+            try:
+                _work_paper_action(user, cache, node)
+            except Exception:
+                pass
 
         progress = (node.study_time / node.time_length *
                     100) if node.time_length > 0 else 0
@@ -338,3 +346,73 @@ def web_course_list(cache: CqieUserCache, user: User) -> List[dict]:
                            else ("进行中" if has else "")),
         })
     return result
+
+# ============ 视频作业处理 (2026-10-15, 移植Go: referenceAnswer直用) ============
+
+
+def _work_paper_action(user, cache: CqieUserCache, node):
+    """视频作业: 拉卷->referenceAnswer逐题组装->提交(需App access_token)"""
+    cc = user.courses_custom
+    if getattr(cc, "auto_exam", 0) == 0:
+        return
+    if not cache.access_token:
+        return  # 未接入App链(需App登录token), 跳过
+    import json as _json
+    from logic.core.answer_bridge import bridge_cache_results
+    _kn = str(getattr(node, "knowledge_node_id", "")
+              or getattr(node, "id", ""))
+    _sc = str(getattr(node, "student_course_id", "") or "")
+    _ui = str(getattr(node, "unit_id", "") or "")
+    if not (_kn and _sc and _ui):
+        return
+    body, _ = cqie_api.pull_video_work_paper_api(cache, _kn, _sc, _ui)
+    data = safe_json_parse(body)
+    if not data:
+        return
+    qs = data.get("data") or []
+    if not isinstance(qs, list):
+        return
+    po_list = []
+    results = []
+    for q in qs:
+        if not isinstance(q, dict):
+            continue
+        qid = str(q.get("id", ""))
+        ref = str(q.get("referenceAnswer", "") or "")
+        if not qid or not ref:
+            continue
+        po_list.append({"submitAnswer": ref, "exercisesId": qid,
+                        "questionType": int(q.get("questionType", 0) or 0),
+                        "referenceAnswer": ref, "recordId": "",
+                        "segmentKnowledgeId": _kn, "updateCount": 0})
+        results.append({"q_text": str(q.get("content", ""))[:50],
+                        "answer": ref, "src": "平台referenceAnswer",
+                        "q_type": str(q.get("questionType", ""))})
+    if not po_list:
+        return
+    payload = {
+        "poList": po_list, "studentCourseId": _sc, "unitId": _ui,
+        "courseId": str(getattr(node, "course_id", "") or ""),
+        "segmentKnowledgeId": _kn, "studentId": cache.student_id or "",
+        "videoId": str(getattr(node, "video_id", "") or getattr(node, "id", "")),
+        "deptId": cache.dept_id or "", "majorId": cache.major_id or "",
+        "version": cache.version or "", "orgId": cache.org_id or "",
+    }
+    # 2026-10-16: 拟人节奏(整卷提交前随机停顿, 按题数×档位)
+    _cq_pace = int(getattr(cc, "cq_exam_pace", 1) or 0)
+    if _cq_pace >= 1 and po_list:
+        _avg = uniform(1.5, 2.5) if _cq_pace >= 2 else uniform(1.0, 2.0)
+        _wait = min(300.0, len(po_list) * _avg * 0.3)
+        time.sleep(_wait)
+    cqie_api.submit_work_answer_api(
+        cache, _json.dumps(payload, ensure_ascii=False))
+    bridge_cache_results(results)
+
+
+def _app_login_try(cache: CqieUserCache):
+    """尝试重庆App登录(为作业链备access_token; 失败静默)"""
+    try:
+        cqie_api.app_login_api(cache, retry=2)
+        return bool(cache.access_token)
+    except Exception:
+        return False

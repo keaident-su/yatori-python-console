@@ -618,6 +618,16 @@ class LoginCaptchaSolver:
                             # type: ignore[attr-defined]
                             model_path = Path(sys._MEIPASS) / \
                                 "captcha_model.onnx"
+                            # 2026-10-15: 应急 fallback — exe 同目录/同目录下 logic/weban
+                            # (打包遗漏时可手动将 captcha_model.onnx 放到 exe 旁, 无需重新打包)
+                            if not model_path.exists():
+                                for _alt in (
+                                        Path(sys.executable).parent /
+                                    "captcha_model.onnx",
+                                        Path(sys.executable).parent / "logic" / "weban" / "captcha_model.onnx"):
+                                    if _alt.exists():
+                                        model_path = _alt
+                                        break
                         else:
                             model_path = Path(__file__).parent / \
                                 "captcha_model.onnx"

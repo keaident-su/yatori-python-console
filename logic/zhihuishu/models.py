@@ -49,12 +49,14 @@ class CourseType(Enum):
     POLYMAS_AI = "polymas_ai"   # 新版 Polymas AI 课
     SHARE = "share"             # 新版共享课(shareCourse, studyvideoh5 网页播放页;
     # 协议接口不适用, 待实现浏览器刷课)
+    # AI智课(mapCourse, ai-smart-course-student-pro平台, 2026-10-14)
+    AI_SMART = "ai_smart"
 
     @classmethod
     def from_str(cls, s: str) -> "CourseType":
         """解析字符串为课程类型"""
         mapping = {"hike": cls.HIKE, "polymas_ai": cls.POLYMAS_AI,
-                   "share": cls.SHARE}
+                   "share": cls.SHARE, "ai_smart": cls.AI_SMART}
         if s not in mapping:
             raise ValueError(f"Unknown course type: {s!r}")
         return mapping[s]

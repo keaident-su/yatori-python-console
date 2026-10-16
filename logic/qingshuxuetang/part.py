@@ -335,6 +335,8 @@ def _work_action(setting: Setting, user: User, cache: QsxtUserCache, course: Qsx
     from logic.core.answer_bridge import bridge_answer_one, bridge_cache_results
     _QT = {"1": "single_choice", "2": "multiple_choice", "3": "judge",
            "4": "fill", "5": "short"}
+    # 2026-10-16: 拟人节奏(0关/1标准/2谨慎)
+    _qs_pace = int(getattr(cc, "qs_exam_pace", 1) or 0)
     try:
         list_body, _ = qsxt_api.pull_work_list_app_api(
             cache, course.period_id, course.class_id, course.school_id, course.id)
@@ -395,8 +397,13 @@ def _work_action(setting: Setting, user: User, cache: QsxtUserCache, course: Qsx
                                          "timeSpend": 0})
                     _results.append({"q_text": q_text, "answer": sol,
                                      "src": _src, "q_type": _QT.get(q_type, "")})
-                    # 2026-10-16: 拟人答题节奏(随机思考时间, 防固定节奏风控)
-                    time.sleep(uniform(0.8, 2.5))
+                    # 2026-10-16: 拟人答题节奏(0关/1标准/2谨慎)
+                    if _qs_pace >= 2:
+                        time.sleep(uniform(1.2, 3.5))
+                    elif _qs_pace >= 1:
+                        time.sleep(uniform(0.8, 2.5))
+                    else:
+                        time.sleep(0.6)
                 # 整卷提交(action=1)
                 if _answers_arr:
                     _payload = _json.dumps({

@@ -34,5 +34,7 @@ nodriver>=0.50.3
 pyaes>=1.6.1
 
 # 2026-10-16: V8引擎——易盾JS(智慧树登录滑块)/腾讯TCaptcha(微伴)纯协议求解
+# 注意: PyPI 正式包名为 mini-racer(新版, 全平台wheel含arm64);
+#       旧名 py-mini-racer 仅停到 0.6.0 且无 arm64 轮子(勿改用旧名)
 # 缺此依赖时将降级到浏览器方案(慢且依赖Chrome)
-py_mini_racer>=0.12.4
+mini-racer>=0.12.4

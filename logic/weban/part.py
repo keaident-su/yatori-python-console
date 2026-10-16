@@ -235,13 +235,21 @@ def _user_block(setting: Setting, cache: WebanUserCache):
         log.info("考试需要浏览器无感验证码, 降级模式下已自动跳过考试环节")
         exam_mode = "false"
     client.exam_mode = exam_mode
+    # 2026-10-16: 考试拟人节奏档位(0=固定0.5s/1=标准(3+随机3s)/2=谨慎(5+随机5s))
+    _wb_pace = int(getattr(cc, "wb_exam_pace", 1) or 0)
+    if _wb_pace >= 2:
+        _wb_qt = "5,5"
+    elif _wb_pace >= 1:
+        _wb_qt = f"{max(0, int(cc.wb_exam_question_time))},3"
+    else:
+        _wb_qt = "0.5,0"
     try:
         client.run_project_cycle(
             study_time=f"{max(0, int(cc.wb_study_time))},10",
             study_mode=study_mode,
             exam_mode=exam_mode,
             random_answer=bool(cc.wb_random_answer) or _is_non_interactive(),
-            exam_question_time=f"{max(0, int(cc.wb_exam_question_time))},3",
+            exam_question_time=_wb_qt,
             exam_submit_match_rate=int(cc.wb_exam_submit_match_rate),
         )
     except PermissionError as e:

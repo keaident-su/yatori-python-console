@@ -3582,6 +3582,20 @@ def _levenshtein(a: str, b: str) -> int:
     return prev[lb]
 
 
+def _clean_opt_text(opt: str) -> str:
+    """2026-10-17: 选项文本深度清洗(去A.前缀/分值括号/HTML实体/首尾空白)
+    修复背景: 选项含\"A.\"前缀或\"(1.0分)\"或&nbsp;时, 相似度匹配错位导致提交错误字母"""
+    t = str(opt or "")
+    # HTML实体
+    t = t.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    t = re.sub(r"&[a-zA-Z]+;", "", t)
+    # 去除开头选项字母前缀: "A." / "A、" / "A " / "A"
+    t = re.sub(r"^\s*[A-Ha-h]\s*[.．、:：]\s*", "", t)
+    # 去除分值/括号干扰: "(1.0分)" "（1分）"
+    t = re.sub(r"[（(]\s*\d+(?:\.\d+)?\s*分\s*[)）]", "", t)
+    return t.strip()
+
+
 def _similarity(a: str, b: str) -> float:
     """相似度 0.0~1.0 - 对齐Go qutils.Similarity"""
     max_len = max(len(a), len(b))
@@ -3611,18 +3625,46 @@ def _similarity_array_select(target: str, options: List[str]) -> List[str]:
     for part in parts:
         best_score = -1.0
         best_idx = 0
+        contain_cands = []
         for i, opt in enumerate(options):
             score = _similarity(part, opt)
             # 也尝试部分匹配: AI可能只返回选项的一部分
             if score < 0.5 and len(part) > 2:
                 # 检查是否包含关系（作为候选）
                 if part in opt or opt in part:
-                    score = max(score, 0.6)
+                    contain_cands.append(i)
             if score > best_score:
                 best_score = score
                 best_idx = i
+        # 2026-10-17: 包含兜底0.6仅在唯一候选中生效(原多候选同分取第一个→错配)
+        if best_score < 0.5 and contain_cands:
+            if len(contain_cands) == 1:
+                best_idx = contain_cands[0]
+            else:
+                # 多候选择最长公共匹配(选项文本最接近答案)
+                best_idx = max(contain_cands,
+                               key=lambda i2: len(options[i2] or ""))
         letter = chr(65 + best_idx)
         letters_map[letter] = True
+
+    # 2026-10-17: 多选答案连写拆分(如"以工人阶级为基础以马克思列宁主义武装自己")
+    # 策略: 贪心按选项前缀切分, 命中>=2段才采用(修复连写答案只提交1个字母的错答)
+    if len(parts) == 1:
+        _rem = (target or "").strip()
+        _cuts = []
+        for _ in range(len(options)):
+            _hit = None
+            for _i3, _opt3 in enumerate(options):
+                _o3 = (_opt3 or "").strip()
+                if _o3 and _rem.startswith(_o3):
+                    _hit = (_i3, _o3)
+                    break
+            if not _hit:
+                break
+            _cuts.append(chr(65 + _hit[0]))
+            _rem = _rem[len(_hit[1]):].strip()
+        if len(_cuts) >= 2 and not _rem:
+            return sorted(set(_cuts))
 
     # 2026-09-30 修复: 题库/答题源常用"空格"分隔多答案
     # (如"规模大 来源广 年龄跨度大" 应为3个选项, 旧逻辑整句只匹配出1个 → 答案残缺)
@@ -3763,13 +3805,7 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
 
         # 提取选项纯文本(去掉 "A." 前缀) - 对齐Go TurnStandardQuestion
         raw_options = q.get("options", [])
-        opt_texts_for_ai = []
-        for opt in raw_options:
-            dot_idx = opt.find(".")
-            if dot_idx >= 0:
-                opt_texts_for_ai.append(opt[dot_idx+1:].strip())
-            else:
-                opt_texts_for_ai.append(opt)
+        opt_texts_for_ai = [_clean_opt_text(opt) for opt in raw_options]
 
         if cc.auto_exam in (1, 2):
             # 多答题源顺序调用: 本地题库缓存 -> 各题库/AI源按顺序回退
@@ -3930,13 +3966,7 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             # Go的ch.Answers中每个元素都是完整的，不在SimilarityArraySelect内部做分割
             options = q.get("options", [])
             if options:
-                opt_texts = []
-                for opt in options:
-                    dot_idx = opt.find(".")
-                    if dot_idx >= 0:
-                        opt_texts.append(opt[dot_idx+1:].strip())
-                    else:
-                        opt_texts.append(opt)
+                opt_texts = [_clean_opt_text(opt) for opt in options]
                 # 单选题: 整个answer作为一个整体匹配，返回单个字母
                 best_score = -1.0
                 best_idx = 0
@@ -3957,13 +3987,7 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             # 多选题: 可以按逗号分割，每个部分分别匹配
             options = q.get("options", [])
             if options:
-                opt_texts = []
-                for opt in options:
-                    dot_idx = opt.find(".")
-                    if dot_idx >= 0:
-                        opt_texts.append(opt[dot_idx+1:].strip())
-                    else:
-                        opt_texts.append(opt)
+                opt_texts = [_clean_opt_text(opt) for opt in options]
                 result_letters = _similarity_array_select(answer, opt_texts)
                 submit_data[f"answer{q_id}"] = "".join(result_letters)
             else:
@@ -6563,7 +6587,8 @@ def _exam_gate_load():
         return
     _EXAM_GATE_LOADED = True
     try:
-        import json as _json, os as _os
+        import json as _json
+        import os as _os
         p = _exam_gate_store_path()
         if _os.path.isfile(p):
             with open(p, "r", encoding="utf-8") as f:
@@ -6582,7 +6607,8 @@ def _exam_gate_load():
 
 def _exam_gate_save():
     try:
-        import json as _json, os as _os
+        import json as _json
+        import os as _os
         p = _exam_gate_store_path()
         _os.makedirs(_os.path.dirname(p) or ".", exist_ok=True)
         tmp = p + ".tmp"

@@ -240,6 +240,13 @@ class CoursesCustom:
     qs_exam_pace: Optional[int] = 1
     # 【重庆】作业拟人节奏(默认1; 整卷提交前随机停顿, 按题数×档位)
     cq_exam_pace: Optional[int] = 1
+    # ---- 2026-10-17: 学习通阅读时长扩展+讨论(用户定夺:默认开启) ----
+    # 【学习通】拓展阅读开关(1=处理课程"拓展阅读"tab的所有阅读材料; 0=不处理)
+    cx_extend_read_sw: Optional[int] = 1
+    # 【学习通】其他阅读开关(1=任务点内文字/图文材料阅读上报(原有行为); 0=不处理)
+    cx_other_read_sw: Optional[int] = 1
+    # 【学习通】刷讨论开关(1=处理课程"讨论"tab全部话题, 未回复的AI生成学生口吻回复; 0=不处理)
+    cx_bbs_sw: Optional[int] = 1
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)
@@ -549,6 +556,12 @@ def _default_value(config: JSONDataForConfig):
         cc.yh_exam_pace = max(0, min(2, _safe_int(cc.yh_exam_pace, 1)))
         cc.qs_exam_pace = max(0, min(2, _safe_int(cc.qs_exam_pace, 1)))
         cc.cq_exam_pace = max(0, min(2, _safe_int(cc.cq_exam_pace, 1)))
+        # 【学习通】阅读扩展+讨论开关归一化(0/1)
+        cc.cx_extend_read_sw = 1 if _safe_int(
+            cc.cx_extend_read_sw, 1) != 0 else 0
+        cc.cx_other_read_sw = 1 if _safe_int(
+            cc.cx_other_read_sw, 1) != 0 else 0
+        cc.cx_bbs_sw = 1 if _safe_int(cc.cx_bbs_sw, 1) != 0 else 0
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)

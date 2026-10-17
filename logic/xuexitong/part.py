@@ -1198,7 +1198,10 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
             node_str = str(node_id)
             if node_str in finished_map:
                 total, finished = finished_map[node_str]
-                if total >= 0 and total == finished:
+                # 2026-10-17修复: 原 total>=0 且 total==finished 时 total=0/finished=0 也命中
+                # →直接continue→下方零任务点分支(L1219)成死代码→空任务点(知识点简介/推荐阅读书目)
+                # 永不调studentstudyAjax→永远橙点。改为 total>0 才算真完成。
+                if total > 0 and total == finished:
                     # 已完成节点(2026-09-21 需求): 测验/作业类节点明确告知用户——
                     # 页面可能显示"待批阅", 实际已提交完成, 无需重复操作
                     _km = knowledge_map.get(
@@ -6516,6 +6519,26 @@ def collect_exams_manual(cache: XueXiTUserCache,
     return stats
 
 
+def _parse_exam_task_gate(text: str) -> str:
+    """2026-10-17: 解析考试"任务点前置条件"文本
+    类型: "考试前一天完成80%以上的任务点，可在次日7:00后参加考试。若考试当天才完成任务点，将无法参加当日考试"
+    返回: 人类可读的等待提示(含百分比与次日时间); 无此条件返回空串
+    """
+    if not text:
+        return ""
+    # 宽松匹配: 前一天/次日/任务点 任一 + 百分比
+    if not any(k in text for k in ("前一天", "次日", "任务点")):
+        return ""
+    pct_m = re.search(r'(\d{1,3})\s*%[^。]{0,20}?任务点|任务点[^。]{0,20}?(\d{1,3})\s*%', text)
+    pct = (pct_m.group(1) or pct_m.group(2)) if pct_m else "?"
+    time_m = re.search(r'次日\s*(\d{1,2})[：:]\s*(\d{2})\s*后', text)
+    when = (f"次日{time_m.group(1)}:{time_m.group(2)}后" if time_m
+            else "次日（完成任务的第二天）")
+    return (f"该考试有任务点进度前置条件：需考试前一天完成{pct}%以上任务点，"
+            f"可在{when}参加。本次将自动跳过，程序下次循环会自动重试；"
+            f"请在任务点已达标的前提下于{when}重新运行即可正常考试")
+
+
 def _collect_one_exam(cache, course, exam, submit, submit_rate,
                       _log, stats) -> bool:
     """单场考试采集: 进考试->拉卷->逐题作答->(可选交卷); 返回是否成功进入"""
@@ -6532,6 +6555,10 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         return False
     if ("不允许参加考试" in enter_body or "人脸识别" in enter_body
             or "只能在手机学习通APP参加" in enter_body):
+        _gate_msg = _parse_exam_task_gate(enter_body)
+        if _gate_msg:
+            _log(_gate_msg + " | 考试: " + str(exam_name))
+            return False
         _log("该考试受限(限时/人脸/仅APP), 跳过: %s" % exam_name)
         return False
     is_redo_exam = "待重做" in enter_body
@@ -7154,6 +7181,13 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         # 检测限时进入考试的超时提示页(服务器规则: 开始后N分钟内必须进入，
         # 超时后服务器返回"不允许参加考试"提示页，拉题必然无questionId)
         if "不允许参加考试" in enter_body or "不允许参加该考试" in enter_body:
+            # 2026-10-17: 优先识别"前一天完成XX%任务点→次日X:XX后参加"前置条件
+            _gate_msg = _parse_exam_task_gate(enter_body)
+            if _gate_msg:
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】【", exam_name, "】",
+                          Yellow, _gate_msg)
+                continue
             tl_m = re.search(
                 r'限时进入[：:][^<]{0,60}?(\d+)\s*分钟[^<]{0,30}不允许参加',
                 enter_body)
@@ -8372,7 +8406,8 @@ def web_course_detail_stat(cache: XueXiTUserCache, user: User,
                 _st = str(w.get("status", ""))
                 _rm = str(w.get("remainTime", "") or "")
                 # 2026-10-17: 进行中判定(未交/待做/进行中/未完成)
-                _ongoing = any(k in _st for k in ("未交", "待做", "进行中", "未完成")) or ("已交" not in _st and "已批阅" not in _st and "已完成" not in _st and _st != "")
+                _ongoing = any(k in _st for k in ("未交", "待做", "进行中", "未完成")) or (
+                    "已交" not in _st and "已批阅" not in _st and "已完成" not in _st and _st != "")
                 work_items.append({
                     "name": str(w.get("name", ""))[:80],
                     "status": _st, "deadline": _rm,
@@ -8396,7 +8431,8 @@ def web_course_detail_stat(cache: XueXiTUserCache, user: User,
                     continue
                 _st = str(e.get("status", ""))
                 _rm = str(e.get("remainTime", "") or "")
-                _ongoing = any(k in _st for k in ("未交", "待做", "进行中", "未完成", "未参加")) or ("已完成" not in _st and "待批阅" not in _st and "已批阅" not in _st and _st != "")
+                _ongoing = any(k in _st for k in ("未交", "待做", "进行中", "未完成", "未参加")) or (
+                    "已完成" not in _st and "待批阅" not in _st and "已批阅" not in _st and _st != "")
                 exam_items.append({
                     "name": str(e.get("name", ""))[:80],
                     "status": _st, "deadline": _rm,

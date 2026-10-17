@@ -303,3 +303,58 @@ def web_course_list(cache: HqkjUserCache, user: User) -> List[dict]:
                            else ("进行中" if has else "")),
         })
     return result
+
+# ============ Web端课程详情统计(作业/考试清单, 2026-10-17) ============
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """海旗: work_list_api + exam_list_api 统计"""
+    work_items, exam_items = [], []
+    work_fin = work_all = None
+    exam_fin = exam_all = None
+    try:
+        wbody, _ = hqkj_api.work_list_api(cache, str(course_id), retry=3)
+        wdata = safe_json_parse(wbody) or {}
+        wlst = json_get(wdata, "data", "list", default=[]) or []
+        if isinstance(wlst, list):
+            work_all = len(wlst)
+            work_fin = 0
+            for w in wlst:
+                if not isinstance(w, dict):
+                    continue
+                _st = str(w.get("status") or w.get("state") or "")
+                _done = _st in ("2", "已完成", "已批阅") or w.get("finish") in (1, True)
+                if _done:
+                    work_fin += 1
+                work_items.append({
+                    "name": str(w.get("workName") or w.get("name") or w.get("title") or "作业")[:80],
+                    "status": "已完成" if _done else "未完成",
+                    "deadline": str(w.get("endTime") or w.get("deadline") or ""),
+                    "ongoing": (not _done), "score": w.get("score")})
+    except Exception:
+        pass
+    try:
+        ebody, _ = hqkj_api.exam_list_api(cache, str(course_id), retry=3)
+        edata = safe_json_parse(ebody) or {}
+        elst = json_get(edata, "data", "list", default=[]) or []
+        if isinstance(elst, list):
+            exam_all = len(elst)
+            exam_fin = 0
+            for e in elst:
+                if not isinstance(e, dict):
+                    continue
+                _st = str(e.get("status") or e.get("state") or "")
+                _done = _st in ("2", "已完成", "已参加")
+                if _done:
+                    exam_fin += 1
+                exam_items.append({
+                    "name": str(e.get("examName") or e.get("name") or e.get("title") or "考试")[:80],
+                    "status": "已完成" if _done else "未参加",
+                    "deadline": str(e.get("endTime") or e.get("startTime") or ""),
+                    "ongoing": (not _done), "score": e.get("score")})
+    except Exception:
+        pass
+    return {"supported": True,
+            "workFinish": work_fin, "workCount": work_all,
+            "examFinish": exam_fin, "examCount": exam_all,
+            "workList": work_items, "examList": exam_items,
+            "workOngoing": sum(1 for w in work_items if w["ongoing"]),
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}

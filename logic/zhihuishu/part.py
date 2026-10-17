@@ -1163,3 +1163,86 @@ def _zhs_work_exam_action(cache: ZhsUserCache, user: User, course: ZhsCourse, lo
         _process_homework_list()
     if _exam_on:
         _process_exam_list()
+
+# ============ Web端课程详情统计(作业/考试清单, 2026-10-17) ============
+
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """课程详情统计: 作业/考试清单(供进度页展示)
+    数据源: exam_proto.get_student_homework(type=2) + get_student_final_exam
+    """
+    try:
+        from logic.zhihuishu.exam_proto import ZhsExamAPI
+    except Exception:
+        return {"supported": False}
+    courses = _fetch_all_courses(cache, None)
+    course = None
+    for c in courses:
+        if str(c.id) == str(course_id):
+            course = c
+            break
+    if course is None:
+        return {"supported": True, "workFinish": None, "workCount": None,
+                "examFinish": None, "examCount": None,
+                "workList": [], "examList": [],
+                "workOngoing": 0, "examOngoing": 0}
+    jar = {}
+    try:
+        for ck in cache.session.cookies:
+            if ck.name and ck.value:
+                jar[ck.name] = ck.value
+    except Exception:
+        pass
+    ex = ZhsExamAPI(jar)
+    recruit_id = str(getattr(course, "recruit_id", "") or course.id)
+    cid = str(course.id)
+    work_items, exam_items = [], []
+    work_fin = work_all = None
+    exam_fin = exam_all = None
+    # 作业
+    try:
+        r = ex.get_student_homework(recruit_id, cid, type=2)
+        lst = (r.get("rt") or {}).get("list") or (r.get("data") or {}).get("list") or []
+        if isinstance(lst, list):
+            work_all = len(lst)
+            work_fin = 0
+            for hw in lst:
+                if not isinstance(hw, dict):
+                    continue
+                _st = hw.get("status")
+                _done = _st in (2, "2")
+                if _done:
+                    work_fin += 1
+                work_items.append({
+                    "name": str(hw.get("name") or hw.get("homeworkName") or hw.get("title") or "作业")[:80],
+                    "status": "已完成" if _done else "未完成",
+                    "deadline": str(hw.get("endTime") or hw.get("deadline") or ""),
+                    "ongoing": (not _done), "score": hw.get("score") or hw.get("finalScore")})
+    except Exception:
+        pass
+    # 期末考试
+    try:
+        r2 = ex.get_student_final_exam(recruit_id, cid)
+        lst2 = (r2.get("rt") or {}).get("list") or (r2.get("data") or {}).get("list") or (r2.get("rt") or {}).get("examList") or []
+        if isinstance(lst2, list):
+            exam_all = len(lst2)
+            exam_fin = 0
+            for em in lst2:
+                if not isinstance(em, dict):
+                    continue
+                _st = em.get("status")
+                _done = _st in (2, "2", "已参加")
+                if _done:
+                    exam_fin += 1
+                exam_items.append({
+                    "name": str(em.get("name") or em.get("examName") or em.get("title") or "考试")[:80],
+                    "status": "已完成" if _done else "未参加",
+                    "deadline": str(em.get("endTime") or em.get("startTime") or ""),
+                    "ongoing": (not _done), "score": em.get("score") or em.get("finalScore")})
+    except Exception:
+        pass
+    return {"supported": True,
+            "workFinish": work_fin, "workCount": work_all,
+            "examFinish": exam_fin, "examCount": exam_all,
+            "workList": work_items, "examList": exam_items,
+            "workOngoing": sum(1 for w in work_items if w["ongoing"]),
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}

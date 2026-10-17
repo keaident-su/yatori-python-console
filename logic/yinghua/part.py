@@ -720,3 +720,63 @@ def web_course_list(cache: YingHuaUserCache, user: User) -> List[dict]:
                            else ("进行中" if rate > 0 else "")),
         })
     return result
+
+# ============ Web端课程详情统计(作业/考试清单, 2026-10-17) ============
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """英华: 遍历节点 tab_work/tab_exam 拉取作业/考试清单"""
+    try:
+        courses, _ = yinghua.course_list_action(cache)
+    except Exception:
+        return {"supported": False}
+    course = None
+    for c in (courses or []):
+        if str(c.id) == str(course_id):
+            course = c
+            break
+    if course is None:
+        return {"supported": True, "workFinish": None, "workCount": None,
+                "examFinish": None, "examCount": None,
+                "workList": [], "examList": [],
+                "workOngoing": 0, "examOngoing": 0}
+    work_items, exam_items = [], []
+    try:
+        nodes, _ = yinghua.videos_list_action(cache, course)
+    except Exception:
+        nodes = []
+    for nd in (nodes or []):
+        try:
+            if getattr(nd, "tab_work", False):
+                wl, _ = yinghua.work_detail_action(cache, nd.id)
+                for w in (wl or []):
+                    _et = getattr(w, "end_time", None)
+                    _dl = str(_et)[:16] if _et else ""
+                    _st = getattr(w, "state", None)
+                    work_items.append({
+                        "name": str(getattr(w, "title", "") or "作业")[:80],
+                        "status": "已完成" if _st == 2 else "未完成",
+                        "deadline": _dl,
+                        "ongoing": (_st != 2),
+                        "score": getattr(w, "score", None)})
+        except Exception:
+            pass
+        try:
+            if getattr(nd, "tab_exam", False):
+                el, _ = yinghua.exam_detail_action(cache, nd.id)
+                for em in (el or []):
+                    _et = getattr(em, "end_time", None)
+                    _dl = str(_et)[:16] if _et else ""
+                    _st = getattr(em, "state", None)
+                    exam_items.append({
+                        "name": str(getattr(em, "title", "") or "考试")[:80],
+                        "status": "已完成" if _st == 2 else "未参加",
+                        "deadline": _dl,
+                        "ongoing": (_st != 2),
+                        "score": getattr(em, "score", None)})
+        except Exception:
+            pass
+    return {"supported": True,
+            "workFinish": sum(1 for w in work_items if not w["ongoing"]), "workCount": len(work_items),
+            "examFinish": sum(1 for e in exam_items if not e["ongoing"]), "examCount": len(exam_items),
+            "workList": work_items, "examList": exam_items,
+            "workOngoing": sum(1 for w in work_items if w["ongoing"]),
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}

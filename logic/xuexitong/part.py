@@ -780,6 +780,35 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         for t in threads_course:
             t.join()
 
+    # 2026-10-17: 课程讨论tab(全部话题·未回复·AI回复)+拓展阅读(独立开关)
+    # 用户定夺: 两功能开关独立默认开; 讨论拟人延时; AI失败话术兜底
+    try:
+        from logic.xuexitong import extend_bbs as _ebbs
+        for course in course_list:
+            if is_stopped(cache.account):
+                break
+            _log_f = (lambda m, _c=course: log_print(
+                INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                "[", Green, display_account(cache.account), Default, "] ",
+                "【", _c.course_name, "】", Yellow, m))
+            try:
+                if int(getattr(cc, "cx_bbs_sw", 1) or 0) == 1:
+                    _disc_n = _ebbs.run_discussions(cache, course, cc, _log_f)
+                    if _disc_n:
+                        _log_f(f"√讨论处理完成: 成功回复{_disc_n}条")
+            except Exception as _de:
+                _log_f(f"讨论处理异常: {str(_de)[:80]}")
+            try:
+                if int(getattr(cc, "cx_extend_read_sw", 1) or 0) == 1:
+                    _ext_n = _ebbs.run_extend_read(
+                        cache, course, cc, _log_f, read_rounds=3, delay=30)
+                    if _ext_n:
+                        _log_f(f"√拓展阅读完成: {_ext_n}轮阅读上报")
+            except Exception as _ee:
+                _log_f(f"拓展阅读异常: {str(_ee)[:80]}")
+    except Exception:
+        pass
+
     # 刷课结束后的积分复查(2026-09-30): 对比今日得分是否达标
     _jf_final_report(cache, course_list, cc)
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
@@ -3142,14 +3171,22 @@ def _handle_other_task_points(setting: Setting, user: User,
             # 2026-09-30: 纯图文卡片(text_content)先补一次readPoint上报,
             # 向服务端提交"阅读行为"记录(对齐参考实现对图文节点的处理)
             if module_type == "text_content":
+                # 2026-10-17: 其他阅读开关(cx_other_read_sw)控制任务点图文材料阅读上报
+                _other_read = 1
                 try:
-                    xxt_api.read_point_report_api(
-                        cache, str(course_id), str(knowledge_id))
-                    log_print(INFO, f"[{platform}]",
-                              "[", Green, acct, Default, "] ",
-                              "【", course.course_name, "】",
-                              "【", k_label, "】 ", Green,
-                              "纯图文节点已上报阅读记录(readPoint)")
+                    _other_read = int(
+                        getattr(user.courses_custom, "cx_other_read_sw", 1) or 0)
+                except Exception:
+                    _other_read = 1
+                try:
+                    if _other_read == 1:
+                        xxt_api.read_point_report_api(
+                            cache, str(course_id), str(knowledge_id))
+                        log_print(INFO, f"[{platform}]",
+                                  "[", Green, acct, Default, "] ",
+                                  "【", course.course_name, "】",
+                                  "【", k_label, "】 ", Green,
+                                  "纯图文节点已上报阅读记录(readPoint)")
                 except Exception:
                     pass
             _simulated_browse(cache, class_id, course_id, knowledge_id,

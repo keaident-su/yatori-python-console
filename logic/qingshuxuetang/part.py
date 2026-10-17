@@ -429,3 +429,36 @@ def _work_action(setting: Setting, user: User, cache: QsxtUserCache, course: Qsx
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[", Green, cache.account, Default, "] ",
                   Red, f"作业处理异常: {str(e)[:80]}")
+
+# ============ Web端课程详情统计(作业清单, 2026-10-17) ============
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """青书: work_list_api 统计(该平台无独立考试列表->exam置空)"""
+    work_items = []
+    work_fin = work_all = None
+    try:
+        wbody, _ = qsxt_api.work_list_api(cache, str(course_id), retry=3)
+        wdata = safe_json_parse(wbody) or {}
+        wlst = _web_iter_list(wdata)
+        if isinstance(wlst, list):
+            work_all = len(wlst)
+            work_fin = 0
+            for w in wlst:
+                if not isinstance(w, dict):
+                    continue
+                _st = w.get("answerStatus")
+                _done = _st == 2
+                if _done:
+                    work_fin += 1
+                work_items.append({
+                    "name": str(w.get("title") or w.get("name") or "作业")[:80],
+                    "status": "已完成" if _done else "未完成",
+                    "deadline": str(w.get("endTime") or w.get("deadline") or ""),
+                    "ongoing": (not _done), "score": w.get("score")})
+    except Exception:
+        pass
+    return {"supported": True,
+            "workFinish": work_fin, "workCount": work_all,
+            "examFinish": None, "examCount": None,
+            "workList": work_items, "examList": [],
+            "workOngoing": sum(1 for w in work_items if w["ongoing"]),
+            "examOngoing": 0}

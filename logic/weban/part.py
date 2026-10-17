@@ -305,3 +305,47 @@ def web_course_list(cache: WebanUserCache, user: User) -> List[dict]:
                            or ("已完成" if rate >= 100 else "进行中")),
         })
     return result
+
+# ============ Web端课程详情统计(考试清单, 2026-10-17) ============
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """安全微伴: 项目=课程(用户课程=userProjectId), exam_list_plan+history 统计考试"""
+    exam_items = []
+    exam_fin = exam_all = None
+    try:
+        client = cache.client
+        plans = client.api.exam_list_plan(str(course_id)).get("data", [])
+        if isinstance(plans, list):
+            exam_all = len(plans)
+            exam_fin = 0
+            for plan in plans:
+                if not isinstance(plan, dict):
+                    continue
+                _pid = plan.get("examPlanId")
+                _ptype = plan.get("examType")
+                _name = str(plan.get("examPlanName") or plan.get("name") or plan.get("title") or "考试")[:80]
+                _done = False
+                _score = None
+                # 查历史记录判定是否已参加
+                try:
+                    hs = client.api.exam_list_history(_pid, _ptype).get("data", [])
+                    if isinstance(hs, list) and hs:
+                        _done = True
+                        _last = hs[-1] if isinstance(hs[-1], dict) else {}
+                        _score = _last.get("score") or _last.get("totalScore")
+                except Exception:
+                    pass
+                if _done:
+                    exam_fin += 1
+                exam_items.append({
+                    "name": _name,
+                    "status": "已完成" if _done else "未参加",
+                    "deadline": "",
+                    "ongoing": (not _done), "score": _score})
+    except Exception:
+        pass
+    return {"supported": True,
+            "workFinish": None, "workCount": None,
+            "examFinish": exam_fin, "examCount": exam_all,
+            "workList": [], "examList": exam_items,
+            "workOngoing": 0,
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}

@@ -6519,24 +6519,165 @@ def collect_exams_manual(cache: XueXiTUserCache,
     return stats
 
 
-def _parse_exam_task_gate(text: str) -> str:
-    """2026-10-17: 解析考试"任务点前置条件"文本
-    类型: "考试前一天完成80%以上的任务点，可在次日7:00后参加考试。若考试当天才完成任务点，将无法参加当日考试"
-    返回: 人类可读的等待提示(含百分比与次日时间); 无此条件返回空串
+def _parse_exam_task_gate(text: str) -> dict:
+    """2026-10-17: 解析考试"任务点前置条件"文本(结构化)
+    例: "考试前一天完成80%以上的任务点，可在次日7:00后参加考试"
+    返回: {pct:int, hour:int, minute:int, msg:str}; 无此条件返回 {}
     """
     if not text:
-        return ""
+        return {}
     # 宽松匹配: 前一天/次日/任务点 任一 + 百分比
     if not any(k in text for k in ("前一天", "次日", "任务点")):
-        return ""
-    pct_m = re.search(r'(\d{1,3})\s*%[^。]{0,20}?任务点|任务点[^。]{0,20}?(\d{1,3})\s*%', text)
-    pct = (pct_m.group(1) or pct_m.group(2)) if pct_m else "?"
+        return {}
+    pct_m = re.search(
+        r'(\d{1,3})\s*%[^。]{0,20}?任务点|任务点[^。]{0,20}?(\d{1,3})\s*%', text)
+    try:
+        pct = int((pct_m.group(1) or pct_m.group(2))) if pct_m else 80
+    except (ValueError, TypeError):
+        pct = 80
     time_m = re.search(r'次日\s*(\d{1,2})[：:]\s*(\d{2})\s*后', text)
-    when = (f"次日{time_m.group(1)}:{time_m.group(2)}后" if time_m
-            else "次日（完成任务的第二天）")
-    return (f"该考试有任务点进度前置条件：需考试前一天完成{pct}%以上任务点，"
-            f"可在{when}参加。本次将自动跳过，程序下次循环会自动重试；"
-            f"请在任务点已达标的前提下于{when}重新运行即可正常考试")
+    hour = int(time_m.group(1)) if time_m else 7
+    minute = int(time_m.group(2)) if time_m else 0
+    when = f"次日{hour}:{minute:02d}后"
+    msg = (f"该考试有任务点进度前置条件：需考试前一天完成{pct}%以上任务点，"
+           f"可在{when}参加")
+    return {"pct": pct, "hour": hour, "minute": minute, "msg": msg}
+
+
+# ============ 2026-10-17: 考试前置条件全自动调度 ============
+# 考试因"前一天完成XX%任务点→次日X:XX后可考"被拒时:
+#   任务点已达标 → 自动预约次日X:XX+随机0~30分自动开考(拟人节奏)
+#   任务点未达标 → 先自动刷任务点, 达标后下次循环自动预约
+_EXAM_GATE_READY = {}
+_EXAM_GATE_LOADED = False
+
+
+def _exam_gate_store_path():
+    import os as _os
+    return _os.path.join("assets", "exam_gate_ready.json")
+
+
+def _exam_gate_load():
+    global _EXAM_GATE_LOADED
+    if _EXAM_GATE_LOADED:
+        return
+    _EXAM_GATE_LOADED = True
+    try:
+        import json as _json, os as _os
+        p = _exam_gate_store_path()
+        if _os.path.isfile(p):
+            with open(p, "r", encoding="utf-8") as f:
+                d = _json.load(f)
+            if isinstance(d, dict):
+                now = time.time()
+                for k, v in list(d.items()):
+                    if (isinstance(v, dict)
+                            and isinstance(v.get("ready_ts"), (int, float))
+                            and 0 < v["ready_ts"]
+                            and now - v["ready_ts"] < 7 * 86400):
+                        _EXAM_GATE_READY[k] = v
+    except Exception:
+        pass
+
+
+def _exam_gate_save():
+    try:
+        import json as _json, os as _os
+        p = _exam_gate_store_path()
+        _os.makedirs(_os.path.dirname(p) or ".", exist_ok=True)
+        tmp = p + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            _json.dump(_EXAM_GATE_READY, f, ensure_ascii=False)
+        _os.replace(tmp, p)
+    except Exception:
+        pass
+
+
+def _exam_gate_key(account: str, course_id: str, exam: dict) -> str:
+    return (f"{account}|{course_id}|"
+            f"{exam.get('taskrefId', '') or exam.get('name', '')}")
+
+
+def _calc_course_job_rate(cache, course) -> float:
+    """当前课程任务点完成率(0-100, 失败返回-1)"""
+    try:
+        import json as _json
+        body, _ = xxt_api.pull_chapter_api(
+            cache, int(course.key), int(course.cpi))
+        d = _json.loads(body or "{}")
+        arr = ((d.get("data") or [{}])[0].get("course", {})
+               .get("data") or [{}])[0].get("knowledge", {}).get("data") or []
+        nodes = [x.get("id") for x in arr
+                 if isinstance(x, dict) and x.get("id")]
+        if not nodes:
+            return -1.0
+        uid = str(getattr(cache, "uid", "")
+                  or cache.cookie_dict.get("_uid", "")
+                  or cache.cookie_dict.get("UID", ""))
+        uid_i = int(uid) if uid.isdigit() else 0
+        pb, _ = xxt_api.fetch_chapter_point_status(
+            cache, nodes, int(course.key), uid_i,
+            int(course.cpi), int(course.course_id))
+        pd = _json.loads(pb or "{}")
+        tot = fin = 0
+        for _k, v in pd.items():
+            if not isinstance(v, dict):
+                continue
+            t = v.get("totalcount") or 0
+            fv = v.get("finishcount") or 0
+            if t > 0:
+                tot += 1
+                if fv >= t:
+                    fin += 1
+        return round(fin * 100.0 / tot, 1) if tot else 100.0
+    except Exception:
+        return -1.0
+
+
+def _exam_gate_schedule_or_wait(cache, course, exam, gate: dict,
+                                log_f) -> bool:
+    """全自动处理任务点前置条件。
+    返回True=已安排/等待中(本次不考), False=立即考"""
+    import random as _rand
+    _exam_gate_load()
+    key = _exam_gate_key(cache.account, str(course.course_id), exam)
+    now = time.time()
+    # 1) 已预约: 未到点→等待; 到点→放行(删记录, 正常考)
+    rec = _EXAM_GATE_READY.get(key)
+    if rec and isinstance(rec.get("ready_ts"), (int, float)):
+        if now < rec["ready_ts"]:
+            left = int(rec["ready_ts"] - now)
+            log_f(f"⏳已预约开考(前置已达标): 将在{rec.get('desc', '')}自动参加"
+                  f"(剩余{left // 3600}小时{(left % 3600) // 60}分)")
+            return True
+        _EXAM_GATE_READY.pop(key, None)
+        _exam_gate_save()
+        log_f("⌚预约开考时间已到, 开始参加考试")
+        return False
+    # 2) 首次遇到: 查任务点完成率
+    rate = _calc_course_job_rate(cache, course)
+    pct = int(gate.get("pct", 80) or 80)
+    if rate >= pct:
+        # 达标: 预约 次日hour:minute + 随机0~30分(拟人节奏)
+        lt = time.localtime(now)
+        base = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday,
+                            int(gate.get("hour", 7)),
+                            int(gate.get("minute", 0)),
+                            0, 0, 0, -1))
+        if base <= now:
+            base += 86400  # 今日该时间已过 → 明天
+        delay = _rand.randint(0, 30) * 60  # 0~30分钟随机
+        ready_ts = base + delay
+        desc = time.strftime("%m-%d %H:%M", time.localtime(ready_ts))
+        _EXAM_GATE_READY[key] = {"ready_ts": ready_ts, "desc": desc,
+                                 "rate": rate, "pct": pct}
+        _exam_gate_save()
+        log_f(f"✅任务点完成率{rate}%≥{pct}%已达前置要求: 已自动预约考试"
+              f"(拟人随机延时{delay // 60}分钟), 将于 {desc} 自动参加")
+    else:
+        log_f(f"⚠任务点完成率{rate}%<{pct}%未达前置要求: 将先自动刷任务点,"
+              f"达标后自动预约次日开考(无需人工介入)")
+    return True
 
 
 def _collect_one_exam(cache, course, exam, submit, submit_rate,
@@ -6555,9 +6696,9 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         return False
     if ("不允许参加考试" in enter_body or "人脸识别" in enter_body
             or "只能在手机学习通APP参加" in enter_body):
-        _gate_msg = _parse_exam_task_gate(enter_body)
-        if _gate_msg:
-            _log(_gate_msg + " | 考试: " + str(exam_name))
+        _gate = _parse_exam_task_gate(enter_body)
+        if _gate:
+            _log(_gate["msg"] + " | 考试: " + str(exam_name))
             return False
         _log("该考试受限(限时/人脸/仅APP), 跳过: %s" % exam_name)
         return False
@@ -7181,13 +7322,18 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         # 检测限时进入考试的超时提示页(服务器规则: 开始后N分钟内必须进入，
         # 超时后服务器返回"不允许参加考试"提示页，拉题必然无questionId)
         if "不允许参加考试" in enter_body or "不允许参加该考试" in enter_body:
-            # 2026-10-17: 优先识别"前一天完成XX%任务点→次日X:XX后参加"前置条件
-            _gate_msg = _parse_exam_task_gate(enter_body)
-            if _gate_msg:
-                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
-                          "【", course.course_name, "】【", exam_name, "】",
-                          Yellow, _gate_msg)
-                continue
+            # 2026-10-17: 任务点前置条件全自动调度
+            # 达标→自动预约次日X:XX+随机0~30分开考; 未达标→先刷任务点达标后自动预约
+            _gate = _parse_exam_task_gate(enter_body)
+            if _gate:
+                _waited = _exam_gate_schedule_or_wait(
+                    cache, course, exam, _gate,
+                    lambda m: log_print(
+                        INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                        "【", course.course_name, "】【", exam_name, "】",
+                        Yellow, m))
+                if _waited:
+                    continue
             tl_m = re.search(
                 r'限时进入[：:][^<]{0,60}?(\d+)\s*分钟[^<]{0,30}不允许参加',
                 enter_body)

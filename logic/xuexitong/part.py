@@ -8353,6 +8353,8 @@ def web_course_detail_stat(cache: XueXiTUserCache, user: User,
                 "examFinish": None, "examCount": None}
     work_fin = work_all = None
     exam_fin = exam_all = None
+    work_items = []
+    exam_items = []
     # 作业
     try:
         list_body, _ = xxt_api.pull_work_list_api(
@@ -8364,6 +8366,17 @@ def web_course_detail_stat(cache: XueXiTUserCache, user: User,
                 1 for w in works
                 if isinstance(w, dict)
                 and str(w.get("status", "")) in ("已完成", "已批阅"))
+            for w in works:
+                if not isinstance(w, dict):
+                    continue
+                _st = str(w.get("status", ""))
+                _rm = str(w.get("remainTime", "") or "")
+                # 2026-10-17: 进行中判定(未交/待做/进行中/未完成)
+                _ongoing = any(k in _st for k in ("未交", "待做", "进行中", "未完成")) or ("已交" not in _st and "已批阅" not in _st and "已完成" not in _st and _st != "")
+                work_items.append({
+                    "name": str(w.get("name", ""))[:80],
+                    "status": _st, "deadline": _rm,
+                    "ongoing": bool(_ongoing), "score": None})
     except Exception:
         pass
     # 考试
@@ -8378,8 +8391,22 @@ def web_course_detail_stat(cache: XueXiTUserCache, user: User,
                 if isinstance(e, dict)
                 and any(k in str(e.get("status", ""))
                         for k in ("已完成", "已批阅", "待批阅")))
+            for e in exams:
+                if not isinstance(e, dict):
+                    continue
+                _st = str(e.get("status", ""))
+                _rm = str(e.get("remainTime", "") or "")
+                _ongoing = any(k in _st for k in ("未交", "待做", "进行中", "未完成", "未参加")) or ("已完成" not in _st and "待批阅" not in _st and "已批阅" not in _st and _st != "")
+                exam_items.append({
+                    "name": str(e.get("name", ""))[:80],
+                    "status": _st, "deadline": _rm,
+                    "ongoing": bool(_ongoing), "score": None})
     except Exception:
         pass
     return {"supported": True,
             "workFinish": work_fin, "workCount": work_all,
-            "examFinish": exam_fin, "examCount": exam_all}
+            "examFinish": exam_fin, "examCount": exam_all,
+            # 2026-10-17: 清单扩富(进度页展开列表/待办提醒)
+            "workList": work_items, "examList": exam_items,
+            "workOngoing": sum(1 for w in work_items if w["ongoing"]),
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}

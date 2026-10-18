@@ -277,19 +277,21 @@ def run_discussions(cache, course, cc, log) -> int:
                 text = _gen_reply_text(tp, cc)
                 if not text:
                     continue
-                r = gw.evaluate("""async ({bbsid, tid, content}) => {
+                r = gw.evaluate("""async ({bbsid, uuid, content}) => {
                     const cid = new URLSearchParams(location.search).get('courseid');
                     const cls = new URLSearchParams(location.search).get('clazzid');
-                    const body = 'bbsid=' + bbsid + '&topicId=' + tid
-                        + '&content=' + encodeURIComponent(content)
+                    // 2026-10-18: IKUN逆向真实发回复端点(非addReply):
+                    //   POST /pc/invitation/{bbsid}/addReplys  body=uuid+content
+                    const body = 'uuid=' + uuid + '&content=' + encodeURIComponent(content)
                         + '&courseId=' + cid + '&classId=' + cls;
-                    const res = await fetch('/course/topic/' + bbsid + '/addReply',
+                    const res = await fetch('/pc/invitation/' + bbsid + '/addReplys?courseId=' + cid + '&classId=' + cls,
                         {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest'},
                          body, credentials:'include'});
                     const t = await res.text();
                     try { return JSON.parse(t); } catch(e) { return {raw: t.slice(0,200)}; }
-                }""", {"bbsid": bbsid, "tid": str(tp.get("id", "")), "content": text})
-                ok = bool(isinstance(r, dict) and (r.get("status") or r.get("msg") == "success"))
+                }""", {"bbsid": bbsid, "uuid": str(tp.get("uuid", "")), "content": text})
+                ok = bool(isinstance(r, dict) and (
+                    r.get("status") or r.get("msg") == "success"))
                 _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
                 if ok:
                     done += 1
@@ -304,10 +306,14 @@ def run_discussions(cache, course, cc, log) -> int:
         log(f"讨论流程异常: {str(e)[:100]}")
         return done
     finally:
-        try: browser.close()
-        except Exception: pass
-        try: p.stop()
-        except Exception: pass
+        try:
+            browser.close()
+        except Exception:
+            pass
+        try:
+            p.stop()
+        except Exception:
+            pass
 
 
 def run_extend_read(cache, course, cc, log, read_rounds: int = 5,

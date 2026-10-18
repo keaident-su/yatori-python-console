@@ -35,6 +35,8 @@ def _http(cache):
                        "AppleWebKit/537.36 (KHTML, like Gecko) "
                        "Chrome/120.0.0.0 Safari/537.36"),
         "Accept": "*/*",
+        # 2026-10-18: 实测需要 AJAX 头, 否则 getTopicList 返回"你没有权限操作"
+        "X-Requested-With": "XMLHttpRequest",
     })
     return s
 
@@ -58,6 +60,7 @@ def _parse_outer_menu(cache, course) -> dict:
         for m in re.finditer(
                 r'<li[^>]*dataname="([^"]+)"[^>]*>\s*<a[^>]*data-url="([^"]+)"', h):
             info["menus"][m.group(1)] = m.group(2)
+
         def _hid(k):
             mm = re.search(rf'id="{k}"[^>]*value="([^"]*)"', h)
             return mm.group(1) if mm else ""
@@ -65,6 +68,10 @@ def _parse_outer_menu(cache, course) -> dict:
         info["enc"] = _hid("enc") or _hid("showAIEnc")
         info["fid"] = _hid("cfid") or _hid("fid")
         info["uid"] = _hid("uid") or (cache.cookie_dict or {}).get("_uid", "")
+        # 2026-10-18: stuenc 来自外层 studentcourse iframe URL 参数,
+        # groupweb 讨论页/接口必须携带它, 否则返回"你没有权限操作"
+        _sm = re.search(r'studentcourse\?[^"\']*?stuenc=([0-9a-f]{32})', h)
+        info["stuenc"] = _sm.group(1) if _sm else ""
         return info
     except Exception:
         return info
@@ -77,15 +84,31 @@ def fetch_topics(cache, course) -> list:
     if not bbsid:
         return []
     s = _http(cache)
+    # 2026-10-18: 两段式——先 GET topicList 页(带 stuenc/bbsid)建立讨论会话,
+    # 再 POST getTopicList; 否则直接 POST 返回"你没有权限操作"
+    _stuenc = info.get("stuenc", "")
+    _t = str(int(time.time() * 1000))
+    page_url = (f"https://groupweb.chaoxing.com/course/topic/topicList"
+                f"?courseid={course.course_id}&clazzid={course.key}"
+                f"&cpi={course.cpi}&ut=s&t={_t}&stuenc={_stuenc}"
+                f"&bbsid={bbsid}&learnSilverStartTime=&learnSilverEndTime=")
+    try:
+        s.get(page_url, timeout=25)
+    except Exception:
+        pass
     topics = []
     for page in range(1, 6):
         url = (f"https://groupweb.chaoxing.com/course/topic/{bbsid}/getTopicList"
                f"?folder_uuid=&page={page}&pageSize=20&kw=&courseId={course.course_id}"
-               f"&isSetTop=&selectedStartTime=&selectedEndTime=&selectedType=0")
+               f"&isSetTop=&selectedStartTime=&selectedEndTime=&selectedType=0"
+               f"&learnSilverStartTime=&learnSilverEndTime=")
         try:
             r = s.post(url, timeout=20,
-                       headers={"Content-Type": "application/x-www-form-urlencoded",
-                                "Referer": "https://groupweb.chaoxing.com/"})
+                       data=("tags=classId0000001,classId"
+                             f"{course.key},courseId{course.course_id}"),
+                       headers={"Content-Type":
+                                "application/x-www-form-urlencoded; charset=UTF-8",
+                                "Referer": page_url})
             d = r.json()
         except Exception:
             break
@@ -139,48 +162,152 @@ def _reply_topic(cache, course, topic: dict, text: str, info: dict = None) -> bo
         "classId": str(course.key),
         "cpi": str(course.cpi),
     }
+    _stuenc = info.get("stuenc", "")
+    _t = str(int(time.time() * 1000))
+    referer = (f"https://groupweb.chaoxing.com/course/topic/topicList"
+               f"?courseid={course.course_id}&clazzid={course.key}"
+               f"&cpi={course.cpi}&ut=s&t={_t}&stuenc={_stuenc}"
+               f"&bbsid={bbsid}&learnSilverStartTime=&learnSilverEndTime=")
     try:
         r = s.post(
             f"https://groupweb.chaoxing.com/course/topic/{bbsid}/addReply",
             data=data, timeout=20,
-            headers={"Content-Type": "application/x-www-form-urlencoded",
-                     "Referer": "https://groupweb.chaoxing.com/"})
+            headers={"Content-Type":
+                     "application/x-www-form-urlencoded; charset=UTF-8",
+                     "Referer": referer})
         d = r.json() if r.text.strip().startswith("{") else {}
         return bool(d.get("status") or d.get("msg") == "success")
     except Exception:
         return False
 
 
+def _browser_session(cache):
+    """2026-10-18: 讨论接口需 stuenc(由外层页JS动态生成, 纯协议无法获取),
+    改用 Playwright 浏览器态: 打开 stucoursemiddle -> 点讨论 -> iframe 内 fetch。
+    返回 (playwright, browser, page, gw_frame) 或抛异常"""
+    from playwright.sync_api import sync_playwright
+    p = sync_playwright().start()
+    browser = p.chromium.launch(headless=True, channel="chrome")
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900},
+                              ignore_https_errors=True)
+    page = ctx.new_page()
+    cks = []
+    for k, v in (cache.cookie_dict or {}).items():
+        try:
+            cks.append({"name": str(k), "value": str(v),
+                        "domain": ".chaoxing.com", "path": "/"})
+        except Exception:
+            pass
+    try:
+        ctx.add_cookies(cks)
+    except Exception:
+        pass
+    return p, browser, ctx, page
+
+
+def _open_discuss_frame(page, course):
+    """打开课程页并点击「讨论」菜单, 返回 groupweb iframe 句柄"""
+    page.goto(f"https://mooc1-1.chaoxing.com/mooc-ans/visit/stucoursemiddle"
+              f"?courseid={course.course_id}&clazzid={course.key}&vc=1"
+              f"&cpi={course.cpi}&ismooc2=1&v=2",
+              timeout=90000, wait_until="domcontentloaded")
+    page.wait_for_timeout(8000)
+    page.evaluate("""() => {
+        var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n;
+        while (n = w.nextNode()) {
+            if (n.textContent.trim() === '讨论') { n.parentElement.click(); return; }
+        }
+    }""")
+    page.wait_for_timeout(8000)
+    for f in page.frames:
+        if "groupweb.chaoxing.com/course/topic" in f.url:
+            return f
+    return None
+
+
 def run_discussions(cache, course, cc, log) -> int:
-    """课程讨论tab全套(全部话题·未回复的; AI回复+话术兜底; 拟人延时)"""
+    """课程讨论tab全套(浏览器态: 全部话题·未回复的; AI回复+话术兜底; 拟人延时)"""
     if int(getattr(cc, "cx_bbs_sw", 1) or 0) != 1:
         return 0
     info = _parse_outer_menu(cache, course)
-    if not info.get("bbsid"):
+    bbsid = info.get("bbsid", "")
+    if not bbsid:
+        log("该课程无讨论区(bbsid缺失), 跳过")
         return 0
-    topics = fetch_topics(cache, course)
-    if not topics:
+    try:
+        p, browser, ctx, page = _browser_session(cache)
+    except Exception as e:
+        log(f"讨论浏览器启动失败: {str(e)[:80]}")
         return 0
-    my_uid = str(info.get("uid", "") or (cache.cookie_dict or {}).get("_uid", ""))
     done = 0
-    for tp in topics:
-        try:
-            if str(tp.get("createrId", "")) == str(my_uid):
-                continue  # 自己发的话题跳过
-            text = _gen_reply_text(tp, cc)
-            if not text:
-                continue
-            ok = _reply_topic(cache, course, tp, text, info)
-            _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
-            if ok:
-                done += 1
-                log(f"讨论回复成功[{_t}]: {text[:40]}")
-            else:
-                log(f"讨论回复未生效(接口待浏览器态或已回复)[{_t}]")
-            time.sleep(random.uniform(3, 8))
-        except Exception as e:
-            log(f"讨论处理异常: {str(e)[:80]}")
-    return done
+    try:
+        gw = _open_discuss_frame(page, course)
+        if gw is None:
+            log("讨论区打开失败(未找到iframe), 跳过")
+            return 0
+        # iframe 内拉话题列表(分页)
+        topics = gw.evaluate("""async (bbsid) => {
+            const all = [];
+            for (let pg = 1; pg <= 5; pg++) {
+                const u = '/course/topic/' + bbsid + '/getTopicList?folder_uuid='
+                    + '&page=' + pg + '&pageSize=20&kw=&courseId=' + new URLSearchParams(location.search).get('courseid')
+                    + '&isSetTop=&selectedStartTime=&selectedEndTime=&selectedType=0'
+                    + '&learnSilverStartTime=&learnSilverEndTime=';
+                const cid = new URLSearchParams(location.search).get('courseid');
+                const cls = new URLSearchParams(location.search).get('clazzid');
+                const res = await fetch(u, {method:'POST',
+                    headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest'},
+                    body:'tags=classId0000001,classId'+cls+',courseId'+cid, credentials:'include'});
+                const d = await res.json();
+                if (!d || !d.datas || !d.datas.length) break;
+                all.push(...d.datas);
+                if (d.datas.length < 20) break;
+            }
+            return all;
+        }""", bbsid)
+        if not topics:
+            log("讨论区无话题")
+            return 0
+        log(f"讨论区共{len(topics)}个话题, 开始处理未回复的...")
+        my_uid = str(info.get("uid", "") or "")
+        for tp in topics:
+            try:
+                if str(tp.get("createrId", "")) == my_uid:
+                    continue
+                text = _gen_reply_text(tp, cc)
+                if not text:
+                    continue
+                r = gw.evaluate("""async ({bbsid, tid, content}) => {
+                    const cid = new URLSearchParams(location.search).get('courseid');
+                    const cls = new URLSearchParams(location.search).get('clazzid');
+                    const body = 'bbsid=' + bbsid + '&topicId=' + tid
+                        + '&content=' + encodeURIComponent(content)
+                        + '&courseId=' + cid + '&classId=' + cls;
+                    const res = await fetch('/course/topic/' + bbsid + '/addReply',
+                        {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest'},
+                         body, credentials:'include'});
+                    const t = await res.text();
+                    try { return JSON.parse(t); } catch(e) { return {raw: t.slice(0,200)}; }
+                }""", {"bbsid": bbsid, "tid": str(tp.get("id", "")), "content": text})
+                ok = bool(isinstance(r, dict) and (r.get("status") or r.get("msg") == "success"))
+                _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
+                if ok:
+                    done += 1
+                    log(f"讨论回复成功[{_t}]: {text[:40]}")
+                else:
+                    log(f"讨论回复未生效[{_t}]: {str(r)[:100]}")
+                time.sleep(random.uniform(3, 8))
+            except Exception as e:
+                log(f"讨论处理异常: {str(e)[:80]}")
+        return done
+    except Exception as e:
+        log(f"讨论流程异常: {str(e)[:100]}")
+        return done
+    finally:
+        try: browser.close()
+        except Exception: pass
+        try: p.stop()
+        except Exception: pass
 
 
 def run_extend_read(cache, course, cc, log, read_rounds: int = 5,

@@ -415,11 +415,13 @@ def run_extend_read(cache, course, cc, log, read_rounds: int = 5,
                 f"&_from_={course.course_id}_{course.key}_{uid}_0")
         # dot上报监听
         dots = []
-        page.on("request", lambda r: dots.append(r.url) if "/read/api/dot/" in r.url else None)
+        page.on("request", lambda r: dots.append(r.url)
+                if "/read/api/dot/" in r.url else None)
         page.goto(base, timeout=60000, wait_until="domcontentloaded")
         page.wait_for_timeout(8000)
         # 书目卡片
-        n_books = page.evaluate("() => document.querySelectorAll('.extend_item_read').length")
+        n_books = page.evaluate(
+            "() => document.querySelectorAll('.extend_item_read').length")
         log(f"拓展阅读: 阅读页已打开, 共{n_books}本书")
         books = min(max(1, read_rounds), n_books if n_books else 1)
         for i in range(books):
@@ -449,8 +451,10 @@ def run_extend_read(cache, course, cc, log, read_rounds: int = 5,
                         page.wait_for_timeout(1500)
                     except Exception:
                         pass
-                    try: reader.close()
-                    except Exception: pass
+                    try:
+                        reader.close()
+                    except Exception:
+                        pass
                     got = len(dots) - before
                     rounds += 1
                     log(f"拓展阅读: 已阅读《{box['t']}》(阅读器已打开, "
@@ -465,7 +469,11 @@ def run_extend_read(cache, course, cc, log, read_rounds: int = 5,
         log(f"拓展阅读异常: {str(e)[:80]}")
         return rounds
     finally:
-        try: browser.close()
-        except Exception: pass
-        try: p.stop()
-        except Exception: pass
+        try:
+            browser.close()
+        except Exception:
+            pass
+        try:
+            p.stop()
+        except Exception:
+            pass

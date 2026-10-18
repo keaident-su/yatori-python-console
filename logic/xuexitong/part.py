@@ -780,7 +780,7 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         for t in threads_course:
             t.join()
 
-    # 2026-10-17: 课程讨论tab(全部话题·未回复·AI回复)+拓展阅读(独立开关)
+    # 2026-10-17: 课程讨论tab(全部话题·未回复的·AI回复)+拓展阅读(独立开关)
     # 用户定夺: 两功能开关独立默认开; 讨论拟人延时; AI失败话术兜底
     try:
         from logic.xuexitong import extend_bbs as _ebbs
@@ -795,7 +795,7 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
                 if int(getattr(cc, "cx_bbs_sw", 1) or 0) == 1:
                     _disc_n = _ebbs.run_discussions(cache, course, cc, _log_f)
                     if _disc_n:
-                        _log_f(f"√讨论处理完成: 成功回复{_disc_n}条")
+                        _log_f(f"✓讨论处理完成: 成功回复{_disc_n}条")
             except Exception as _de:
                 _log_f(f"讨论处理异常: {str(_de)[:80]}")
             try:
@@ -803,7 +803,7 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
                     _ext_n = _ebbs.run_extend_read(
                         cache, course, cc, _log_f, read_rounds=3, delay=30)
                     if _ext_n:
-                        _log_f(f"√拓展阅读完成: {_ext_n}轮阅读上报")
+                        _log_f(f"✓拓展阅读完成: {_ext_n}轮阅读上报")
             except Exception as _ee:
                 _log_f(f"拓展阅读异常: {str(_ee)[:80]}")
     except Exception:
@@ -3624,7 +3624,8 @@ def _clean_opt_text(opt: str) -> str:
     修复背景: 选项含\"A.\"前缀或\"(1.0分)\"或&nbsp;时, 相似度匹配错位导致提交错误字母"""
     t = str(opt or "")
     # HTML实体
-    t = t.replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    t = t.replace("&nbsp;", " ").replace(
+        "&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
     t = re.sub(r"&[a-zA-Z]+;", "", t)
     # 去除开头选项字母前缀: "A." / "A、" / "A " / "A"
     t = re.sub(r"^\s*[A-Ha-h]\s*[.．、:：]\s*", "", t)
@@ -3842,7 +3843,13 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
 
         # 提取选项纯文本(去掉 "A." 前缀) - 对齐Go TurnStandardQuestion
         raw_options = q.get("options", [])
-        opt_texts_for_ai = [_clean_opt_text(opt) for opt in raw_options]
+        opt_texts_for_ai = []
+        for opt in raw_options:
+            dot_idx = opt.find(".")
+            if dot_idx >= 0:
+                opt_texts_for_ai.append(opt[dot_idx+1:].strip())
+            else:
+                opt_texts_for_ai.append(opt)
 
         if cc.auto_exam in (1, 2):
             # 多答题源顺序调用: 本地题库缓存 -> 各题库/AI源按顺序回退
@@ -4003,7 +4010,13 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             # Go的ch.Answers中每个元素都是完整的，不在SimilarityArraySelect内部做分割
             options = q.get("options", [])
             if options:
-                opt_texts = [_clean_opt_text(opt) for opt in options]
+                opt_texts = []
+                for opt in options:
+                    dot_idx = opt.find(".")
+                    if dot_idx >= 0:
+                        opt_texts.append(opt[dot_idx+1:].strip())
+                    else:
+                        opt_texts.append(opt)
                 # 单选题: 整个answer作为一个整体匹配，返回单个字母
                 best_score = -1.0
                 best_idx = 0
@@ -4024,7 +4037,13 @@ def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
             # 多选题: 可以按逗号分割，每个部分分别匹配
             options = q.get("options", [])
             if options:
-                opt_texts = [_clean_opt_text(opt) for opt in options]
+                opt_texts = []
+                for opt in options:
+                    dot_idx = opt.find(".")
+                    if dot_idx >= 0:
+                        opt_texts.append(opt[dot_idx+1:].strip())
+                    else:
+                        opt_texts.append(opt)
                 result_letters = _similarity_array_select(answer, opt_texts)
                 submit_data[f"answer{q_id}"] = "".join(result_letters)
             else:

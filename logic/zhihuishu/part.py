@@ -113,6 +113,18 @@ def user_login_operation(users: List[User]) -> List[ZhsUserCache]:
             account=user.account, password=user.password,
             session=session, cas_user_id=session.get_cas_user_id(),
         )
+        # 2026-10-19: 身份信息(智慧树: CASLOGC cookie解姓名/userId, jt-cas JWT兜底)
+        try:
+            from logic.zhihuishu.api import fetch_user_profile as _zhs_prof
+            from logic.platform_common import save_user_identity
+            _pf = _zhs_prof(session)
+            if _pf.get("name"):
+                save_user_identity(user, school=_pf.get("school", ""),
+                                   name=_pf.get("name", ""),
+                                   stu_no=_pf.get("stuNo", ""),
+                                   log=log.success)
+        except Exception:
+            pass
         user_caches.append(cache)
     return user_caches
 
@@ -1166,6 +1178,7 @@ def _zhs_work_exam_action(cache: ZhsUserCache, user: User, course: ZhsCourse, lo
 
 # ============ Web端课程详情统计(作业/考试清单, 2026-10-17) ============
 
+
 def web_course_detail_stat(cache, user, course_id: str) -> dict:
     """课程详情统计: 作业/考试清单(供进度页展示)
     数据源: exam_proto.get_student_homework(type=2) + get_student_final_exam
@@ -1201,7 +1214,8 @@ def web_course_detail_stat(cache, user, course_id: str) -> dict:
     # 作业
     try:
         r = ex.get_student_homework(recruit_id, cid, type=2)
-        lst = (r.get("rt") or {}).get("list") or (r.get("data") or {}).get("list") or []
+        lst = (r.get("rt") or {}).get("list") or (
+            r.get("data") or {}).get("list") or []
         if isinstance(lst, list):
             work_all = len(lst)
             work_fin = 0
@@ -1222,7 +1236,8 @@ def web_course_detail_stat(cache, user, course_id: str) -> dict:
     # 期末考试
     try:
         r2 = ex.get_student_final_exam(recruit_id, cid)
-        lst2 = (r2.get("rt") or {}).get("list") or (r2.get("data") or {}).get("list") or (r2.get("rt") or {}).get("examList") or []
+        lst2 = (r2.get("rt") or {}).get("list") or (r2.get("data") or {}).get(
+            "list") or (r2.get("rt") or {}).get("examList") or []
         if isinstance(lst2, list):
             exam_all = len(lst2)
             exam_fin = 0

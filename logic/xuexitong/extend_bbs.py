@@ -353,16 +353,20 @@ def run_discussions(cache, course, cc, log) -> int:
                     }""")
                     dp.wait_for_timeout(4000)
                     # 4. 验证: 页面出现刚发的内容
-                    ok_page = dp.evaluate("""(c) => document.body ? document.body.innerText.indexOf(c.slice(0,15)) >= 0 : false""", text)
-                    _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
+                    ok_page = dp.evaluate(
+                        """(c) => document.body ? document.body.innerText.indexOf(c.slice(0,15)) >= 0 : false""", text)
+                    _t = re.sub(r"<[^>]+>", "",
+                                str(tp.get("content", "")))[:30]
                     if ok_page:
                         done += 1
                         log(f"讨论回复成功[{_t}]: {text[:40]}")
                     else:
                         log(f"讨论回复未确认[{_t}](页面未见回显)")
                 finally:
-                    try: dp.close()
-                    except Exception: pass
+                    try:
+                        dp.close()
+                    except Exception:
+                        pass
                 time.sleep(random.uniform(3, 8))
             except Exception as e:
                 log(f"讨论处理异常: {str(e)[:80]}")
@@ -383,34 +387,85 @@ def run_discussions(cache, course, cc, log) -> int:
 
 def run_extend_read(cache, course, cc, log, read_rounds: int = 5,
                     delay: int = 30) -> int:
-    """拓展阅读阅读时长(开关独立; appcd阅读材料→阅读行为上报)"""
+    """拓展阅读阅读时长(开关独立)
+    2026-10-19 真人UI流程(实测): 打开 appcd 阅读页(书目列表) → 点击书目卡片
+      → 阅读器(noteyd)新窗口打开(自动 POST read/api/dot 上报阅读点) → 停留+翻页模拟阅读
+    返回: 成功打开阅读器的书目数"""
     if int(getattr(cc, "cx_extend_read_sw", 1) or 0) != 1:
         return 0
     info = _parse_outer_menu(cache, course)
     if "expandread" not in info.get("menus", {}):
         log("该课程无「拓展阅读」菜单, 跳过")
         return 0
-    s = _http(cache)
-    uid = str(info.get("uid", "") or (cache.cookie_dict or {}).get("_uid", ""))
-    t = str(int(time.time() * 1000))
-    _enc = info.get("enc", "")
-    _fid = info.get("fid", "")
-    base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
-            f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
-            f"&stuenc={_enc}&fid={_fid}&userId={uid}"
-            f"&_from_={course.course_id}_{course.key}_{uid}_0")
+    try:
+        p, browser, ctx, page = _browser_session(cache)
+    except Exception as e:
+        log(f"拓展阅读浏览器启动失败: {str(e)[:80]}")
+        return 0
     rounds = 0
-    for i in range(max(1, read_rounds)):
-        try:
-            r = s.get(base, timeout=20)
-            ok = r.status_code == 200 and len(r.text) > 200
-            if ok:
-                rounds += 1
-                log(f"拓展阅读: 已进入阅读页(第{i+1}/{read_rounds}轮, "
-                    f"停留{delay}秒模拟阅读)...")
-            if i < read_rounds - 1:
-                time.sleep(max(5, delay))
-        except Exception as e:
-            log(f"拓展阅读异常: {str(e)[:80]}")
-            break
-    return rounds
+    try:
+        uid = str(info.get("uid", "") or (
+            cache.cookie_dict or {}).get("_uid", ""))
+        t = str(int(time.time() * 1000))
+        _enc = info.get("enc", "")
+        _fid = info.get("fid", "")
+        base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
+                f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
+                f"&stuenc={_enc}&fid={_fid}&userId={uid}"
+                f"&_from_={course.course_id}_{course.key}_{uid}_0")
+        # dot上报监听
+        dots = []
+        page.on("request", lambda r: dots.append(r.url) if "/read/api/dot/" in r.url else None)
+        page.goto(base, timeout=60000, wait_until="domcontentloaded")
+        page.wait_for_timeout(8000)
+        # 书目卡片
+        n_books = page.evaluate("() => document.querySelectorAll('.extend_item_read').length")
+        log(f"拓展阅读: 阅读页已打开, 共{n_books}本书")
+        books = min(max(1, read_rounds), n_books if n_books else 1)
+        for i in range(books):
+            try:
+                box = page.evaluate("""(idx) => {
+                    var els = Array.from(document.querySelectorAll('.extend_item_read')).filter(x => x.offsetParent !== null);
+                    if (idx >= els.length) return null;
+                    var el = els[idx];
+                    el.scrollIntoView({block:'center'});
+                    var r = el.getBoundingClientRect();
+                    return {x: r.x + r.width / 2, y: r.y + r.height / 2, t: (el.innerText || '').trim().slice(0, 20)};
+                }""", i)
+                if not box:
+                    break
+                before = len(dots)
+                page.mouse.click(box["x"], box["y"])
+                page.wait_for_timeout(3000)
+                reader = ctx.pages[-1] if len(ctx.pages) > 1 else None
+                if reader and "noteyd" in reader.url:
+                    # 停留模拟阅读
+                    page.wait_for_timeout(max(5, delay) * 1000)
+                    # 翻页触发更多阅读行为
+                    try:
+                        reader.mouse.wheel(0, 800)
+                        page.wait_for_timeout(1500)
+                        reader.mouse.wheel(0, 800)
+                        page.wait_for_timeout(1500)
+                    except Exception:
+                        pass
+                    try: reader.close()
+                    except Exception: pass
+                    got = len(dots) - before
+                    rounds += 1
+                    log(f"拓展阅读: 已阅读《{box['t']}》(阅读器已打开, "
+                        f"dot上报{got}次, 停留{max(5, delay)}秒)")
+                else:
+                    page.wait_for_timeout(2000)
+                page.wait_for_timeout(1500)
+            except Exception as e:
+                log(f"拓展阅读书目处理异常: {str(e)[:80]}")
+        return rounds
+    except Exception as e:
+        log(f"拓展阅读异常: {str(e)[:80]}")
+        return rounds
+    finally:
+        try: browser.close()
+        except Exception: pass
+        try: p.stop()
+        except Exception: pass

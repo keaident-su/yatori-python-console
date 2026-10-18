@@ -270,34 +270,99 @@ def run_discussions(cache, course, cc, log) -> int:
             return 0
         log(f"讨论区共{len(topics)}个话题, 开始处理未回复的...")
         my_uid = str(info.get("uid", "") or "")
+        _q = {}
+        try:
+            from urllib.parse import urlparse, parse_qs
+            _q = {k: v[0] for k, v in parse_qs(urlparse(gw.url).query).items()}
+        except Exception:
+            pass
+        _cid = _q.get("courseid", str(course.course_id))
+        _cls = _q.get("clazzid", str(course.key))
+        _cpi = _q.get("cpi", str(course.cpi))
         for tp in topics:
             try:
-                if str(tp.get("createrId", "")) == my_uid:
+                if str(tp.get("createrId", "")) == my_uid and my_uid:
+                    continue  # 自己发的话题跳过
+                _uuid = str(tp.get("uuid", ""))
+                if not _uuid:
                     continue
                 text = _gen_reply_text(tp, cc)
                 if not text:
                     continue
-                r = gw.evaluate("""async ({bbsid, uuid, content}) => {
-                    const cid = new URLSearchParams(location.search).get('courseid');
-                    const cls = new URLSearchParams(location.search).get('clazzid');
-                    // 2026-10-18: IKUN逆向真实发回复端点(非addReply):
-                    //   POST /pc/invitation/{bbsid}/addReplys  body=uuid+content
-                    const body = 'uuid=' + uuid + '&content=' + encodeURIComponent(content)
-                        + '&courseId=' + cid + '&classId=' + cls;
-                    const res = await fetch('/pc/invitation/' + bbsid + '/addReplys?courseId=' + cid + '&classId=' + cls,
-                        {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest'},
-                         body, credentials:'include'});
-                    const t = await res.text();
-                    try { return JSON.parse(t); } catch(e) { return {raw: t.slice(0,200)}; }
-                }""", {"bbsid": bbsid, "uuid": str(tp.get("uuid", "")), "content": text})
-                ok = bool(isinstance(r, dict) and (
-                    r.get("status") or r.get("msg") == "success"))
-                _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
-                if ok:
-                    done += 1
-                    log(f"讨论回复成功[{_t}]: {text[:40]}")
-                else:
-                    log(f"讨论回复未生效[{_t}]: {str(r)[:100]}")
+                # 2026-10-18 真人UI流程(实测发回复唯一可靠路径):
+                #   打开话题详情页(replysList) → 点回复需钮 → 填textarea → 点addReply
+                #   (addReplys请求的 replyId/uuid/urlToken 由页面JS自动生成带入)
+                dp = ctx.new_page()
+                try:
+                    detail_url = (f"https://groupweb.chaoxing.com/course/topic/v3/bbs/"
+                                  f"{bbsid}/{_uuid}/replysList"
+                                  f"?courseId={_cid}&classId={_cls}&cpi={_cpi}&ut=s")
+                    dp.goto(detail_url, timeout=60000,
+                            wait_until="domcontentloaded")
+                    dp.wait_for_timeout(5000)
+                    if "话题详情" not in (dp.evaluate("() => document.body ? document.body.innerText : ''") or ""):
+                        log(f"详情页打开异常, 跳过[{_uuid[:8]}]")
+                        continue
+                    # 1. 点「回复」打开输入框
+                    dp.evaluate("""() => {
+                        var els = Array.from(document.querySelectorAll('div,a,span'));
+                        for (var i = 0; i < els.length; i++) {
+                            var t = (els[i].innerText || '').trim();
+                            var c = String(els[i].className);
+                            if (t === '回复' && c.indexOf('replyBtn') >= 0 && els[i].offsetParent !== null) {
+                                els[i].click(); return;
+                            }
+                        }
+                        for (var i = 0; i < els.length; i++) {
+                            var t = (els[i].innerText || '').trim();
+                            var c = String(els[i].className);
+                            if (t === '回复' && c.indexOf('reply') >= 0 && els[i].offsetParent !== null) {
+                                els[i].click(); return;
+                            }
+                        }
+                    }""")
+                    dp.wait_for_timeout(2000)
+                    # 2. 填内容到可见 textarea
+                    filled = dp.evaluate("""(content) => {
+                        var eds = Array.from(document.querySelectorAll('textarea, [contenteditable=true]')).filter(x => x.offsetParent !== null);
+                        if (!eds.length) return '';
+                        var ed = eds[eds.length - 1];
+                        ed.focus();
+                        if (ed.tagName === 'TEXTAREA') {
+                            ed.value = content;
+                            ed.dispatchEvent(new Event('input', {bubbles:true}));
+                            ed.dispatchEvent(new Event('change', {bubbles:true}));
+                        } else {
+                            ed.innerHTML = content;
+                        }
+                        return ed.tagName;
+                    }""", text)
+                    if not filled:
+                        log(f"未找到回复输入框, 跳过[{_uuid[:8]}]")
+                        continue
+                    dp.wait_for_timeout(800)
+                    # 3. 点提交(addReply按钮)
+                    dp.evaluate("""() => {
+                        var els = Array.from(document.querySelectorAll('div,a,span,button'));
+                        for (var i = 0; i < els.length; i++) {
+                            var c = String(els[i].className);
+                            if (c.indexOf('addReply') >= 0 && els[i].offsetParent !== null) {
+                                els[i].click(); return;
+                            }
+                        }
+                    }""")
+                    dp.wait_for_timeout(4000)
+                    # 4. 验证: 页面出现刚发的内容
+                    ok_page = dp.evaluate("""(c) => document.body ? document.body.innerText.indexOf(c.slice(0,15)) >= 0 : false""", text)
+                    _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
+                    if ok_page:
+                        done += 1
+                        log(f"讨论回复成功[{_t}]: {text[:40]}")
+                    else:
+                        log(f"讨论回复未确认[{_t}](页面未见回显)")
+                finally:
+                    try: dp.close()
+                    except Exception: pass
                 time.sleep(random.uniform(3, 8))
             except Exception as e:
                 log(f"讨论处理异常: {str(e)[:80]}")

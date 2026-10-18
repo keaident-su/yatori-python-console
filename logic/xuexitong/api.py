@@ -3287,3 +3287,39 @@ def _xxt_ai_aggregation(cache: XueXiTUserCache, question: str,
         return "", e
     finally:
         lk.release()
+
+
+# ============ 用户身份信息(学校/姓名/学号) ============
+
+def fetch_user_profile_api(cache: XueXiTUserCache) -> dict:
+    """2026-10-19: 获取当前登录用户身份信息(学校/姓名/学号)
+    数据源: SSO 接口 userLogin4Uname.do(登录后带cookies可直调)
+    返回: {"school":学校名, "name":姓名, "stuNo":学号, "uname":登录名,
+           "fid":学校id, "puid":用户id}
+    注: uname 对学校统一认证用户即学号; 手机号注册用户 uname 可能=手机号/随机ID,
+        此时 stuNo 置空(交由调用方决定是否二次查证)
+    """
+    import json as _json
+    client = _build_client(cache)
+    try:
+        body, _ = client.get(
+            "https://sso.chaoxing.com/apis/login/userLogin4Uname.do"
+            f"?_t={int(time.time() * 1000)}", retry=2)
+        d = _json.loads(body or "{}")
+        msg = d.get("msg") or {}
+        uname = str(msg.get("uname") or "").strip()
+        phone = str(msg.get("phone") or "").strip()
+        stu_no = uname if (uname and uname !=
+                           phone and uname.isdigit()) else ""
+        return {
+            "school": str(msg.get("schoolname") or "").strip(),
+            "name": str(msg.get("name") or "").strip(),
+            "stuNo": stu_no,
+            "uname": uname,
+            "fid": str(msg.get("fid") or ""),
+            "puid": str(msg.get("puid") or ""),
+        }
+    except Exception:
+        return {}
+    finally:
+        client.close()

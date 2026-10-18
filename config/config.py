@@ -255,6 +255,8 @@ class CoursesCustom:
 @dataclass
 class User:
     """用户配置"""
+    # 2026-10-19: DB主键(登录后回写身份信息school/realName/stuNo用)
+    uid: str = ""
     account_type: str = ""
     url: str = ""
     remark_name: str = ""

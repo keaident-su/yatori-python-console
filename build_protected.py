@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent
 # 构建临时目录(可迁移): 目标盘空间不足时用环境变量 YATORI_BUILD_STAGE
 # 指向其他盘, 如 $env:YATORI_BUILD_STAGE="C:\yatori_build_stage" (输出仍回 ROOT/dist)
 STAGE = Path(os.environ.get("YATORI_BUILD_STAGE", str(ROOT / "build_stage")))
-APP_NAME = "yatori-python刷课系统V2.0.7"
+APP_NAME = "yatori-python刷课系统V2.0.8"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 

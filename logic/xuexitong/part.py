@@ -476,7 +476,7 @@ def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
                           cache.account), Default, "] ",
                       Yellow, f"未配置deviceFlag(缺乏设备特征码，可能会无法完成某些课程的考试)，"
                       f"已动态生成: {cache.device_flag}")
-        return cache, _login_action(cache)
+        return cache, _login_action(cache), u
 
     workers = max(1, min(len(targets), _par.tuned_login_workers()))
     if workers == 1 or len(targets) == 1:
@@ -486,15 +486,68 @@ def user_login_operation(users: List[User]) -> List[XueXiTUserCache]:
         with _futures.ThreadPoolExecutor(max_workers=workers) as ex:
             results = list(ex.map(_login_one, targets))
 
-    for cache, err in results:
+    for cache, err, u in results:
         if err:
             log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                       "[", Green, cache.account, Default, "] ", Red, str(err))
             continue
         log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                   "[" + cache.account + "] ", Green, "登录成功")
+        # 2026-10-19: 登录成功后获取学校/姓名/学号(SSO) → 写库+日志展示
+        _save_user_profile(cache, u)
         user_caches.append(cache)
     return user_caches
+
+
+def _save_user_profile(cache, user):
+    """2026-10-19: 获取并保存用户身份信息(学校/姓名/学号)
+    SSO接口 → cache属性 + 日志 + 写入user_config_json(前端/进度页可读)
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    try:
+        prof = xxt_api.fetch_user_profile_api(cache)
+    except Exception:
+        prof = {}
+    if not prof:
+        return
+    school = prof.get("school", "")
+    name = prof.get("name", "")
+    stu_no = prof.get("stuNo", "")
+    try:
+        cache.school = school
+        cache.real_name = name
+        cache.stu_no = stu_no
+    except Exception:
+        pass
+    # 写DB(user_config_json扩展字段, 与remarkName同机制)
+    uid_db = getattr(user, "uid", "") or ""
+    if uid_db:
+        try:
+            from dao.database import get_session
+            from dao import user_mapper
+            import json as _json
+            session = get_session()
+            try:
+                po = user_mapper.query_user(session, uid=uid_db)
+                if po:
+                    cfg = po.user_config_turn_entity()
+                    cfg["school"] = school
+                    cfg["realName"] = name
+                    cfg["stuNo"] = stu_no
+                    user_mapper.update_user(
+                        session, uid_db,
+                        {"user_config_json":
+                         _json.dumps(cfg, ensure_ascii=False)})
+            finally:
+                session.close()
+        except Exception:
+            pass
+    _info = f"{school} · {name}" if school else name
+    if stu_no:
+        _info += f" · 学号{stu_no}"
+    if _info:
+        log_print(INFO, f"[{platform}]", "[", Green, cache.account, Default, "] ",
+                  f"身份信息: {_info}")
 
 
 # ============ 刷课 ============

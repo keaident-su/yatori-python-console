@@ -949,3 +949,61 @@ class StuOnlineClient:
         """互动数据: 有效提问/无效提问/有效回答/无效回答"""
         return self._post("loadCourseForum", {
             "recruitId": str(recruit_id), "courseId": str(course_id)})
+
+
+# ============ 用户身份信息(学校/姓名/学号) ============
+
+def fetch_user_profile(session: "ManagedSession") -> dict:
+    """2026-10-19: 智慧树登录用户身份信息(实测)
+    数据源: CASLOGC cookie(URL编码JSON含realName/userId/uuid/username) +
+            jt-cas JWT payload(sub=姓名/uid)
+    返回: {"school":学校(尽力), "name":姓名, "stuNo":学号(尽力), "userId":...}
+    """
+    import json as _json
+    import base64 as _b64
+    import urllib.parse as _up
+    out = {"school": "", "name": "", "stuNo": "", "userId": ""}
+    try:
+        flat = session.session.cookies.get_dict()
+    except Exception:
+        return out
+    # 1. CASLOGC(URL编码JSON)
+    try:
+        caslogc = flat.get("CASLOGC", "")
+        if caslogc:
+            dec = _up.unquote(caslogc)
+            d = _json.loads(dec)
+            out["name"] = str(d.get("realName") or "").strip()
+            out["userId"] = str(d.get("userId") or "")
+            out["uuid"] = str(d.get("uuid") or "")
+    except Exception:
+        pass
+    # 2. jt-cas JWT 兜底姓名
+    if not out["name"]:
+        try:
+            jt = flat.get("jt-cas", "")
+            if jt.count(".") >= 2:
+                pl = jt.split(".")[1]
+                pl += "=" * (-len(pl) % 4)
+                pj = _json.loads(_b64.urlsafe_b64decode(pl))
+                out["name"] = str(pj.get("sub") or "").strip()
+                out["userId"] = out["userId"] or str(pj.get("uid") or "")
+        except Exception:
+            pass
+    # 3. 学校: 从智慧树课表接口(学校名在选课数据可能出现, 尽力)
+    try:
+        r = session.get(
+            "https://onlineservice-api.zhihuishu.com/gateway/f/v1/login/getLoginUserInfo",
+            params={"time": int(time.time() * 1000)}, timeout=10)
+        d = r.json()
+        data = d.get("data") or d.get("result") or {}
+        if isinstance(data, dict):
+            out["school"] = (str(data.get("schoolName") or "")
+                             or str(data.get("universityName") or ""))
+            out["stuNo"] = (str(data.get("studentNumber") or "")
+                            or str(data.get("stuNo") or ""))
+            if not out["name"]:
+                out["name"] = str(data.get("userName") or "")
+    except Exception:
+        pass
+    return out

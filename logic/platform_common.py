@@ -285,3 +285,45 @@ class SimpleLogger:
 def get_simple_logger(prefix: str = "") -> SimpleLogger:
     """获取带前缀的轻量日志适配器"""
     return SimpleLogger(prefix)
+
+
+# ============ 用户身份信息保存(全平台公共, 2026-10-19) ============
+
+def save_user_identity(user, school: str = "", name: str = "",
+                       stu_no: str = "", log=None) -> None:
+    """获取到的学校/姓名/学号 → 写入users表user_config_json + 日志展示
+    (前端账号管理/进度页读取; 各平台登录成功后调用)
+    """
+    if not (school or name or stu_no):
+        return
+    uid_db = getattr(user, "uid", "") or ""
+    if uid_db:
+        try:
+            from dao.database import get_session
+            from dao import user_mapper
+            sess = get_session()
+            try:
+                po = user_mapper.query_user(sess, uid=uid_db)
+                if po:
+                    cfg = po.user_config_turn_entity()
+                    if school:
+                        cfg["school"] = school
+                    if name:
+                        cfg["realName"] = name
+                    if stu_no:
+                        cfg["stuNo"] = stu_no
+                    user_mapper.update_user(
+                        sess, uid_db,
+                        {"user_config_json": json.dumps(cfg, ensure_ascii=False)})
+            finally:
+                sess.close()
+        except Exception:
+            pass
+    _info = f"{school} · {name}" if school else name
+    if stu_no:
+        _info += f" · 学号{stu_no}"
+    if _info and log is not None:
+        try:
+            log(f"身份信息: {_info}")
+        except Exception:
+            pass

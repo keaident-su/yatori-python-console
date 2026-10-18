@@ -156,6 +156,20 @@ def user_login_operation(users: List[User]) -> List[WebanUserCache]:
             log.error("登录失败(账号/密码错误或验证码识别失败), 已跳过该账号")
             continue
         log.success("登录成功")
+        # 2026-10-19: 身份信息(学校=租户配置wbTenant, 姓名/学号=登录用户数据)
+        try:
+            from logic.platform_common import save_user_identity
+            _au = getattr(getattr(client, "api", None), "user", None) or {}
+            if not isinstance(_au, dict):
+                _au = {}
+            _name = str(_au.get("realName") or _au.get("userName") or "")
+            _stuno = str(_au.get("userName") or _au.get("studentNumber")
+                         or _au.get("userId") or "")
+            if _name or _stuno:
+                save_user_identity(user, school=tenant, name=_name,
+                                   stu_no=_stuno, log=log.success)
+        except Exception:
+            pass
         try:
             client.simulate_home_page()
         except Exception as e:
@@ -307,6 +321,8 @@ def web_course_list(cache: WebanUserCache, user: User) -> List[dict]:
     return result
 
 # ============ Web端课程详情统计(考试清单, 2026-10-17) ============
+
+
 def web_course_detail_stat(cache, user, course_id: str) -> dict:
     """安全微伴: 项目=课程(用户课程=userProjectId), exam_list_plan+history 统计考试"""
     exam_items = []
@@ -322,12 +338,14 @@ def web_course_detail_stat(cache, user, course_id: str) -> dict:
                     continue
                 _pid = plan.get("examPlanId")
                 _ptype = plan.get("examType")
-                _name = str(plan.get("examPlanName") or plan.get("name") or plan.get("title") or "考试")[:80]
+                _name = str(plan.get("examPlanName") or plan.get(
+                    "name") or plan.get("title") or "考试")[:80]
                 _done = False
                 _score = None
                 # 查历史记录判定是否已参加
                 try:
-                    hs = client.api.exam_list_history(_pid, _ptype).get("data", [])
+                    hs = client.api.exam_list_history(
+                        _pid, _ptype).get("data", [])
                     if isinstance(hs, list) and hs:
                         _done = True
                         _last = hs[-1] if isinstance(hs[-1], dict) else {}

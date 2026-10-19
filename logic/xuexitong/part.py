@@ -5686,29 +5686,35 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         if not isinstance(work, dict):
             continue
         status = work.get("status", "")
-        # 待批阅/已批阅作业: 已提交待老师批改, 无需作答（明确告知，避免用户误以为漏做）
-        if status in ("待批阅", "已批阅"):
-            # 2026-10-19: 作业强制重做(仅已批阅; enter页取workId/workAnswerId→报告采集更正→阈值→retest)
+        # 待批阅/已批阅/已完成作业: 已提交待老师批改或已批完, 无需作答（明确告知，避免用户误以为漏做）
+        # 2026-10-19扩展: "已完成"状态同样接入重做链(实测 汽车售后服务 已完成作业=可重做对象,
+        #   原仅待批阅/已批阅接入导致已完成作业全部被跳过错失重做)
+        if status in ("待批阅", "已批阅", "已完成"):
+            # 2026-10-19: 作业强制重做(已批阅/已完成; 待批阅保持用户定夺的跳过策略)
             _wk_retested = False
-            if status == "已批阅" and int(getattr(cc, "cx_work_retake", 0) or 0) > 0:
+            if status in ("已批阅", "已完成") and int(getattr(cc, "cx_work_retake", 0) or 0) > 0:
                 try:
                     _eb, _ = xxt_api.enter_work_api(
                         cache, work.get("taskrefId", ""),
                         work.get("enc_task", ""), course.course_id,
                         course.key, str(course.cpi), retry=2)
                     if _eb:
-                        _wm = (re.search(r'workId[=:"\']+([0-9a-f]{20,40})', _eb)
-                               or re.search(r'workid[=:"\']+([0-9a-f]{20,40})', _eb))
+                        # 2026-10-19实测: 完成页jump()含完整参数: workId=数字(=taskrefId形态)/workAnswerId/enc
+                        _wm = (re.search(r'workId[=:"\']+(\d+)', _eb)
+                               or re.search(r'workId[=:"\']+([0-9a-f]{20,40})', _eb))
                         _am = (re.search(r'workAnswerId[=:"\']+(\d+)', _eb)
                                or re.search(r'answerId[=:"\']+(\d+)', _eb))
+                        _enc2 = re.search(r'enc=([0-9a-f]{16,64})', _eb)
                         _jm = re.search(r'jobid[=:"\']+(\d+)', _eb)
                         _km = re.search(r'knowledgeid[=:"\']+(\d+)', _eb)
                         if _wm and _am:
                             _wk_retested = _work_retake_flow(
                                 cache, course, cc, _wm.group(1), _am.group(1),
                                 _km.group(1) if _km else "",
-                                _jm.group(1) if _jm else "",
-                                work.get("enc_task", ""),
+                                _jm.group(1) if _jm else "work-" +
+                                _wm.group(1),
+                                _enc2.group(1) if _enc2 else work.get(
+                                    "enc_task", ""),
                                 work.get("name", ""))
                 except Exception:
                     pass
@@ -6264,6 +6270,18 @@ def _work_retake_flow(cache, course, cc, work_id: str, work_answer_id: str,
                         total = float(mt.group(1))
                     except (ValueError, TypeError):
                         total = None
+                # 2026-10-19实测作业报告无总分字段: 逐题求和兜底
+                #   每题分值头"(多选题，? 20 分)" + 每题得分"，得 20 分"
+                if got is None or not total:
+                    _fulls = re.findall(
+                        r'[（(][^）)]{0,24}?(\d+(?:\.\d+)?)\s*分[）)]', txt)
+                    _gots = re.findall(r'得\s*(\d+(?:\.\d+)?)\s*分', txt)
+                    if _fulls and _gots:
+                        try:
+                            got = sum(float(x) for x in _gots)
+                            total = sum(float(x) for x in _fulls)
+                        except (ValueError, TypeError):
+                            pass
     except Exception:
         pass
     if not viewable:
@@ -6278,29 +6296,39 @@ def _work_retake_flow(cache, course, cc, work_id: str, work_answer_id: str,
         _log(Default, f"得分率{rate:.1f}%({got}/{total})≥{pass_line}%已达标, 不重做")
         return False
     _log(Default, f"得分率{rate:.1f}%({got}/{total})<{pass_line}%, 执行强制重做...")
-    # ③ retest 激活重做(IKUN逆向: /mooc-ans/work/retest)
-    url = ("https://mooc1.chaoxing.com/mooc-ans/work/retest"
-           f"?courseId={course.course_id}&classId={course.key}"
-           f"&workId={work_id}&workAnswerId={work_answer_id}"
-           f"&knowledgeid={knowledge_id}&jobid={job_id}"
-           f"&originJobId={job_id}&enc={enc_work}")
+    # ③ 激活重做: GET /work/phone/redo (2026-10-19实测task-work页redo()按钮同款接口:
+    #    返回{"status":1}成功→gotodo跳doHomeWork; 旧的/work/retest返回"无权限"已废弃)
+    url = ("https://mooc1.chaoxing.com/mooc-ans/work/phone/redo"
+           f"?workId={work_id}&classId={course.key}"
+           f"&courseId={course.course_id}&workAnswerId={work_answer_id}")
     try:
         client = xxt_api._build_client(cache)
         try:
             _body, resp = client.get(
-                url, headers={"Accept": "*/*", "Host": "mooc1.chaoxing.com"},
+                url, headers={"Accept": "application/json, text/javascript, */*"},
                 retry=3)
         finally:
             client.close()
         _sc = resp.status_code if resp else "N/A"
-        _ok = bool(resp and resp.status_code == 200)
-        if _ok:
-            _log(Default, f"retest已激活重做(status={_sc}), 下一轮循环将重新作答")
+        _ok_http = bool(resp and resp.status_code == 200)
+        _ok_biz = False
+        try:
+            _jd = json.loads(_body or "{}")
+            _ok_biz = (_jd.get("status") == 1) or (str(_jd.get("status")) == "1")
+            if not _ok_biz:
+                _log(Red, f"redo业务失败(status={_sc}): {str(_jd.get('msg', ''))[:60]}")
+        except Exception:
+            _ok_biz = _ok_http and ('"status":1' in (_body or "").replace(" ", ""))
+        if _ok_biz:
+            _log(Default, f"redo已激活重做(status={_sc}), 下一轮循环将重新作答")
+            return True
+        if not _ok_biz and _ok_http:
+            _log(Red, "redo未生效(业务状态非1), 未重做")
         else:
-            _log(Red, f"retest失败(status={_sc}), 未重做")
-        return _ok
+            _log(Red, f"redo失败(status={_sc}), 未重做")
+        return False
     except Exception as e:
-        _log(Red, f"retest异常: {str(e)[:80]}")
+        _log(Red, f"redo异常: {str(e)[:80]}")
         return False
 
 

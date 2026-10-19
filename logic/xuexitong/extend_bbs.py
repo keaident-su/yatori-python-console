@@ -385,95 +385,91 @@ def run_discussions(cache, course, cc, log) -> int:
             pass
 
 
-def run_extend_read(cache, course, cc, log, read_rounds: int = 5,
-                    delay: int = 30) -> int:
-    """拓展阅读阅读时长(开关独立)
-    2026-10-19 真人UI流程(实测): 打开 appcd 阅读页(书目列表) → 点击书目卡片
-      → 阅读器(noteyd)新窗口打开(自动 POST read/api/dot 上报阅读点) → 停留+翻页模拟阅读
-    返回: 成功打开阅读器的书目数"""
+
+def run_extend_read(cache, course, cc, log, read_books: int = 5,
+                    delay: int = 8, pages_per_book: int = 3) -> int:
+    """拓展阅读(纯协议, 2026-10-19重写)
+    背景: 家机日志实锤 V2.0.8 exe 无 playwright 模块 -> 旧浏览器版全部失效,
+      按用户要求改为纯协议(零浏览器依赖)。链路(真机实测):
+      外层菜单expandread确认 -> GET appcd阅读页 -> 书目列表
+      -> 逐本 POST /read/api/dot/{uid}/{资源id}_{页码} 上报阅读点(实测200 code1)
+      -> 页间/书间拟人停留。返回: 成功上报的书目数
+    """
     if int(getattr(cc, "cx_extend_read_sw", 1) or 0) != 1:
         return 0
     info = _parse_outer_menu(cache, course)
     if "expandread" not in info.get("menus", {}):
         log("该课程无「拓展阅读」菜单, 跳过")
         return 0
+    s = _http(cache)
+    uid = str(info.get("uid", "") or (cache.cookie_dict or {}).get("_uid", ""))
+    _enc = info.get("enc", "")
+    _fid = info.get("fid", "")
+    t = str(int(time.time() * 1000))
+    base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
+            f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
+            f"&stuenc={_enc}&fid={_fid}&userId={uid}")
     try:
-        p, browser, ctx, page = _browser_session(cache)
+        r0 = s.get(base, timeout=25)
+        if r0.status_code != 200 or len(r0.text) < 500:
+            log(f"拓展阅读: 进入阅读页失败({r0.status_code})")
+            return 0
     except Exception as e:
-        log(f"拓展阅读浏览器启动失败: {str(e)[:80]}")
+        log(f"拓展阅读: 进入阅读页异常: {str(e)[:80]}")
         return 0
-    rounds = 0
+    log("拓展阅读: 已进入阅读页(纯协议)")
+    # categoryId: 页面正则提取失败则用12576(浏览器实测该课程书目分类)
+    cat = ""
     try:
-        uid = str(info.get("uid", "") or (
-            cache.cookie_dict or {}).get("_uid", ""))
-        t = str(int(time.time() * 1000))
-        _enc = info.get("enc", "")
-        _fid = info.get("fid", "")
-        base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
-                f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
-                f"&stuenc={_enc}&fid={_fid}&userId={uid}"
-                f"&_from_={course.course_id}_{course.key}_{uid}_0")
-        # dot上报监听
-        dots = []
-        page.on("request", lambda r: dots.append(r.url)
-                if "/read/api/dot/" in r.url else None)
-        page.goto(base, timeout=60000, wait_until="domcontentloaded")
-        page.wait_for_timeout(8000)
-        # 书目卡片
-        n_books = page.evaluate(
-            "() => document.querySelectorAll('.extend_item_read').length")
-        log(f"拓展阅读: 阅读页已打开, 共{n_books}本书")
-        books = min(max(1, read_rounds), n_books if n_books else 1)
-        for i in range(books):
+        m = re.search(r'resource/(\d+)/list', r0.text)
+        if m:
+            cat = m.group(1)
+    except Exception:
+        pass
+    if not cat:
+        cat = "12576"
+    # 拉书目列表(资源id在resourceInfo嵌套JSON.id)
+    books = []
+    try:
+        r1 = s.get(f"https://appcd.chaoxing.com/read/resource/{cat}/list"
+                   f"?page=1&pageSize=20", timeout=20)
+        d = r1.json()
+        for it in (d.get("data") or []):
+            ri = it.get("resourceInfo") or "{}"
             try:
-                box = page.evaluate("""(idx) => {
-                    var els = Array.from(document.querySelectorAll('.extend_item_read')).filter(x => x.offsetParent !== null);
-                    if (idx >= els.length) return null;
-                    var el = els[idx];
-                    el.scrollIntoView({block:'center'});
-                    var r = el.getBoundingClientRect();
-                    return {x: r.x + r.width / 2, y: r.y + r.height / 2, t: (el.innerText || '').trim().slice(0, 20)};
-                }""", i)
-                if not box:
-                    break
-                before = len(dots)
-                page.mouse.click(box["x"], box["y"])
-                page.wait_for_timeout(3000)
-                reader = ctx.pages[-1] if len(ctx.pages) > 1 else None
-                if reader and "noteyd" in reader.url:
-                    # 停留模拟阅读
-                    page.wait_for_timeout(max(5, delay) * 1000)
-                    # 翻页触发更多阅读行为
-                    try:
-                        reader.mouse.wheel(0, 800)
-                        page.wait_for_timeout(1500)
-                        reader.mouse.wheel(0, 800)
-                        page.wait_for_timeout(1500)
-                    except Exception:
-                        pass
-                    try:
-                        reader.close()
-                    except Exception:
-                        pass
-                    got = len(dots) - before
-                    rounds += 1
-                    log(f"拓展阅读: 已阅读《{box['t']}》(阅读器已打开, "
-                        f"dot上报{got}次, 停留{max(5, delay)}秒)")
-                else:
-                    page.wait_for_timeout(2000)
-                page.wait_for_timeout(1500)
-            except Exception as e:
-                log(f"拓展阅读书目处理异常: {str(e)[:80]}")
-        return rounds
-    except Exception as e:
-        log(f"拓展阅读异常: {str(e)[:80]}")
-        return rounds
-    finally:
-        try:
-            browser.close()
-        except Exception:
-            pass
-        try:
-            p.stop()
-        except Exception:
-            pass
+                ri = json.loads(ri) if isinstance(ri, str) else ri
+            except Exception:
+                ri = {}
+            rid = ri.get("id") if isinstance(ri, dict) else None
+            rinfo = (ri.get("info") or {}) if isinstance(ri, dict) else {}
+            title = str(rinfo.get("field1") or rinfo.get("author")
+                        or it.get("resourceId", ""))[:16]
+            if rid:
+                books.append((rid, title))
+    except Exception:
+        pass
+    if not books:
+        log("拓展阅读: 书目列表为空, 结束")
+        return 0
+    log(f"拓展阅读: 共{len(books)}本书, 逐本阅读上报...")
+    ok = 0
+    for rid, title in books[:max(1, read_books)]:
+        pages_ok = 0
+        for pg in range(1, max(1, pages_per_book) + 1):
+            try:
+                rd = s.post(
+                    f"https://appcd.chaoxing.com/read/api/dot/{uid}/{rid}_{pg}",
+                    timeout=15)
+                body = (rd.text or "").replace(" ", "").replace("\n", "").replace("\t", "")
+                if rd.status_code == 200 and '"code":1' in body:
+                    pages_ok += 1
+            except Exception:
+                pass
+            # 页间拟人停留
+            time.sleep(max(1, delay) * 0.5 + random.uniform(0, 1))
+        if pages_ok:
+            ok += 1
+            log(f"拓展阅读: 已阅读《{title}》(资源{rid}, dot上报{pages_ok}/{pages_per_book}页)")
+        # 书间停留
+        time.sleep(random.uniform(2, 4))
+    return ok

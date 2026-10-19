@@ -1782,6 +1782,30 @@ def _node_run(setting: Setting, user: User, cache: XueXiTUserCache,
                               "[", Green, acct, Default, "] ", Green,
                               "该章测已完成提交（待批阅——等待老师批阅），无需重复操作，已自动跳过")
                 elif _st == "已批阅":
+                    # 2026-10-19: 任务点测试强制重做(先采集后重做: 报告采集更正→阈值→retest)
+                    _wk_retested = False
+                    try:
+                        _cc = user.courses_custom
+                        if int(getattr(_cc, "cx_work_retake", 0) or 0) > 0:
+                            _pb, _ = xxt_api.work_fetch_question_api(
+                                cache, wdto, retry=2)
+                            if _pb:
+                                _am = (re.search(
+                                    r'workAnswerId[=:"\']+(\d+)', _pb)
+                                    or re.search(
+                                        r'answerId[=:"\']+(\d+)', _pb))
+                                if _am:
+                                    _wk_retested = _work_retake_flow(
+                                        cache, course, _cc,
+                                        str(wdto.work_id), _am.group(1),
+                                        str(wdto.knowledge_id),
+                                        str(wdto.job_id),
+                                        getattr(wdto, "enc", "") or "",
+                                        f"{knowledge_item.label} {knowledge_item.name}".strip())
+                    except Exception:
+                        pass
+                    if _wk_retested:
+                        continue
                     log_print(INFO, f"[{platform}]",
                               "[", Green, acct, Default, "] ", Green,
                               "该章测已批阅完成，无需重复操作，已自动跳过")
@@ -5664,6 +5688,32 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
         status = work.get("status", "")
         # 待批阅/已批阅作业: 已提交待老师批改, 无需作答（明确告知，避免用户误以为漏做）
         if status in ("待批阅", "已批阅"):
+            # 2026-10-19: 作业强制重做(仅已批阅; enter页取workId/workAnswerId→报告采集更正→阈值→retest)
+            _wk_retested = False
+            if status == "已批阅" and int(getattr(cc, "cx_work_retake", 0) or 0) > 0:
+                try:
+                    _eb, _ = xxt_api.enter_work_api(
+                        cache, work.get("taskrefId", ""),
+                        work.get("enc_task", ""), course.course_id,
+                        course.key, str(course.cpi), retry=2)
+                    if _eb:
+                        _wm = (re.search(r'workId[=:"\']+([0-9a-f]{20,40})', _eb)
+                               or re.search(r'workid[=:"\']+([0-9a-f]{20,40})', _eb))
+                        _am = (re.search(r'workAnswerId[=:"\']+(\d+)', _eb)
+                               or re.search(r'answerId[=:"\']+(\d+)', _eb))
+                        _jm = re.search(r'jobid[=:"\']+(\d+)', _eb)
+                        _km = re.search(r'knowledgeid[=:"\']+(\d+)', _eb)
+                        if _wm and _am:
+                            _wk_retested = _work_retake_flow(
+                                cache, course, cc, _wm.group(1), _am.group(1),
+                                _km.group(1) if _km else "",
+                                _jm.group(1) if _jm else "",
+                                work.get("enc_task", ""),
+                                work.get("name", ""))
+                except Exception:
+                    pass
+            if _wk_retested:
+                continue
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】【", work.get("name", ""), "】",
                       Green, f"该作业已完成提交（状态：{status}），无需重复操作，已跳过")
@@ -6159,6 +6209,99 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
 # 需求: 仅对"提交后可从平台查看正确答案"的场景(学习通作业/章测);
 # 任务完成后回读平台正确答案, 与本地题库缓存不一致时以平台为准更正
 # (走 LocalTikuCache.update 既有机制: 仅更正已存在键/原子替换/每日备份/占位词拦截)。
+
+
+def _work_retake_flow(cache, course, cc, work_id: str, work_answer_id: str,
+                      knowledge_id: str, job_id: str, enc_work: str,
+                      work_name: str) -> bool:
+    """作业/任务点测试(章测) 强制重做(2026-10-19, 复用考试重考链风格)
+    用户定夺: 先采集后重做 / 百分比制(得分/满分x100) / 阈值默认80可配 /
+      不可查看或待批阅(无分数) 两条件均跳过。
+    流程: ①批阅报告采集并更正题库(可查看性=报告含"正确答案")
+          ②得分率解析(报告文本 得分/满分)
+          ③得分率 >= cx_retake_rate(0时回退60) -> 达标跳过
+          ④ GET /mooc-ans/work/retest 激活重做(IKUN逆向接口)
+    返回: True=已激活重做(下一轮循环重新作答), False=未重做
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    rounds = max(0, min(200, int(getattr(cc, "cx_work_retake", 0) or 0)))
+    if rounds <= 0:
+        return False
+    rate_th = max(0, min(100, int(getattr(cc, "cx_retake_rate", 0) or 0)))
+    pass_line = rate_th if rate_th > 0 else 60
+
+    def _log(color, msg):
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】【", work_name, "】",
+                  Yellow, "[重做] ", color, msg)
+
+    # ① 批阅报告: 采集+更正(可查看性判定)
+    viewable = False
+    got = total = None
+    try:
+        html = _fetch_work_report_html(cache, course.course_id, course.key,
+                                       work_id, work_answer_id)
+        if html:
+            txt = _html_to_report_text(html)
+            items = _parse_work_report(txt)
+            if items:
+                viewable = True
+                try:
+                    _fix_live_cache_items(items, _log)
+                except Exception:
+                    pass
+                mg = re.search(
+                    r'(?:本次得分|总得分|得分|成绩)\s*[：:]?\s*(\d+(?:\.\d+)?)\s*分', txt)
+                mt = re.search(r'(?:满分|总分)\s*[：:]?\s*(\d+(?:\.\d+)?)', txt)
+                if mg:
+                    try:
+                        got = float(mg.group(1))
+                    except (ValueError, TypeError):
+                        got = None
+                if mt:
+                    try:
+                        total = float(mt.group(1))
+                    except (ValueError, TypeError):
+                        total = None
+    except Exception:
+        pass
+    if not viewable:
+        _log(Default, "该对象不可查看(批阅报告无正确答案回显/未批阅), 跳过采集与重做")
+        return False
+    # ② 得分率判定
+    if got is None or not total or total <= 0:
+        _log(Default, "未解析到得分(可能待批阅), 按跳过条件不重做")
+        return False
+    rate = got * 100.0 / total
+    if rate >= pass_line:
+        _log(Default, f"得分率{rate:.1f}%({got}/{total})≥{pass_line}%已达标, 不重做")
+        return False
+    _log(Default, f"得分率{rate:.1f}%({got}/{total})<{pass_line}%, 执行强制重做...")
+    # ③ retest 激活重做(IKUN逆向: /mooc-ans/work/retest)
+    url = ("https://mooc1.chaoxing.com/mooc-ans/work/retest"
+           f"?courseId={course.course_id}&classId={course.key}"
+           f"&workId={work_id}&workAnswerId={work_answer_id}"
+           f"&knowledgeid={knowledge_id}&jobid={job_id}"
+           f"&originJobId={job_id}&enc={enc_work}")
+    try:
+        client = xxt_api._build_client(cache)
+        try:
+            _body, resp = client.get(
+                url, headers={"Accept": "*/*", "Host": "mooc1.chaoxing.com"},
+                retry=3)
+        finally:
+            client.close()
+        _sc = resp.status_code if resp else "N/A"
+        _ok = bool(resp and resp.status_code == 200)
+        if _ok:
+            _log(Default, f"retest已激活重做(status={_sc}), 下一轮循环将重新作答")
+        else:
+            _log(Red, f"retest失败(status={_sc}), 未重做")
+        return _ok
+    except Exception as e:
+        _log(Red, f"retest异常: {str(e)[:80]}")
+        return False
 
 
 def _fetch_work_report_html(cache: XueXiTUserCache, course_id: str,
@@ -7549,23 +7692,27 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                       Yellow,
                       f"cxExamSwAgain=1: 考试支持重考(允许{retake_allow}次已重考{retake_used}次)，强制重考...")
         elif is_finished_exam:
-            # 已完成考试: 仅分数<60且可重考时自动重做
+            # 已完成考试: 仅分数低于阈值且可重考时自动重做
+            # 2026-10-19: 阈值可配(cc.cx_retake_rate, 默认80, 百分比制; =0回退旧及格线60)
+            _rate_th = max(
+                0, min(100, int(getattr(cc, "cx_retake_rate", 80) or 0)))
+            _pass_line = _rate_th if _rate_th > 0 else 60
             if score_val is None:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Green, "考试已完成(入口页未展示成绩，无法判断是否达标)，跳过")
                 continue
-            if score_val >= 60:
+            if score_val >= _pass_line:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
-                          Green, f"考试已通过(成绩{score_val}分≥60)，无需重考")
+                          Green, f"考试已达标(成绩{score_val}分≥{_pass_line})，无需重考")
                 continue
-            # 分数<60
+            # 分数低于阈值
             if retake_match and retake_used >= retake_allow:
                 log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                           "【", course.course_name, "】【", exam_name, "】",
                           Yellow,
-                          f"考试未达标({score_val}分<60)但重考机会已用完(允许{retake_allow}次已重考{retake_used}次)，跳过")
+                          f"考试未达标({score_val}分<{_pass_line})但重考机会已用完(允许{retake_allow}次已重考{retake_used}次)，跳过")
                 continue
             is_re_exam = True
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",

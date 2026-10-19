@@ -247,6 +247,11 @@ class CoursesCustom:
     cx_other_read_sw: Optional[int] = 1
     # 【学习通】刷讨论开关(1=处理课程"讨论"tab全部话题, 未回复的AI生成学生口吻回复; 0=不处理)
     cx_bbs_sw: Optional[int] = 1
+    # ---- 2026-10-19: 作业/任务点测试/考试 强制重做(用户定夺: 先采集后重做/百分比制/考试受阈值控制/两条件跳过) ----
+    # 【学习通】重做阈值(得分率%: 得分/满分x100 >= 阈值则跳过, < 阈值才重做; 默认80; 0=考试回退旧判断<60)
+    cx_retake_rate: Optional[int] = 80
+    # 【学习通】作业+任务点测试(章测)重做次数(默认0=不重做; >0时: 采集更正→可查看且得分率<阈值→retest激活重做)
+    cx_work_retake: Optional[int] = 0
     exclude_courses: List[str] = field(default_factory=list)
     include_courses: List[str] = field(default_factory=list)
     courses_settings: List[CoursesSettings] = field(default_factory=list)
@@ -564,6 +569,9 @@ def _default_value(config: JSONDataForConfig):
         cc.cx_other_read_sw = 1 if _safe_int(
             cc.cx_other_read_sw, 1) != 0 else 0
         cc.cx_bbs_sw = 1 if _safe_int(cc.cx_bbs_sw, 1) != 0 else 0
+        # 【学习通】重做阈值(0-100)+作业重做次数(0-200)
+        cc.cx_retake_rate = max(0, min(100, _safe_int(cc.cx_retake_rate, 80)))
+        cc.cx_work_retake = max(0, min(200, _safe_int(cc.cx_work_retake, 0)))
 
         # 设备特征码检查: 学习通账号未配置deviceFlag时提示
         # (deviceFlag仅在 accountType=XUEXITONG 时生效)

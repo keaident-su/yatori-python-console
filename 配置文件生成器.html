@@ -1482,6 +1482,16 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
   <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;">
     <input type="checkbox" id="yt-cxBbsSw" checked> 刷讨论(全部话题)
   </label>
+  <hr style="border:none;border-top:1px solid #eee;margin:8px 0;">
+  <div style="font-weight:600;margin-bottom:6px;">作业/测试 强制重做</div>
+  <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">重做次数
+    <input type="number" id="yt-cxWorkRetake" value="0" min="0" max="200" style="width:70px;padding:2px 6px;border:1px solid #d9d9d9;border-radius:4px;">
+    <span style="color:#999;font-size:11px;">0=不重做</span>
+  </label>
+  <label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">阈值(得分率%)
+    <input type="number" id="yt-cxRetakeRate" value="80" min="0" max="100" style="width:70px;padding:2px 6px;border:1px solid #d9d9d9;border-radius:4px;">
+    <span style="color:#999;font-size:11px;">默认80</span>
+  </label>
   <div style="color:#999;font-size:11px;margin-top:4px;">0关1开; 默认全开</div>
 </div>
 <script>
@@ -1510,6 +1520,11 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
       var el = document.getElementById('yt-' + k);
       st[k] = el ? (el.checked ? 1 : 0) : 1;
     });
+    // 2026-10-19: 作业/测试重做
+    var wr = document.getElementById('yt-cxWorkRetake');
+    var rr = document.getElementById('yt-cxRetakeRate');
+    st.cxWorkRetake = wr ? parseInt(wr.value || '0', 10) || 0 : 0;
+    st.cxRetakeRate = rr ? parseInt(rr.value || '80', 10) : 80;
     return st;
   }
   function patchYaml(text){
@@ -1533,6 +1548,8 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
         if (!exist['cxExtendReadSw']) out.push(ind + 'cxExtendReadSw: ' + st.cxExtendReadSw);
         if (!exist['cxOtherReadSw']) out.push(ind + 'cxOtherReadSw: ' + st.cxOtherReadSw);
         if (!exist['cxBbsSw']) out.push(ind + 'cxBbsSw: ' + st.cxBbsSw);
+        if (!exist['cxWorkRetake'] && st.cxWorkRetake > 0) out.push(ind + 'cxWorkRetake: ' + st.cxWorkRetake);
+        if (!exist['cxRetakeRate'] && st.cxRetakeRate !== 80) out.push(ind + 'cxRetakeRate: ' + st.cxRetakeRate);
       }
     }
     return out.join('\n');

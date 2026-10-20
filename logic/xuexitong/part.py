@@ -6940,13 +6940,18 @@ def _parse_exam_task_gate(text: str) -> dict:
     """
     if not text:
         return {}
-    # 宽松匹配: 前一天/次日/任务点 任一 + 百分比
-    if not any(k in text for k in ("前一天", "次日", "任务点")):
+    # 2026-10-20修复: "任务点"单词太宽(所有考试页JS语言包都含"章节任务点"词条),
+    #   导致无gate文案的考试被误判; 真gate文案必含"前一天"或"次日"字样
+    if not any(k in text for k in ("前一天", "次日")):
         return {}
     pct_m = re.search(
         r'(\d{1,3})\s*%[^。]{0,20}?任务点|任务点[^。]{0,20}?(\d{1,3})\s*%', text)
+    # 2026-10-20: 必须匹配到"XX%+任务点"组合才算真gate(语言包只有"任务点"无百分比,
+    #   不能默认pct=80——否则含"前一天/次日"字样+语言包的普通考试会被误拦)
+    if not pct_m:
+        return {}
     try:
-        pct = int((pct_m.group(1) or pct_m.group(2))) if pct_m else 80
+        pct = int((pct_m.group(1) or pct_m.group(2)))
     except (ValueError, TypeError):
         pct = 80
     time_m = re.search(r'次日\s*(\d{1,2})[：:]\s*(\d{2})\s*后', text)
@@ -7113,8 +7118,9 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
     if ("不允许参加考试" in enter_body
             or "只能在手机学习通APP参加" in enter_body
             # 2026-10-20修复: "人脸识别"会命中页面JS语言包词条(examFaceAbnormalTip等,
-            #   非人脸考试也含)→误判为受限考试; 仅当无"开始考试"按钮时才视为人脸限制
-            or ("人脸识别" in enter_body and "开始考试" not in enter_body)):
+            #   非人脸考试也含)→误判为受限考试; 仅当无开始/进入考试按钮时才视为人脸限制
+            or ("人脸识别" in enter_body
+                and not any(k in enter_body for k in ("开始考试", "进入考试")))):
         _gate = _parse_exam_task_gate(enter_body)
         if _gate:
             _log(_gate["msg"] + " | 考试: " + str(exam_name))
@@ -7186,13 +7192,22 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
     qt_match = re.search(r'共包含\s*(\d+)\s*道题目', paper_body)
     question_total = int(qt_match.group(1)) if qt_match else 0
     if question_total <= 0:
-        _log("题目数量解析为0, 跳过: %s" % exam_name)
-        return False
+        # 2026-10-20: 新卷(逐题流转式)无"共包含X道题"文案 → 不再跳过,
+        #   改为逐题循环探底(遇空qid/重复自动终止, 上界200)
+        _qi0 = _html_exam_question_turn_entity(
+            paper_body).get("questionId", "")
+        if _qi0:
+            question_total = 200
+            _log("新格式试卷(逐题流转, 首题%s), 逐题解析..." % str(_qi0)[:16])
+        else:
+            _log("题目数量解析为0, 跳过: %s" % exam_name)
+            return False
     _log("已进入考试[%s], 共%d题, 提交=%s" % (
         exam_name, question_total, "是" if submit else "否(仅采集)"))
     _wt_code_map = {'0': 'single_choice', '1': 'multiple_choice', '2': 'fill',
                     '3': 'judge', '4': 'short', '5': 'term_explanation',
                     '6': 'essay', '11': 'matching', '8': 'short'}
+    _last_submit_data = None
     for qi in range(min(question_total, 200)):
         last_update_param = enc_last_update_time or str(
             int(time.time() * 1000))
@@ -7281,9 +7296,21 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
             if is_last:
                 stats["examsSubmitted"] += 1
                 xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+            _last_submit_data = submit_data
         except Exception as e:
             stats["errors"].append("%s 第%d题提交异常: %s" % (
                 exam_name, qi + 1, str(e)[:60]))
+    # 2026-10-20: 逐题流转式新卷(无"共包含X题"文案, question_total=200上界探底) —
+    #   循环遇空qid break时 is_last 永不触发 → 此处用最后一道题正式交卷(is_submit=True)
+    if submit and qt_match is None and _last_submit_data and stats["examsSubmitted"] == 0:
+        try:
+            xxt_api.submit_exam_answer_api(
+                cache, _last_submit_data, is_submit=True, retry=2)
+            stats["examsSubmitted"] += 1
+            _log("逐题流转卷已最后一题正式交卷")
+            xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
+        except Exception as e:
+            stats["errors"].append("%s 最终交卷异常: %s" % (exam_name, str(e)[:60]))
     return True
 
 

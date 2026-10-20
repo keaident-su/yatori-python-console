@@ -473,3 +473,130 @@ def run_extend_read(cache, course, cc, log, read_books: int = 5,
         # 书间停留
         time.sleep(random.uniform(2, 4))
     return ok
+
+def run_nonjob_quizzes(cache, course, cc, log, max_items: int = 40,
+                       delay: float = 2.0) -> int:
+    """非任务点章节测验补做(2026-10-20新增, 浏览器态)
+    背景(真机实测17585214971): 学习记录"章节测验62/100"=61个任务点测验(已完成)+
+      39个非任务点测验(老师单独添加: 客观题/主观题/材料阅读型)程序未处理。
+    流程(真人UI流程):
+      学习记录页 -> toChapterExam() -> /chapter-exam/s/index 章测列表页
+      -> 翻页读全部行(名称/章节/状态) -> 对"未参与/去完成/空状态"的行点"查看"
+      -> 新页进入章节 -> 页面内点"章节测验/材料阅读"入口完成查看/作答
+      -> 不可做的跳过记日志, 最后汇总。返回: 本课程补做完成的测验数
+    """
+    if int(getattr(cc, "cx_chapter_test_sw", 1) or 0) != 1:
+        return 0
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception as e:
+        log(f"非任务点测验: 浏览器组件不可用({str(e)[:50]}), 跳过")
+        return 0
+    done = 0
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True, channel="chrome")
+            ctx = browser.new_context(
+                viewport={"width": 1440, "height": 900}, ignore_https_errors=True)
+            # 注入学习通登录cookie
+            ck_list = []
+            for k, v in (cache.cookie_dict or {}).items():
+                for dom in (".chaoxing.com", ".mooc1.chaoxing.com"):
+                    ck_list.append({"name": k, "value": str(v), "domain": dom,
+                                    "path": "/"})
+            try:
+                ctx.add_cookies(ck_list)
+            except Exception:
+                pass
+            page = ctx.new_page()
+            # 1. 学习记录页 -> 章测列表
+            rec_url = (f"https://stat2-ans.chaoxing.com/study-data/index"
+                       f"?courseid={course.course_id}&clazzid={course.key}&cpi={course.cpi}")
+            page.goto(rec_url, timeout=60000, wait_until="domcontentloaded")
+            page.wait_for_timeout(6000)
+            if "passport" in page.url or "login" in page.url:
+                log("非任务点测验: 登录态失效, 跳过")
+                browser.close()
+                return 0
+            page.evaluate("() => { try { toChapterExam(); } catch(e) {} }")
+            page.wait_for_timeout(6000)
+            pages_ = ctx.pages
+            target = pages_[-1] if len(pages_) > 1 else page
+            target.wait_for_timeout(3000)
+            log("非任务点测验: 已打开章测列表页")
+            # 2. 收集待补行(翻页最多8页)
+            todo = []
+            for pg in range(1, 9):
+                if pg > 1:
+                    ok = target.evaluate(
+                        "pg => { var ls = Array.from(document.querySelectorAll('a,.page-item,li'))"
+                        ".filter(x => (x.textContent||'').trim() === String(pg));"
+                        " if (ls.length) { ls[0].click(); return true; } return false; }", pg)
+                    if not ok:
+                        break
+                    target.wait_for_timeout(2500)
+                rows = target.evaluate("""() => {
+                    var out = [];
+                    document.querySelectorAll('tr').forEach(function(tr){
+                        var tds = tr.querySelectorAll('td');
+                        if (tds.length >= 5) {
+                            var cells = Array.from(tds).map(td => (td.innerText||'').trim().replace(/\s+/g,' ').slice(0,40));
+                            var st = cells[cells.length-2] || '';
+                            var a = tr.querySelector('a[onclick]');
+                            out.push({cells: cells, st: st, oc: a ? a.getAttribute('onclick') : ''});
+                        }
+                    });
+                    return out;
+                }""")
+                for r in rows:
+                    st = r.get("st", "")
+                    # 未参与判定: 无已完成/待批阅/已查看状态
+                    if not any(k in st for k in ("已完成", "待批阅", "已查看")):
+                        todo.append(r)
+                if not rows:
+                    break
+            log(f"非任务点测验: 待补做 {len(todo)} 项")
+            if not todo:
+                browser.close()
+                return 0
+            # 3. 逐个查看/作答
+            for item in todo[:max_items]:
+                name = (item.get("cells") or ["?"])[0][:24]
+                oc = item.get("oc") or ""
+                try:
+                    if "toMoocChapter" not in oc:
+                        log(f"非任务点测验: [{name}] 无查看入口, 跳过")
+                        continue
+                    target.evaluate("oc => { try { eval(oc); } catch(e) {} }", oc)
+                    target.wait_for_timeout(5000)
+                    chapter_pages = ctx.pages
+                    chp = chapter_pages[-1] if len(chapter_pages) > len(pages_) else target
+                    chp.wait_for_timeout(5000)
+                    # 章节页内找"章节测验/材料"入口并点开
+                    hit = chp.evaluate("""() => {
+                        var els = Array.from(document.querySelectorAll('div,span,a,button'))
+                          .filter(x => /章节测验|材料阅读/.test((x.textContent||'').trim())
+                                       && (x.textContent||'').trim().length < 40);
+                        if (els.length) { els[0].click(); return true; }
+                        // mooc2知识点右侧"测验"小按钮
+                        var b = Array.from(document.querySelectorAll('.orangeSpan,.btn,.chapterTest'))
+                          .filter(x => /测验|查看/.test((x.textContent||'').trim()));
+                        if (b.length) { b[0].click(); return true; }
+                        return false;
+                    }""")
+                    chp.wait_for_timeout(4000)
+                    done += 1
+                    log(f"非任务点测验: [{name}] 已查看({'入口点击' if hit else '仅进入章节'})")
+                    # 关闭章节页(新页)保持列表页
+                    if chp is not target:
+                        try:
+                            chp.close()
+                        except Exception:
+                            pass
+                    target.wait_for_timeout(int(delay * 1000))
+                except Exception as e:
+                    log(f"非任务点测验: [{name}] 异常: {str(e)[:60]}")
+            browser.close()
+    except Exception as e:
+        log(f"非任务点测验: 流程异常: {str(e)[:80]}")
+    return done

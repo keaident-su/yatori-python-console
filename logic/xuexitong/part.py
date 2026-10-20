@@ -854,11 +854,20 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
             try:
                 if int(getattr(cc, "cx_extend_read_sw", 1) or 0) == 1:
                     _ext_n = _ebbs.run_extend_read(
-                        cache, course, cc, _log_f, read_rounds=3, delay=30)
+                        cache, course, cc, _log_f, read_books=3, delay=30)
                     if _ext_n:
-                        _log_f(f"✓拓展阅读完成: {_ext_n}轮阅读上报")
+                        _log_f(f"✿拓展阅读完成: {_ext_n}本书阅读上报")
             except Exception as _ee:
                 _log_f(f"拓展阅读异常: {str(_ee)[:80]}")
+            try:
+                # 2026-10-20: 非任务点章节测验补做(学习记录62/100根因: 39个非任务点测验程序未处理)
+                if int(getattr(cc, "cx_chapter_test_sw", 1) or 0) == 1:
+                    _nq_n = _ebbs.run_nonjob_quizzes(
+                        cache, course, cc, _log_f, max_items=40)
+                    if _nq_n:
+                        _log_f(f"✿非任务点章节测验补做: {_nq_n}项已查看/作答")
+            except Exception as _nqe:
+                _log_f(f"非任务点测验补做异常: {str(_nqe)[:80]}")
     except Exception:
         pass
 
@@ -6305,7 +6314,8 @@ def _work_retake_flow(cache, course, cc, work_id: str, work_answer_id: str,
         client = xxt_api._build_client(cache)
         try:
             _body, resp = client.get(
-                url, headers={"Accept": "application/json, text/javascript, */*"},
+                url, headers={
+                    "Accept": "application/json, text/javascript, */*"},
                 retry=3)
         finally:
             client.close()
@@ -6314,11 +6324,14 @@ def _work_retake_flow(cache, course, cc, work_id: str, work_answer_id: str,
         _ok_biz = False
         try:
             _jd = json.loads(_body or "{}")
-            _ok_biz = (_jd.get("status") == 1) or (str(_jd.get("status")) == "1")
+            _ok_biz = (_jd.get("status") == 1) or (
+                str(_jd.get("status")) == "1")
             if not _ok_biz:
-                _log(Red, f"redo业务失败(status={_sc}): {str(_jd.get('msg', ''))[:60]}")
+                _log(
+                    Red, f"redo业务失败(status={_sc}): {str(_jd.get('msg', ''))[:60]}")
         except Exception:
-            _ok_biz = _ok_http and ('"status":1' in (_body or "").replace(" ", ""))
+            _ok_biz = _ok_http and (
+                '"status":1' in (_body or "").replace(" ", ""))
         if _ok_biz:
             _log(Default, f"redo已激活重做(status={_sc}), 下一轮循环将重新作答")
             return True

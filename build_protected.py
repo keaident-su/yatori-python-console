@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-打包流水线 —— yatori-python刷课系统 V2.0.2-beta4.1
+打包流水线 —— yatori-python刷课系统 V2.0.9.2
 
 流程:
   1. 复制源码到隔离的 build_stage 目录(不动原始源码树)
@@ -11,7 +11,7 @@
   5. 对全部自研原生扩展计算 SHA-256 清单, 生成 _integrity_data.py
      (运行时由 utils/integrity.py 比对, 防篡改)
   6. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
-  7. 产物输出到 dist/yatori-python刷课系统V2.0.2-beta4.1.exe
+  7. 产物输出到 dist/yatori-python刷课系统V2.0.9.2.exe
 
 用法: python build_protected.py
 """

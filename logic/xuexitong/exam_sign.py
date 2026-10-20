@@ -87,9 +87,31 @@ except ImportError:
     _HAS_CRYPTO = False
 
 # APK内嵌RSA私钥(DER/PKCS#8, 来自 libsecuritylib.so 逆向)
-EMBEDDED_PRIVATE_KEY_B64 = (
-    "REDACTED_EXAM_SIGN_KEYHPsREJK06k4+itt6wyCbNEUN5ENNUX0XFD//sUwvM12VfE9ANz9QM2rLhtwFTM6W/TKJzeGV2zY2+6HGK3ksvR9cY3bEcnm4IRDQzDCO+srhq0n6HRUXdrjp8SVImIowzTRPvsQ4iCrfx3vOyEXM4Nn6Rh4SlMKLAgMBAAECgYB0Edy/KxU6NL91Z6VPLxUX1T/yJoPL+CnmmloE2eU0kFOstFsXjal/zi2cpr4NX6eoPznKS5qi+V5NRe2ZiBunP4SiN6WZvkwYL4XCZBElstdW3/qdV4FWtCgtBqpacfOam9dT+d0q2rA4nbbpXOWhICYKfaBBG+C8IPZGfZRh0QJBAO/lNDi62pL2spQl4To1QAZUdPK5WyIlc1NEuHlXc+asBhlwI5SHvoBHXQ8+oLl6Zmj0piS9bAUu6sJB1Zj+WSkCQQCtcqGU0H645m1UzuC/Xxonnd//6eDXHdnMiOFnWdlJ9t2MhJ4qUfBmN+XH0bej+HvRl2DHPhKsJ5UegKmI7RCTAkEA2Gu69QL9dWBCMw0JZ+3qWMuQxfkakm+e3xw8IJwY352J0yEruC/OWQQInFwvu6UFBuLPkI2jCfoNqDqkbGXqIQJBAIBvXskEbqHaN2FSY8gx0vs9A47MD6sbNpknTsmqFaWYgMu5tCkgTcRTZfpGCBcKPB2iW46OH2ONV/WjTmbPLLMCQQCKMAapcf110Kwe5H6VapWD+zC0I2nFLYYF2g/ugaNvT0udASLnEmWZLeTR5nUcfaEfwci4B4hJUAwrPJQ7VBIi"
-)
+# 2026-10-21 开源剥离: 考试签名RSA私钥不再硬编码, 改为运行时从本地密钥文件读取
+#   (assets/exam_privkey.b64, 已加入 .gitignore 不入库; 开源版无此文件时自动优雅降级:
+#    签名函数抛异常 -> 调用方 try/except 回退旧签名链, 基础考试功能不受影响)
+def _load_exam_privkey() -> str:
+    import os as _os
+    _cands = []
+    try:
+        import sys as _sys
+        if getattr(_sys, "frozen", False):
+            _cands.append(_os.path.join(_os.path.dirname(_os.path.abspath(_sys.executable)), "assets", "exam_privkey.b64"))
+    except Exception:
+        pass
+    _cands.append(_os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), "assets", "exam_privkey.b64"))
+    _cands.append(_os.path.join(_os.getcwd(), "assets", "exam_privkey.b64"))
+    for _p in _cands:
+        try:
+            if _os.path.isfile(_p):
+                with open(_p, "r", encoding="ascii") as _f:
+                    return _f.read().strip()
+        except Exception:
+            continue
+    return ""
+
+
+EMBEDDED_PRIVATE_KEY_B64 = _load_exam_privkey()
 
 
 def _to_string(v: Any) -> str:

@@ -1,8 +1,68 @@
 # 📋 更新与修复记录（Changelog）
 
-> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V2.0.5）。
+> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V2.0.9.2）。
 >
 > **重要说明**：本程序的前端（Web 图形界面）功能因**严重问题已移除**，当前版本仅提供纯控制台模式运行；相关代码与部署文档不再随本仓库提供。
+
+---
+
+## V2.0.9.2 版本发布（2026-10-21，考试签名v2 + UA现代化 + 赞助面板）
+
+### 新增与突破
+- 【学习通】**考试签名 v2 攻克“最新版本 APP”强校验考试**：exam/start 需带 v2 签名链（cxcid 设备指纹链 22hex + cxtime + signt=MD5 + signk=RSA base64 + _signcode=1&_signc=1）；pull_exam_paper_api 新增 v2_material 参数（非 None 时带 cxcid/cxtime/signt/signk）；“访问异常”自动完整重走（重新 enter→滑块→fetch_exam_client_id_v2→compute_start_exam_sign_v2→v2 拉卷）；真机实证：136&198 两账号入门考试全链通过（题库命中→逐题提交→交卷→状态已完成）。
+- 【学习通】UA 升级至最新真机版本 7.0.4 / 10995_342（APK 逆向实证）；考试 gate 误判修复（“人脸识别”文案误命中导致非人脸考试误跳过）。
+- 【全平台】**UA 现代化防风控**：非学习通平台统一对齐 2026-10 真实桌面 Chrome 143.0.7499.192（智慧树主 API 由 Chrome100/101 升级；login_browser/ai_smart/enaea/weban 同步；青书 okhttp 4.2.2→4.12.0；TCaptcha 反爬指纹保持不动）。
+- 【赞助】开局 LOGO + 全部任务完成界面加层赞助提示（`utils/sponsor.py` 金色横幅+赞助码，进程级节流每进程仅弹一次）；赞助码图片随包发布。
+
+### 说明
+- 开源剥离：web-s/WordPress 插件移出主仓（本地保留独立部署）；考试签名密钥按用户定夺保留在代码中（学习通 APP 内置签名密钥，非个人密钥）。
+
+---
+
+## V2.0.9.1 版本发布（2026-10-19，作业强制重做全链修复）
+
+- 【学习通】作业强制重做全链修复：已完成状态接入重做链（原仅待批阅）、已批阅漏判修复；真机实测（汽车销售售后服务课程）闭环通过。
+
+---
+
+## V2.0.9 版本发布（2026-10-19，综合成绩 + 非任务点章测补做 + 前后端同步）
+
+- 【学习通】综合成绩全链（纯协议）：`fetch_overall_score`（stat2-ans/overall-score/stu-score 全量得分率解析），进度页综合成绩块完整展示。
+- 【学习通】非任务点章节测验补做（纯协议版）：数据源 GET stat2-ans/chapter-exam/s/tests/...（替换浏览器版），破译状态语义与 62/100 口径真相。
+- 【前后端】PHP 插件 1.3.8→1.3.9（JS URL ?ver 升级强制浏览器刷新缓存，解决旧 JS 强缓存导致 CF_DEFS 缺字段）。
+
+---
+
+## V2.0.8 版本发布（2026-10-19，web 模式登录链身份 hook 补全）
+
+- 【Web 模式】`xuexitong_activity.login()` 身份信息 hook 补全（web 启动刷课/拉课链与 CLI 一致）；修复 web 目录 gitignore 导致身份 hook 文件未入库问题。
+
+---
+
+## V2.0.7 版本发布（2026-10-19，身份信息体系：学校/姓名/学号全链）
+
+- 【学习通】SSO 接口 `fetch_user_profile_api` 实测返回 schoolname/name/uname，日志+账号管理+进度页全链展示。
+- 【智慧树/微伴】身份适配：智慧树 CASLOGC cookie（URL 编码 JSON 含 realName）；微伴租户学校信息。
+- 【WP 前端】身份功能同步（线上版已部署）。
+
+---
+
+## V2.0.6 版本发布（2026-10-19，讨论/拓展阅读 + 多节点架构 + 进度页作业考试清单）
+
+### 新增功能
+- 【学习通】**拓展阅读全链**（真人阅读流程：appcd 阅读页书目列表→真实点击书目卡 extend_read）。
+- 【学习通】**讨论发回复全链**（IKUN 逆向真实端点 /pc/invitation/{bbsid}/addReplys；真人 UI 流程：话题详情→replyBtn→输入框→发送）；“答题讨论”标签全套接入（cxBbsSw）。
+- 【学习通】进度页作业/考试清单+待办提醒（courseDetailStat 扩展 workList/examList）。
+- 【多节点架构】机器分组（group）+ 组内主备 fallback（backends 表 group_id/group_name，dbDelta 自动升级）；进度页多后端主备容错完整版（fetch_fresh_any 自动回退+connect_timeout=4s）。
+- 【全平台】作业考试 generic_activity 统一分发 + 英华 activity 接入。
+
+### 修复与优化
+- 【学习通】章测答案匹配：选项前缀污染（A、/A./分值括号/HTML 实体前缀导致相似度算错）+ 多选连写拆分修复。
+- 【学习通】空任务点死代码 BUG（total>=0 && total==finished 提前 continue）+ 考试任务点前置条件识别。
+- 【学习通】直播任务点新版接口链破解（旧链 404 → 新链 getLiveDetail/saveTimePc/ananas liveinfo）。
+- 【拟人化】考试拟人节奏全平台补齐至 6 平台（本版补齐微伴/重庆/英华/青书档位，青书答题随机思考）。
+- 【打包】py_mini_racer 随包修复（beta9 遗漏导致家机日志 ModuleNotFoundError；易盾 JS/TCaptcha 失效降级浏览器）。
+- 【进度页】setMeta 未定义致命修复（PHP 模板调用但从未定义导致 JS 抛错页面空白）；login connect_timeout=4s 主备切换加速。
 
 ---
 

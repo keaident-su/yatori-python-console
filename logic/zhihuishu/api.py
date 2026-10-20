@@ -95,12 +95,12 @@ class ManagedSession:
     # 默认请求头, 模拟 Chrome 浏览器特征(降低被反爬识别的风险)
     DEFAULT_HEADERS = {
         "Accept": "*/*",
-        "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="101", "Google Chrome";v="101"',
+        "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="143", "Google Chrome";v="143"',
         "sec-ch-ua-mobile": "?0",
         "User-Agent": (
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/100.0.4896.127 Safari/537.36"
+            "Chrome/143.0.7499.192 Safari/537.36"
         ),
         "sec-ch-ua-platform": "macOS",
         "Accept-Encoding": "gzip, deflate, br",
@@ -869,7 +869,7 @@ class ShareCourseAPIClient(ZhsAPIClientBase):
         body = dict(payload)
         body["dateFormate"] = ts
         ss = share_encrypt(body)
-        ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " "  (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36")
+        ua = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " "  (KHTML, like Gecko) Chrome/143.0.7499.192 Safari/537.36")
         r = self._session.session.post(f"{self.BASE}/gateway/t/v1/{path}", data={"secretStr": ss, "dateFormate": ts}, headers={"User-Agent": ua,
                                        "Content-Type": "application/x-www-form-urlencoded", "Origin": "https://studyvideoh5.zhihuishu.com", "Referer": "https://studyvideoh5.zhihuishu.com/"}, timeout=25)
         try:

@@ -562,7 +562,7 @@ def fetch_image(url: str) -> np.ndarray:
     """
     headers = {
         "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.7499.192 Safari/537.36"
         ),
         "Referer": "https://turing.captcha.qcloud.com/",
     }

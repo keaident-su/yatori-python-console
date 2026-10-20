@@ -868,6 +868,20 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
                         _log_f(f"✿非任务点章节测验补做: {_nq_n}项已查看/作答")
             except Exception as _nqe:
                 _log_f(f"非任务点测验补做异常: {str(_nqe)[:80]}")
+            try:
+                # 2026-10-20: 课程完成后上报综合成绩(纯协议; 无考试/无作业维度权重0%自动排除归一化)
+                _os = xxt_api.fetch_overall_score(
+                    cache, str(course.course_id), str(course.key), str(course.cpi))
+                if _os:
+                    _rank_s = f", 排名{_os['rank']}" if _os.get("rank") else ""
+                    _gain_top = ""
+                    for _d in (_os.get("dims") or []):
+                        if _d.get("gain", 0) > 0.05:
+                            _gain_top = (f"; 可提升: {_d['name']}差{_d['gain']:.2f}分权重")
+                            break
+                    _log_f(f"✿综合成绩: {_os['total']}/100(得分率{_os['rate']}%){_rank_s}{_gain_top}")
+            except Exception as _ose:
+                _log_f(f"综合成绩获取异常: {str(_ose)[:60]}")
     except Exception:
         pass
 
@@ -8823,6 +8837,13 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
                 _quiz_all = int(_done_n) + int(_undo_n)
         except Exception:
             pass
+        # 2026-10-20: 综合成绩(纯协议, 失败置None不阻塞; 无综合成绩课程前端自动隐藏)
+        _oscore = None
+        try:
+            _oscore = xxt_api.fetch_overall_score(
+                cache, str(c.course_id), str(c.key), str(c.cpi))
+        except Exception:
+            pass
         result.append({
             "courseId": str(c.course_id),
             "courseName": c.course_name,
@@ -8832,6 +8853,7 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
             "jobRate": round(float(c.job_rate or 0), 1),
             "quizFinishCount": _quiz_fin,
             "quizCount": _quiz_all,
+            "overallScore": _oscore,
             "hasProgress": True,
             "statusText": status_str,
         })

@@ -34,8 +34,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _AES_KEY = b"u2oh6Vu^HWe4_AES"
 # 2026-10-11 设备档升级(对齐 MOGO 实机截获档: xiaomi 12 / Android 11 / Build QKQ1.190929.002)
 # 原档 "MI10 + Android 16 + OPM1.171019.019(8.1 build)" 为矛盾组合, 属"设备请求异常"高风险特征
-APP_VERSION = "6.7.5"
-BUILD = "10941_314"
+APP_VERSION = "7.0.4"  # 2026-10-20: 对齐最新APP(APK逆向: versionName=7.0.4/versionCode=10995)
+BUILD = "10995_314"  # 10995=7.0.4版本号; _314沿用渠道后缀
 DEVICE_VENDOR = "xiaomi 12"
 ANDROID_VERSION = "Android 11"
 ANDROID_BUILD_ID = "QKQ1.190929.002"
@@ -117,7 +117,7 @@ def get_ua(ua_type: str = "mobile") -> str:
         # 考试链专用UA(2026-10-09 对照实测): 新考试"访问异常"版本门校验UA自洽性
         #  FAIL案例(被拦): Android 16 与 Build/OPM1.171019.019(8.1 build号) 矛盾组合;
         #  PASS案例(实测进卷+交卷): Dalvik头 + Android 12 + Build/SKQ1.211006.001,
-        #  版本 6.7.5/10941_314 —— 与可用BUILD一致且自洽
+        #  版本 7.0.4/10995_314 —— 2026-10-20升级(部分新考试版本门要求最新APP)
         sign = _mobile_ua_sign(DEVICE_VENDOR, "zh_CN",
                                EXAM_UA_VERSION, EXAM_UA_BUILD, _IMEI)
         return " ".join([
@@ -135,9 +135,9 @@ def get_ua(ua_type: str = "mobile") -> str:
 
 
 # 专门用于考试API的UA - 对应 Go XXTEXAMUA
-# (2026-10-09 起使用 exam 类型: 自洽Android12+Dalvik头+6.7.5/10941_314)
-EXAM_UA_VERSION = "6.7.5"
-EXAM_UA_BUILD = "10941_314"
+# (2026-10-09 起exam类型; 2026-10-20 升7.0.4/10995_314: 版本门兼容最新考试)
+EXAM_UA_VERSION = "7.0.4"
+EXAM_UA_BUILD = "10995_314"  # 10995=7.0.4版本号; _314沿用渠道后缀
 EXAM_UA_OS = "Android 12"
 EXAM_UA_BUILD_ID = "SKQ1.211006.001"
 XXTEXAMUA: str = get_ua("exam")

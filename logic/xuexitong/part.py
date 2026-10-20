@@ -860,12 +860,11 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
             except Exception as _ee:
                 _log_f(f"拓展阅读异常: {str(_ee)[:80]}")
             try:
-                # 2026-10-20: 非任务点章节测验补做(学习记录62/100根因: 39个非任务点测验程序未处理)
+                # 2026-10-20: 非任务点章节测验补做(纯协议版: tests/data列表判定+复用章测答题引擎)
                 if int(getattr(cc, "cx_chapter_test_sw", 1) or 0) == 1:
-                    _nq_n = _ebbs.run_nonjob_quizzes(
-                        cache, course, cc, _log_f, max_items=40)
+                    _nq_n = _nonjob_quizzes_action(setting, user, cache, course)
                     if _nq_n:
-                        _log_f(f"✿非任务点章节测验补做: {_nq_n}项已查看/作答")
+                        _log_f(f"✿非任务点章节测验补做: {_nq_n}项已发起作答")
             except Exception as _nqe:
                 _log_f(f"非任务点测验补做异常: {str(_nqe)[:80]}")
             try:
@@ -877,9 +876,11 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
                     _gain_top = ""
                     for _d in (_os.get("dims") or []):
                         if _d.get("gain", 0) > 0.05:
-                            _gain_top = (f"; 可提升: {_d['name']}差{_d['gain']:.2f}分权重")
+                            _gain_top = (
+                                f"; 可提升: {_d['name']}差{_d['gain']:.2f}分权重")
                             break
-                    _log_f(f"✿综合成绩: {_os['total']}/100(得分率{_os['rate']}%){_rank_s}{_gain_top}")
+                    _log_f(
+                        f"✿综合成绩: {_os['total']}/100(得分率{_os['rate']}%){_rank_s}{_gain_top}")
             except Exception as _ose:
                 _log_f(f"综合成绩获取异常: {str(_ose)[:60]}")
     except Exception:
@@ -3848,6 +3849,85 @@ def _similarity_array_select(target: str, options: List[str]) -> List[str]:
 
 
 # ============ 章测自动答题 ============
+
+def _nonjob_quizzes_action(setting: Setting, user: User,
+                           cache: XueXiTUserCache, course) -> int:
+    """非任务点章节测验补做(纯协议, 2026-10-20)
+    数据源(真机实测): GET stat2-ans /stat2/chapter-exam/s/tests/data
+      ?clazzid&courseid&cpi&ut=s&pEnc=&page=N&pageSize=50&status=0
+      -> data.results[]: {workId, workAnswerId, chapterId, chapterName, title,
+         status(4已完成/3待批阅/0已查看), statusStr, fullScore, chapterStatus, ...}
+    判定: statusStr不含"已完成/待批阅/已查看"=真未参与(实测存在 statusStr='*' 的
+      客观练习题, 即学习记录差额的真实来源)
+    补做: 构造 PointWorkDto -> 复用 _chapter_test_action 完整答题引擎(题库/AI→提交)
+    返回: 成功发起的补做数
+    """
+    platform = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+    acct = display_account(cache.account)
+    cc = user.courses_custom
+    if int(getattr(cc, "cx_chapter_test_sw", 1) or 0) != 1:
+        return 0
+    def _log(color, msg):
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", course.course_name, "】", Yellow, "[非任务点测验] ",
+                  color, msg)
+    # 1. 纯协议拉全部测验行(2页 x 50)
+    rows = []
+    base = ("https://stat2-ans.chaoxing.com/stat2/chapter-exam/s/tests/data"
+            f"?clazzid={course.key}&courseid={course.course_id}"
+            f"&cpi={course.cpi}&ut=s&pEnc=&pageSize=50&status=0")
+    for _pg in (1, 2):
+        try:
+            _client = xxt_api._build_client(cache)
+            try:
+                _body, _resp = _client.get(base + f"&page={_pg}", retry=2,
+                                           headers={"Accept": "application/json, */*"})
+            finally:
+                _client.close()
+            _d = json.loads(_body or "{}")
+            rows.extend((((_d.get("data") or {}).get("results")) or []))
+        except Exception:
+            break
+    # 2. 筛真未参与
+    todo = []
+    for r in rows:
+        if "status" not in r:
+            continue  # 章节汇总行
+        st = str(r.get("statusStr", ""))
+        if any(k in st for k in ("已完成", "待批阅", "已查看")):
+            continue
+        todo.append(r)
+    if not todo:
+        _log(Default, "全部测验均已参与(无未完成项)")
+        return 0
+    _log(Default, f"发现未参与测验 {len(todo)} 项, 逐个补做...")
+    # 3. 逐个复用章测答题引擎
+    ok = 0
+    for r in todo[:40]:
+        try:
+            wid = str(r.get("workId") or "")
+            cid = str(r.get("chapterId") or "")
+            cname = str(r.get("chapterName") or "")
+            ttl = str(r.get("title") or "")
+            if not wid or not cid:
+                continue
+            wdto = PointWorkDto()
+            wdto.course_id = str(course.course_id)
+            wdto.class_id = str(course.key)
+            wdto.cpi = str(course.cpi)
+            wdto.work_id = wid
+            wdto.job_id = "work-" + wid
+            wdto.knowledge_id = cid
+            wdto.enc = ""
+            ki = KnowledgeItem()
+            ki.label = ""
+            ki.name = (cname + " " + ttl).strip()[:60]
+            _chapter_test_action(setting, user, cache, course, ki, wdto)
+            ok += 1
+        except Exception as e:
+            _log(Red, f"[{str(r.get('chapterName',''))[:16]}] 补做异常: {str(e)[:60]}")
+    return ok
+
 
 def _chapter_test_action(setting: Setting, user: User, cache: XueXiTUserCache,
                          course: XueXiTCourse, knowledge: KnowledgeItem,

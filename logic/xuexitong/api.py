@@ -3323,3 +3323,115 @@ def fetch_user_profile_api(cache: XueXiTUserCache) -> dict:
         return {}
     finally:
         client.close()
+
+
+# ============ 综合成绩(纯协议, 2026-10-20) ============
+# 维度字段→中文名(与平台页面一致); 权重为0%的维度自动排除(无考试/无作业归一化, 用户定夺)
+_OS_DIM_NAMES = {
+    "video": "章节任务点", "ceyan": "章节测验", "work": "作业", "test": "考试",
+    "visitTime": "章节学习次数", "bbs": "讨论", "readTime": "阅读时长",
+    "liveTime": "直播", "videoTest": "视频弹题", "aiEvaluate": "AI实践",
+    "topic": "自定义", "active": "活动", "attend": "签到", "pbl": "PBL",
+    "cxClass": "课堂活动", "offline": "线下",
+}
+
+
+def fetch_overall_score(cache: XueXiTUserCache, course_id: str,
+                        class_id: str, cpi: str) -> Optional[dict]:
+    """综合成绩(纯协议, SSR页面解析)
+    数据源: GET stat2-ans /stat2/overall-score/stu-score (layui data内嵌)
+    返回: {total, rate, rank, dims:[{key,name,weight,score,gain}], rules:[{name,weight,rule}]}
+      rate=归一化得分率: 我的成绩各项和 / 非零权重项权重和 x 100
+      (无考试/无作业时该维度权重=0%自动排除 -- 用户定夺)
+    无综合成绩/未登录返回None
+    """
+    import re as _re
+    import html as _html
+    import urllib.parse as _up
+    url = ("https://stat2-ans.chaoxing.com/stat2/overall-score/stu-score"
+           f"?courseid={course_id}&cpi={cpi}&clazzid={class_id}&ut=s&")
+    try:
+        client = _build_client(cache)
+        try:
+            body, resp = client.get(url, retry=2)
+        finally:
+            client.close()
+    except Exception:
+        return None
+    if not body or len(body) < 3000:
+        return None
+    try:
+        # 1. table.render data: 权重行(0)+我的成绩行(1)
+        m_data = _re.search(
+            r'data\s*:\s*\[\s*(\{[\s\S]{50,4000}?\})\s*,\s*(\{[\s\S]{50,4000}?\})\s*,\s*\{', body)
+        if not m_data:
+            return None
+
+        def _row(js):
+            out = {}
+            for k, v in _re.findall(r'"([A-Za-z]+)"\s*:\s*[\'"]([^\'"]*)[\'"]', js):
+                out[k] = v
+            return out
+        w_row, s_row = _row(m_data.group(1)), _row(m_data.group(2))
+        # 2. 总分/排名
+        total = None
+        m_t = _re.search(
+            r'<span class="num">\s*(\d+(?:\.\d+)?)\s*</span>', body)
+        if m_t:
+            try:
+                total = float(m_t.group(1))
+            except (ValueError, TypeError):
+                total = None
+        rank = ""
+        m_r = _re.search(r'rank[^>]*>\s*(\d+)\s*/\s*(\d+)', body) or \
+            _re.search(r'(\d+)\s*/\s*(\d+)\s*</[^>]+>\s*[^<]*排名', body)
+        if m_r:
+            rank = f"{m_r.group(1)}/{m_r.group(2)}"
+        # 3. 规则说明(decDialog h2/p)
+        rules = []
+        for h2, p in _re.findall(r'<h2>([^<]{2,30})</h2>\s*<p>([^<]{2,200})</p>', body):
+            h2 = _html.unescape(h2).strip()
+            p = _html.unescape(p).strip()
+            rules.append({"name": h2, "rule": p})
+        # 4. 维度(权重>0才计入; score=我的得分)
+        dims = []
+        wsum = 0.0
+        ssum = 0.0
+        for key, cn in _OS_DIM_NAMES.items():
+            if key not in w_row:
+                continue
+            try:
+                wv = float(str(w_row.get(key, "0")).replace("%", "") or 0)
+            except (ValueError, TypeError):
+                wv = 0.0
+            if wv <= 0:
+                continue  # 权重0=该维度不存在(无考试/无作业)→排除
+            sv = 0.0
+            try:
+                sv = float(str(s_row.get(key, "0")) or 0)
+            except (ValueError, TypeError):
+                sv = 0.0
+            dims.append({"key": key, "name": cn, "weight": wv,
+                         "score": round(sv, 2),
+                         "gain": round(wv - sv, 2)})
+            wsum += wv
+            ssum += sv
+        if not dims or wsum <= 0:
+            return None
+        rate = round(ssum * 100.0 / wsum, 1)
+        # 排好规则(按dims顺序匹配中文名)
+        rule_map = {}
+        for r in rules:
+            rn = r["name"]
+            for d in dims:
+                if rn.startswith(d["name"]):
+                    rule_map[d["key"]] = r["rule"]
+                    break
+        for d in dims:
+            d["rule"] = rule_map.get(d["key"], "")
+        dims.sort(key=lambda x: -x["gain"])  # 按提分空间降序
+        return {"total": total if total is not None else round(ssum, 2),
+                "rate": rate, "rank": rank, "dims": dims,
+                "rules": rules}
+    except Exception:
+        return None

@@ -862,7 +862,8 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
             try:
                 # 2026-10-20: 非任务点章节测验补做(纯协议版: tests/data列表判定+复用章测答题引擎)
                 if int(getattr(cc, "cx_chapter_test_sw", 1) or 0) == 1:
-                    _nq_n = _nonjob_quizzes_action(setting, user, cache, course)
+                    _nq_n = _nonjob_quizzes_action(
+                        setting, user, cache, course)
                     if _nq_n:
                         _log_f(f"✿非任务点章节测验补做: {_nq_n}项已发起作答")
             except Exception as _nqe:
@@ -3867,6 +3868,7 @@ def _nonjob_quizzes_action(setting: Setting, user: User,
     cc = user.courses_custom
     if int(getattr(cc, "cx_chapter_test_sw", 1) or 0) != 1:
         return 0
+
     def _log(color, msg):
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】", Yellow, "[非任务点测验] ",
@@ -3925,7 +3927,8 @@ def _nonjob_quizzes_action(setting: Setting, user: User,
             _chapter_test_action(setting, user, cache, course, ki, wdto)
             ok += 1
         except Exception as e:
-            _log(Red, f"[{str(r.get('chapterName',''))[:16]}] 补做异常: {str(e)[:60]}")
+            _log(
+                Red, f"[{str(r.get('chapterName', ''))[:16]}] 补做异常: {str(e)[:60]}")
     return ok
 
 
@@ -7107,8 +7110,11 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
     if not enter_body:
         _log("进入考试失败: %s" % exam_name)
         return False
-    if ("不允许参加考试" in enter_body or "人脸识别" in enter_body
-            or "只能在手机学习通APP参加" in enter_body):
+    if ("不允许参加考试" in enter_body
+            or "只能在手机学习通APP参加" in enter_body
+            # 2026-10-20修复: "人脸识别"会命中页面JS语言包词条(examFaceAbnormalTip等,
+            #   非人脸考试也含)→误判为受限考试; 仅当无"开始考试"按钮时才视为人脸限制
+            or ("人脸识别" in enter_body and "开始考试" not in enter_body)):
         _gate = _parse_exam_task_gate(enter_body)
         if _gate:
             _log(_gate["msg"] + " | 考试: " + str(exam_name))

@@ -157,3 +157,14 @@ step1_a.txt
 writetest*.txt
 html_head.txt
 gpu_test.txt
+
+# 2026-10-21 开源剥离: 考试签名私钥(本地运行文件, 不入库, 开源版自动优雅降级)
+assets/exam_privkey.b64
+
+# 逆向APK分析材料(不入库)
+chaoxing_app/
+
+
+# 迁移验证脚本(含本地路径/私钥引用, 不入库)
+build/ref_migration/key_verify.py
+

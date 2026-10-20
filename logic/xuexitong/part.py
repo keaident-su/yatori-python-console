@@ -840,6 +840,12 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
         for course in course_list:
             if is_stopped(cache.account):
                 break
+            # 2026-10-20修复: 收尾段(讨论/拓展阅读/非任务点/综合成绩)此前未应用课程过滤,
+            #   导致只刷白名单的账号收尾时跑了全部课程(给非目标课程发讨论回复等)
+            if cc.exclude_courses and cmp_course(course.course_name, cc.exclude_courses):
+                continue
+            if cc.include_courses and not cmp_course(course.course_name, cc.include_courses):
+                continue
             _log_f = (lambda m, _c=course: log_print(
                 INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                 "[", Green, display_account(cache.account), Default, "] ",

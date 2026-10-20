@@ -34,8 +34,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _AES_KEY = b"u2oh6Vu^HWe4_AES"
 # 2026-10-11 设备档升级(对齐 MOGO 实机截获档: xiaomi 12 / Android 11 / Build QKQ1.190929.002)
 # 原档 "MI10 + Android 16 + OPM1.171019.019(8.1 build)" 为矛盾组合, 属"设备请求异常"高风险特征
-APP_VERSION = "7.0.1"  # 2026-10-20: 对齐用户真机实抓(7.0.1/10990_340, 真机可正常进新考试)
-BUILD = "10990_340"  # 真机实抓: versionCode=10990, 渠道340
+APP_VERSION = "7.0.4"  # 2026-10-20: 对齐用户最新版真机(7.0.4/10995_342 HAR实锤)
+BUILD = "10995_342"  # 真机实抓: versionCode=10995, 渠道342
 DEVICE_VENDOR = "23127PN0CC"  # 真机实抓(Redmi); 原xiaomi 12
 ANDROID_VERSION = "Android 16"  # 真机实抓; 原Android 11(旧环境易被新版考试风控判"低版本客户端")
 ANDROID_BUILD_ID = "BP2A.250605.031.A3"  # 真机实抓
@@ -135,8 +135,8 @@ def get_ua(ua_type: str = "mobile") -> str:
 
 # 专门用于考试API的UA - 对应 Go XXTEXAMUA
 # (2026-10-09 起exam类型; 2026-10-20 升7.0.4/10995_314: 版本门兼容最新考试)
-EXAM_UA_VERSION = "7.0.1"
-EXAM_UA_BUILD = "10990_340"  # 真机实抓: versionCode=10990, 渠道340
+EXAM_UA_VERSION = "7.0.4"
+EXAM_UA_BUILD = "10995_342"  # 真机实抓: versionCode=10995, 渠道342
 EXAM_UA_OS = "Android 16"
 EXAM_UA_BUILD_ID = "BP2A.250605.031.A3"
 XXTEXAMUA: str = get_ua("exam")

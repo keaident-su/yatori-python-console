@@ -113,6 +113,12 @@ def generic_user_block(setting: Setting, user: User,
         brush_func(setting, user)
         log_print(INFO, f"[{platform_name}]", "[", Green, user.account,
                   Default, "] ", Purple, "所有待学习课程学习完毕")
+        # 2026-10-20: 全部任务完成界面赞助提示(自动弹出微信赞赏码, 每进程仅一次; 全平台通用)
+        try:
+            from utils.sponsor import print_sponsor_banner
+            print_sponsor_banner(popup_qr=True)
+        except Exception:
+            pass
 
     # ============ 推送通知内容(邮件与ShowDoc共用, 可自行修改此处内容) ============
     # 本次运行汇总(课程/作业/考试完成数, 由各平台事件点上报; 无统计时保持原文案)

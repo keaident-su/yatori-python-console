@@ -898,6 +898,12 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               "[", Green, display_account(cache.account), Default, "] ",
               Purple, "所有待学习课程学习完毕")
+    # 2026-10-20: 全部任务完成界面赞助提示(自动弹出微信赞赏码, 每进程仅一次)
+    try:
+        from utils.sponsor import print_sponsor_banner
+        print_sponsor_banner(popup_qr=True)
+    except Exception:
+        pass
     generic_user_block(
         setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE], brush_func=None)
 

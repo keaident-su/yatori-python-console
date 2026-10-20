@@ -7164,7 +7164,13 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
     if not paper_body or "访问异常" in paper_body:
         _log("拉取试卷失败/访问异常, 跳过: %s" % exam_name)
         return False
-    if "人脸识别" in paper_body or "不允许进入考试" in paper_body:
+    if ("不允许进入考试" in paper_body
+            # 2026-10-20修复: paper_body里的"人脸识别"同样命中JS语言包词条(所有卷都含),
+            #   真人脸监考以"需进行人脸识别验证/请进行人脸识别"等实际拦截文案为准
+            or ("人脸识别" in paper_body
+                and "开始答题" not in paper_body
+                and ("请进行人脸识别" in paper_body or "人脸识别验证" in paper_body
+                     or "faceCheck" in paper_body))):
         _log("人脸监考卷, 跳过: %s" % exam_name)
         return False
     if not _is_real_exam_page(paper_body):

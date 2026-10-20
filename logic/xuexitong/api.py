@@ -34,12 +34,12 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 _AES_KEY = b"u2oh6Vu^HWe4_AES"
 # 2026-10-11 设备档升级(对齐 MOGO 实机截获档: xiaomi 12 / Android 11 / Build QKQ1.190929.002)
 # 原档 "MI10 + Android 16 + OPM1.171019.019(8.1 build)" 为矛盾组合, 属"设备请求异常"高风险特征
-APP_VERSION = "7.0.4"  # 2026-10-20: 对齐最新APP(APK逆向: versionName=7.0.4/versionCode=10995)
-BUILD = "10995_314"  # 10995=7.0.4版本号; _314沿用渠道后缀
-DEVICE_VENDOR = "xiaomi 12"
-ANDROID_VERSION = "Android 11"
-ANDROID_BUILD_ID = "QKQ1.190929.002"
-UA_CHROME_VERSION = "79.0.3945.116"
+APP_VERSION = "7.0.1"  # 2026-10-20: 对齐用户真机实抓(7.0.1/10990_340, 真机可正常进新考试)
+BUILD = "10990_340"  # 真机实抓: versionCode=10990, 渠道340
+DEVICE_VENDOR = "23127PN0CC"  # 真机实抓(Redmi); 原xiaomi 12
+ANDROID_VERSION = "Android 16"  # 真机实抓; 原Android 11(旧环境易被新版考试风控判"低版本客户端")
+ANDROID_BUILD_ID = "BP2A.250605.031.A3"  # 真机实抓
+UA_CHROME_VERSION = "143.0.7499.192"  # 真机实抓(WebView); 原79(2020老版, 新考试风控敏感)
 
 
 def _load_or_create_device_id() -> str:
@@ -114,14 +114,13 @@ def get_ua(ua_type: str = "mobile") -> str:
         # 对应 Go GetUA("iphone") - 用于考试API的iPhone UA
         return "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
     elif ua_type == "exam":
-        # 考试链专用UA(2026-10-09 对照实测): 新考试"访问异常"版本门校验UA自洽性
-        #  FAIL案例(被拦): Android 16 与 Build/OPM1.171019.019(8.1 build号) 矛盾组合;
-        #  PASS案例(实测进卷+交卷): Dalvik头 + Android 12 + Build/SKQ1.211006.001,
-        #  版本 7.0.4/10995_314 —— 2026-10-20升级(部分新考试版本门要求最新APP)
+        # 2026-10-20真机HAR实证: 新版考试拉卷/答题走WebView加载, 用wv式UA可正常进卷
+        #   (人脸考试实测拉卷成功70KB答题页); 原Dalvik头在新考试环境被判"低版本客户端"
         sign = _mobile_ua_sign(DEVICE_VENDOR, "zh_CN",
                                EXAM_UA_VERSION, EXAM_UA_BUILD, _IMEI)
         return " ".join([
-            f"Dalvik/2.1.0 (Linux; U; {EXAM_UA_OS}; {DEVICE_VENDOR} Build/{EXAM_UA_BUILD_ID})",
+            f"Mozilla/5.0 (Linux; {EXAM_UA_OS}; {DEVICE_VENDOR} Build/{EXAM_UA_BUILD_ID}; wv)",
+            f"AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/{UA_CHROME_VERSION} Mobile Safari/537.36",
             f"(schild:{sign})",
             f"(device:{DEVICE_VENDOR})",
             "Language/zh_CN",
@@ -136,10 +135,10 @@ def get_ua(ua_type: str = "mobile") -> str:
 
 # 专门用于考试API的UA - 对应 Go XXTEXAMUA
 # (2026-10-09 起exam类型; 2026-10-20 升7.0.4/10995_314: 版本门兼容最新考试)
-EXAM_UA_VERSION = "7.0.4"
-EXAM_UA_BUILD = "10995_314"  # 10995=7.0.4版本号; _314沿用渠道后缀
-EXAM_UA_OS = "Android 12"
-EXAM_UA_BUILD_ID = "SKQ1.211006.001"
+EXAM_UA_VERSION = "7.0.1"
+EXAM_UA_BUILD = "10990_340"  # 真机实抓: versionCode=10990, 渠道340
+EXAM_UA_OS = "Android 16"
+EXAM_UA_BUILD_ID = "BP2A.250605.031.A3"
 XXTEXAMUA: str = get_ua("exam")
 
 # 作业拉题(翻页)专用UA - 完全复刻 Go core 的 GetUA("mobile")(MI 5X学习通客户端)

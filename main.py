@@ -118,6 +118,13 @@ def main():
     from config.config import read_logo
     print(read_logo())
 
+    # 2.0 开屏赞助提示(2026-10-20: 开源项目求赞助, 赞赏码见 assets/微信赞赏码.png)
+    try:
+        from utils.sponsor import print_sponsor_banner
+        print_sponsor_banner()
+    except Exception:
+        pass
+
     # 2.1 打印版本号(便于部署后确认)
     print(f"[版本] {APP_VERSION}")
 

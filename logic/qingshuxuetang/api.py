@@ -105,7 +105,7 @@ _QS_APP_BASE = "https://api.qingshuxuetang.com/v25_10"
 def _qs_app_headers(cache: QsxtUserCache) -> dict:
     """青书App端请求头(Authorization-QS 等, 对齐Go)"""
     return {
-        "User-Agent": "okhttp/4.2.2",
+        "User-Agent": "okhttp/4.12.0",
         "Connection": "Keep-Alive",
         "Authorization-QS": cache.token or "",
         "Device-Trace-Id-QS": "b0afcf7e-a8ae-48f2-b438-66982a13dc16",

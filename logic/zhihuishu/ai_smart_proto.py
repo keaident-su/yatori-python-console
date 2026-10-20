@@ -61,7 +61,7 @@ _IV = b"1g3qqdh4jvbskb9x"     # 固定IV(源码确认)
 # kg-ai-run域(2026-10-14 live抓包确认): AI课学习主域
 _KG_RUN = "https://kg-ai-run.zhihuishu.com/run/gateway/t"
 _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-       "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
+       "(KHTML, like Gecko) Chrome/143.0.7499.192 Safari/537.36")
 _HEADERS = {
     "User-Agent": _UA,
     "Accept": "application/json, text/javascript, */*; q=0.01",

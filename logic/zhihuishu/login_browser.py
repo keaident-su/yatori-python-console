@@ -213,7 +213,7 @@ async def _download_image(url: str):
         r = requests.get(url, timeout=10, headers={
             "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                            "AppleWebKit/537.36 (KHTML, like Gecko) "
-                           "Chrome/120.0.0.0 Safari/537.36")})
+                           "Chrome/143.0.7499.192 Safari/537.36")})
         arr = np.frombuffer(r.content, np.uint8)
         return cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
     except Exception:

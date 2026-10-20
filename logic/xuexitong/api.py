@@ -2787,10 +2787,14 @@ def pull_exam_paper_api(cache: XueXiTUserCache,
                         imei: str = "", captcha_validate: str = "",
                         jt: str = "0",
                         redo: bool = False,
+                        v2_material: Optional[Dict] = None,
                         retry: int = 3) -> Tuple[str, Optional[Any]]:
     """拉取考试试卷页面 - 对应 Go PullExamPaperHtmlApi / PullReDoExamPaperHtmlApi
     URL: https://mooc1-api.chaoxing.com/exam-ans/exam/phone/start
     redo=True时对应 Go PullReDoExamPaperHtmlApi，追加&redo=1
+    v2_material(2026-10-20): 考试签名v2材料{cxcid,cxtime,signt,signk}——
+      "最新版本APP"强校验考试(如yatori入门考试)必须携带, 否则返回"访问异常(请升级)";
+      材料由 exam_sign.compute_start_exam_sign_v2 生成(需先 fetch_exam_client_id_v2)
     """
     if not imei:
         imei = _IMEI
@@ -2801,8 +2805,15 @@ def pull_exam_paper_api(cache: XueXiTUserCache,
            f"&keyboardDisplayRequiresUserAction=1"
            f"&imei={imei}&faceDetectionResult"
            f"&captchavalidate={captcha_validate}&jt={jt}"
-           f"&_v=0.3868294515418076"
-           f"&cxcid&cxtime&signt&_signcode=3&_signc=0&_signe=3-1&signk")
+           f"&_v=0.3868294515418076")
+    if v2_material:
+        # 2026-10-20: v2签名链(对齐真机HAR: cxcid/cxtime/signt/signk + _signcode=1/_signc=1)
+        url += (f"&cxcid={v2_material.get('cxcid', '')}"
+                f"&cxtime={v2_material.get('cxtime', '')}"
+                f"&signt={v2_material.get('signt', '')}"
+                f"&_signcode=1&_signc=1&_signe=&signk={v2_material.get('signk', '')}")
+    else:
+        url += (f"&cxcid&cxtime&signt&_signcode=3&_signc=0&_signe=3-1&signk")
     if redo:
         url += "&redo=1"
     client = _build_client(cache, custom_ua=XXTEXAMUA)

@@ -7179,6 +7179,38 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         cache, course.course_id, course.key, exam_relation_id, cpi_val,
         exam_answer_id=answer_id, imei=api_imei,
         captcha_validate=captcha_validate, redo=is_redo_exam, retry=3)
+    if paper_body and "访问异常" in paper_body:
+        # 2026-10-20: "最新版本APP"强校验考试(如入门考试) — 真机HAR实证需带考试签名v2
+        #   (cxcid/cxtime/signt/signk + _signcode=1/_signc=1); 自动重试一次v2拉卷
+        #   注意: 旧滑块validate在失败后已失效, 需重新enter→滑块→v2拉
+        try:
+            from logic.xuexitong import exam_sign as _es_v2
+            _cid2, _sc2, _err2 = xxt_api.fetch_exam_client_id_v2(cache)
+            if _cid2 and _sc2:
+                _eb2, _eresp2 = xxt_api.enter_exam_api(
+                    cache, task_ref_id, enc_task, course.course_id,
+                    course.key, str(course.cpi), retry=3)
+                _capt2 = re.search(
+                    r'id="captchaCaptchaId"\s+value="([^"]+)"', _eb2 or "")
+                _cv2 = ""
+                if _capt2:
+                    _cv2 = xxt_captcha.pass_cx_slider_captcha(
+                        cache, _capt2.group(1),
+                        str(_eresp2.url) if _eresp2 is not None else "",
+                        attempts=5, log_tag=f"[{_platform}][{_acct}][考试采集] ")
+                _am2 = re.search(
+                    r'id="testUserRelationId"[^>]*value="(\d+)"', _eb2 or "")
+                _tuid2 = _am2.group(1) if _am2 else answer_id
+                _sg2 = _es_v2.compute_start_exam_sign_v2(
+                    _tuid2, str(course.key), _cid2, _sc2)
+                _log("访问异常→重新enter+滑块+签名v2拉卷...")
+                paper_body, paper_resp = xxt_api.pull_exam_paper_api(
+                    cache, course.course_id, course.key, exam_relation_id, cpi_val,
+                    exam_answer_id=_tuid2, imei=api_imei,
+                    captcha_validate=_cv2, redo=is_redo_exam,
+                    v2_material=_sg2, retry=3)
+        except Exception as _e2:
+            stats["errors"].append("v2签名重试异常: %s" % str(_e2)[:60])
     if not paper_body or "访问异常" in paper_body:
         _log("拉取试卷失败/访问异常, 跳过: %s" % exam_name)
         return False

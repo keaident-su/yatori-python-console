@@ -196,12 +196,12 @@ DEVICE_PUB_KEY_V2_B64 = (
 )
 
 # APP 版本常量 (UA与设备画像使用)
-APP_VERSION_V2 = "6.7.5"
+APP_VERSION_V2 = "7.0.4"  # 2026-10-20: 对齐最新APP(versionCode=10995)
 APP_BUILD_V2 = "11830_311"
 
 
 def build_device_info_v2(imei: str = "", model: str = "MI 10",
-                         os_ver: str = "12", version_code: str = "10941") -> bytes:
+                         os_ver: str = "12", version_code: str = "10995") -> bytes:
     """构造设备指纹上报JSON (APP原生字段集)
 
     关键: signatures 为 APK 签名指纹; deviceUniqueId/cdid/device_id 同值

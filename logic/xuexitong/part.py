@@ -5497,12 +5497,47 @@ def _add_read_minutes(cache: XueXiTUserCache, course: XueXiTCourse,
     _, documents = _collect_course_resources(cache, course,
                                              need_videos=False, need_docs=True)
     if not documents:
+        # 2026-10-21增强: 无文档类任务点 -> fallback到拓展阅读书目dot循环
+        # (实测多门课无阅读任务点导致阅读时长无法增加; 书目dot上报同样计入阅读行为)
+        try:
+            from logic.xuexitong import extend_bbs as _eb2
+            _uid2, _bk2 = _eb2.fetch_read_books(cache, course)
+        except Exception:
+            _uid2, _bk2 = "", []
+        if _bk2:
+            _s2 = _eb2._http(cache)
+            est2 = max(1, (max(1, int(target_minutes * 60 / max(1, delay))) * delay) // 60)
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      Yellow, f"无阅读任务点→改用拓展阅读书目{min(3, len(_bk2))}本循环dot上报"
+                      f"(目标{target_minutes}分钟, 间隔{delay}秒, 预计约{est2}分钟)...")
+            ok_rounds2 = 0
+            _rounds2_n = max(1, int(target_minutes * 60 / max(1, delay)))
+            for r2 in range(_rounds2_n):
+                for _rid2, _t2 in _bk2[:3]:
+                    try:
+                        _s2.post(
+                            f"https://appcd.chaoxing.com/read/api/dot/{_uid2}/{_rid2}_1",
+                            timeout=15)
+                    except Exception:
+                        pass
+                ok_rounds2 += 1
+                log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                          "【", course.course_name, "】",
+                          f"增加阅读时长(书目dot) 第{r2 + 1}/{_rounds2_n}轮上报完成")
+                if r2 < target_minutes - 1:
+                    time.sleep(delay)
+            log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                      "【", course.course_name, "】",
+                      Green, f"增加阅读时长(书目dot)执行完毕(共{ok_rounds2}/{_rounds2_n}轮)")
+            return ok_rounds2
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】",
-                  Yellow, "该课程未找到阅读类任务点，跳过增加阅读时长")
+                  Yellow, "该课程未找到阅读类任务点且无拓展阅读书目，跳过增加阅读时长")
         return 0
 
-    est = max(1, (target_minutes * delay) // 60)
+    _rn_tmp = max(1, int(target_minutes * 60 / max(1, delay)))
+    est = max(1, (_rn_tmp * delay) // 60)
     log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
               "【", course.course_name, "】",
               Yellow, f"开始增加阅读时长(目标{target_minutes}分钟, "
@@ -5510,7 +5545,9 @@ def _add_read_minutes(cache: XueXiTUserCache, course: XueXiTCourse,
               f"间隔{delay}秒, 预计耗时约{est}分钟)...")
 
     ok_rounds = 0
-    for r in range(target_minutes):
+    # 2026-10-21修正: 时长口径-按分钟换算轮数(60分钟@30s间隔=120轮)
+    _rounds_n = max(1, int(target_minutes * 60 / max(1, delay)))
+    for r in range(_rounds_n):
         for dd in documents:
             try:
                 xxt_api.read_point_report_api(
@@ -5520,13 +5557,13 @@ def _add_read_minutes(cache: XueXiTUserCache, course: XueXiTCourse,
         ok_rounds += 1
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                   "【", course.course_name, "】",
-                  f"增加阅读时长 第{r + 1}/{target_minutes}轮上报完成")
+                  f"增加阅读时长 第{r + 1}/{_rounds_n}轮上报完成")
         if r < target_minutes - 1:
             time.sleep(delay)
 
     log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
               "【", course.course_name, "】",
-              Green, f"增加阅读时长执行完毕(共完成{ok_rounds}/{target_minutes}轮上报)")
+              Green, f"增加阅读时长执行完毕(共完成{ok_rounds}/{_rounds_n}轮上报)")
     return ok_rounds
 
 

@@ -473,3 +473,56 @@ def run_extend_read(cache, course, cc, log, read_books: int = 5,
         # 书间停留
         time.sleep(random.uniform(2, 4))
     return ok
+
+
+def fetch_read_books(cache, course):
+    """获取课程拓展阅读书目(纯协议, 2026-10-21新增: 供"无阅读任务点课程"的阅读时长fallback)
+    返回: (uid, [(resourceId, title), ...]); 无拓展阅读菜单时返回 ("", [])
+    """
+    info = _parse_outer_menu(cache, course)
+    if "expandread" not in (info.get("menus") or {}):
+        return "", []
+    s = _http(cache)
+    uid = str(info.get("uid", "") or (cache.cookie_dict or {}).get("_uid", ""))
+    _enc = info.get("enc", "")
+    _fid = info.get("fid", "")
+    t = str(int(time.time() * 1000))
+    base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
+            f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
+            f"&stuenc={_enc}&fid={_fid}&userId={uid}")
+    try:
+        r0 = s.get(base, timeout=25)
+        if r0.status_code != 200 or len(r0.text) < 500:
+            return uid, []
+    except Exception:
+        return uid, []
+    cat = ""
+    try:
+        m = re.search(r'resource/(\d+)/list', r0.text)
+        if m:
+            cat = m.group(1)
+    except Exception:
+        pass
+    if not cat:
+        cat = "12576"
+    books = []
+    try:
+        r1 = s.get(f"https://appcd.chaoxing.com/read/resource/{cat}/list"
+                   f"?page=1&pageSize=20", timeout=20)
+        d = r1.json()
+        for it in (d.get("data") or []):
+            ri = it.get("resourceInfo") or "{}"
+            try:
+                ri = json.loads(ri) if isinstance(ri, str) else ri
+            except Exception:
+                ri = {}
+            rid = ri.get("id") if isinstance(ri, dict) else None
+            rinfo = (ri.get("info") or {}) if isinstance(ri, dict) else {}
+            title = str(rinfo.get("field1") or rinfo.get("author")
+                        or it.get("resourceId", ""))[:16]
+            if rid:
+                books.append((rid, title))
+    except Exception:
+        pass
+    return uid, books
+

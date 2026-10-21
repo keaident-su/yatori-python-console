@@ -40,6 +40,9 @@ class BasicSetting:
     full_cpu_mode: int = 0         # 全速开关: 0(默认)=基准核数n-1 / 1=吃满全部逻辑核
     # 性能档位: aggressive(激进:登录×1.5/提交×1) / conservative(稳健)
     performance_gear: str = "aggressive"
+    # 大众云学(yxlearning)基地址(留空=默认 http://xjbt.gxk.yxlearning.com;
+    # 同供应商其他局点填对应主机, 如 http://sddz-gxk.yxlearning.com)
+    dzyx_base_url: str = ""
 
 
 @dataclass

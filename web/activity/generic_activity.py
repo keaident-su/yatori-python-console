@@ -23,6 +23,7 @@ _PLATFORM_MODULE_MAP = {
     "HQKJ":    "logic.haiqikeji.part",
     "WEBAN":   "logic.weban.part",
     "ZHIHUISHU": "logic.zhihuishu.part",
+    "DZYX": "logic.dazhongyunxue.part",
 }
 
 # 平台显示名
@@ -36,6 +37,7 @@ _PLATFORM_DISPLAY = {
     "HQKJ":    "海旗科技",
     "WEBAN":   "安全微伴",
     "ZHIHUISHU": "智慧树",
+    "DZYX": "大众云学",
     "XUEXITONG": "学习通",
     "YINGHUA": "英华学堂",
 }

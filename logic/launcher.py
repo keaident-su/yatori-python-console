@@ -471,6 +471,7 @@ def brush_block(config_data: JSONDataForConfig):
     from logic.haiqikeji import part as hqkj
     from logic.weban import part as weban
     from logic.zhihuishu import part as zhihuishu
+    from logic.dazhongyunxue import part as dzyx
 
     # 统一登录模块
     platforms = [
@@ -485,6 +486,7 @@ def brush_block(config_data: JSONDataForConfig):
         ("HQKJ", hqkj),
         ("WEBAN", weban),
         ("ZHIHUISHU", zhihuishu),
+        ("DZYX", dzyx),
     ]
 
     platform_data = []

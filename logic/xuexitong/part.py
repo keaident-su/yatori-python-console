@@ -4500,8 +4500,14 @@ def _ocr_from_html(fragment: str, img_ocr, limit: int = 10) -> str:
 
 
 def _ocr_from_node(node, img_ocr, limit: int = 10) -> str:
-    """从BeautifulSoup节点中提取所有<img>并OCR, 返回拼接文本"""
-    if node is None or img_ocr is None:
+    """从BeautifulSoup节点中提取所有<img>并回填文本
+
+    2026-10-21增强(图片题考试实测): 优先提取img的data属性—它是一个URL编码的
+      LaTeX源码(如 "%22%5C%5Cfrac%7B2%7D%7B3%7D%22 -> "\\\\frac{2}{3}"),
+      图片=公式渲染图, 解码即得公式文本, 根本不需要OCR;
+      无data时才走OCR回填(img_ocr可为None, 此时仅提取LaTeX)。
+    """
+    if node is None:
         return ""
     try:
         imgs = node.find_all("img")
@@ -4509,11 +4515,26 @@ def _ocr_from_node(node, img_ocr, limit: int = 10) -> str:
         return ""
     if not imgs:
         return ""
+    import urllib.parse as _up
     texts: List[str] = []
     seen = set()
     for img in imgs:
         if len(texts) >= limit:
             break
+        # ① LaTeX data属性优先(公式题零成本解析)
+        _ld = (img.get("data") or "").strip()
+        if _ld:
+            try:
+                _lx = _up.unquote(_ld).strip().strip('"').strip()
+                if _lx and _lx not in seen:
+                    seen.add(_lx)
+                    texts.append(_lx)
+                    continue
+            except Exception:
+                pass
+        # ② 无LaTeX时走OCR(可选)
+        if img_ocr is None:
+            continue
         raw = (img.get("data-src") or img.get("data-original")
                or img.get("src") or "")
         if not raw or raw.startswith("data:"):
@@ -5506,7 +5527,8 @@ def _add_read_minutes(cache: XueXiTUserCache, course: XueXiTCourse,
             _uid2, _bk2 = "", []
         if _bk2:
             _s2 = _eb2._http(cache)
-            est2 = max(1, (max(1, int(target_minutes * 60 / max(1, delay))) * delay) // 60)
+            est2 = max(
+                1, (max(1, int(target_minutes * 60 / max(1, delay))) * delay) // 60)
             log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                       "【", course.course_name, "】",
                       Yellow, f"无阅读任务点→改用拓展阅读书目{min(3, len(_bk2))}本循环dot上报"

@@ -77,9 +77,10 @@ def get_account_inform(uid: str):
 
 
 @router.get("/getAccountCourseList/{uid}")
-def account_course_list(uid: str):
-    """获取课程列表"""
-    return user_service.account_course_list_service(uid)
+def account_course_list(uid: str, refresh: int = 0):
+    """获取课程列表(2026-10-22: refresh=1 强制绕过缓存刷新)"""
+    return user_service.account_course_list_service(
+        uid, force_refresh=bool(refresh))
 
 
 @router.get("/courseDetailStat/{uid}/{course_id}")
@@ -120,13 +121,16 @@ async def import_config():
 
 
 @router.get("/logTail")
-def log_tail(lines: int = 200, date: str = "", account: str = ""):
+def log_tail(lines: int = 200, date: str = "", account: str = "",
+             order: str = "desc", offset: int = 0):
     """读取日志尾部 N 行(外部分离前端轮询用)
 
     account 为空=全局日志; 指定=账号独立日志(目录名如 19013841897_备注)
+    2026-10-22: order=desc(默认倒序,最新行在前)/asc; offset=N 分页加载更早
     """
     return user_service.log_tail_service(lines=lines, date=date,
-                                         account=account)
+                                         account=account,
+                                         order=order, offset=offset)
 
 
 @router.get("/logAccounts")

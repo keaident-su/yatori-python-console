@@ -7186,6 +7186,18 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
     if not enter_body:
         _log("进入考试失败: %s" % exam_name)
         return False
+    # 2026-10-22 A+修复(入口1): gate识别前置——不依赖"不允许参加考试"字样
+    #   (气韵生动类考试的gate文案直接出现在正常主题页: "考试前一天完成80%以上的任务点,
+    #    可在次日8:00后参加考试..." — 原逻辑漏过→拉卷被拒→从不预约)
+    _gate_pre = _parse_exam_task_gate(enter_body or "")
+    if _gate_pre:
+        _log("检测到任务点前置条件: " + str(_gate_pre.get("msg", "")))
+        try:
+            if _exam_gate_schedule_or_wait(
+                    cache, course, exam, _gate_pre, lambda m: _log(str(m))):
+                return False
+        except Exception:
+            pass
     if ("不允许参加考试" in enter_body
             or "只能在手机学习通APP参加" in enter_body
             # 2026-10-20修复: "人脸识别"会命中页面JS语言包词条(examFaceAbnormalTip等,
@@ -7195,6 +7207,12 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         _gate = _parse_exam_task_gate(enter_body)
         if _gate:
             _log(_gate["msg"] + " | 考试: " + str(exam_name))
+            # 2026-10-22 A+修复: 原逻辑仅跳过不预约 → 统一接入预约调度
+            try:
+                _exam_gate_schedule_or_wait(
+                    cache, course, exam, _gate, lambda m: _log(str(m)))
+            except Exception:
+                pass
             return False
         _log("该考试受限(限时/人脸/仅APP), 跳过: %s" % exam_name)
         return False
@@ -7271,6 +7289,18 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         except Exception as _e2:
             stats["errors"].append("v2签名重试异常: %s" % str(_e2)[:60])
     if not paper_body or "访问异常" in paper_body:
+        # 2026-10-22 A+兜底(入口2): 拉卷被拒也可能是任务点前置
+        #   (部分考试的gate仅在拉卷阶段暴露) → 再解析一次并接入预约
+        _gate_p = (_parse_exam_task_gate(paper_body or "")
+                   or _parse_exam_task_gate(enter_body or ""))
+        if _gate_p:
+            try:
+                _log("拉卷被拒但检测到任务点前置条件: "
+                     + str(_gate_p.get("msg", "")))
+                _exam_gate_schedule_or_wait(
+                    cache, course, exam, _gate_p, lambda m: _log(str(m)))
+            except Exception:
+                pass
         _log("拉取试卷失败/访问异常, 跳过: %s" % exam_name)
         return False
     if ("不允许进入考试" in paper_body
@@ -8660,6 +8690,21 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 break
             if not qid:
                 if "无权限访问" in q_body or "无权限" in q_body:
+                    # 2026-10-22 A+兜底(入口3): 拉题"无权限"也可能是任务点前置
+                    #   (气韵生动类考试实测: enter页无"不允许参加考试"字样但含gate文案)
+                    _gate_q = (_parse_exam_task_gate(q_body or "")
+                               or _parse_exam_task_gate(enter_body or ""))
+                    if _gate_q:
+                        try:
+                            _exam_gate_schedule_or_wait(
+                                cache, course, exam, _gate_q,
+                                lambda m: log_print(
+                                    INFO, f"[{platform}]", "[", Green, acct,
+                                    Default, "] ",
+                                    "【", course.course_name, "】【", exam_name,
+                                    "】", Yellow, m))
+                        except Exception:
+                            pass
                     log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
                               "【", course.course_name, "】【", exam_name, "】",
                               Yellow, "拉题被服务器拒绝(无权限: 需人脸识别/客户端签名或入口校验未通过)，跳过该考试")
@@ -9031,6 +9076,48 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
     courses = _pull_course_action(cache)
     if not courses:
         return []
+    # 2026-10-22 提速(方案A): 每课"互动测验+综合成绩"子查询改线程池并发(8)
+    #   —原串行每课5-7请求×30-60门课≈15-45秒; 并发后子查询部分降至约2-5秒
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _fetch_one_extras(_c):
+        _qf, _qa = None, None
+        try:
+            from logic.xuexitong.interactive_quiz import (
+                build_session as _iq_build_session,
+                fetch_quiz_plan as _iq_fetch_plan)
+            _iq_sess = _iq_build_session(cache)
+            for _k, _v in (cache.cookie_dict or {}).items():
+                _iq_sess.cookies.set(_k, _v, domain=".stat2-ans.chaoxing.com")
+            _rows_done, _done_n = _iq_fetch_plan(
+                _iq_sess, str(_c.key), str(_c.course_id), str(_c.cpi), status="1")
+            _rows_undo, _undo_n = _iq_fetch_plan(
+                _iq_sess, str(_c.key), str(_c.course_id), str(_c.cpi), status="")
+            if _done_n is not None and _undo_n is not None:
+                _qf = int(_done_n)
+                _qa = int(_done_n) + int(_undo_n)
+        except Exception:
+            pass
+        _os = None
+        try:
+            _os = xxt_api.fetch_overall_score(
+                cache, str(_c.course_id), str(_c.key), str(_c.cpi))
+        except Exception:
+            pass
+        return _qf, _qa, _os
+
+    _extras = {}
+    try:
+        # 2026-10-22: 实测每课quiz+score约1.6秒(个别0.2-0.8), 并发16即可63课降至约6秒
+        with ThreadPoolExecutor(max_workers=16) as _ex:
+            _futs = {_ex.submit(_fetch_one_extras, c): id(c) for c in courses}
+            for _f in as_completed(_futs):
+                try:
+                    _extras[_futs[_f]] = _f.result()
+                except Exception:
+                    _extras[_futs[_f]] = (None, None, None)
+    except Exception:
+        _extras = {}
     result = []
     for c in courses:
         if not c.is_start:
@@ -9041,31 +9128,8 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
             status_str = "已结束"
         else:
             status_str = "进行中"
-        # 互动测验(视频弹题)进度(2026-10-12): 拿不到时置None(前端自动隐藏), 不阻塞列表
-        _quiz_fin, _quiz_all = None, None
-        try:
-            from logic.xuexitong.interactive_quiz import (
-                build_session as _iq_build_session,
-                fetch_quiz_plan as _iq_fetch_plan)
-            _iq_sess = _iq_build_session(cache)
-            for _k, _v in (cache.cookie_dict or {}).items():
-                _iq_sess.cookies.set(_k, _v, domain=".stat2-ans.chaoxing.com")
-            _rows_done, _done_n = _iq_fetch_plan(
-                _iq_sess, str(c.key), str(c.course_id), str(c.cpi), status="1")
-            _rows_undo, _undo_n = _iq_fetch_plan(
-                _iq_sess, str(c.key), str(c.course_id), str(c.cpi), status="")
-            if _done_n is not None and _undo_n is not None:
-                _quiz_fin = int(_done_n)
-                _quiz_all = int(_done_n) + int(_undo_n)
-        except Exception:
-            pass
-        # 2026-10-20: 综合成绩(纯协议, 失败置None不阻塞; 无综合成绩课程前端自动隐藏)
-        _oscore = None
-        try:
-            _oscore = xxt_api.fetch_overall_score(
-                cache, str(c.course_id), str(c.key), str(c.cpi))
-        except Exception:
-            pass
+        _quiz_fin, _quiz_all, _oscore = _extras.get(
+            id(c), (None, None, None))
         result.append({
             "courseId": str(c.course_id),
             "courseName": c.course_name,

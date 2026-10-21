@@ -332,7 +332,40 @@ def get_account_inform_service(uid: str) -> dict:
         session.close()
 
 
-def account_course_list_service(uid: str) -> dict:
+# 2026-10-22 查课提速(方案A): 进程级TTL缓存——查课全量实时拉取需300-400+请求串行等待
+#   (课程列表+每课任务点/互动测验/综合成绩), 实测15-45秒; 前端30秒轮询叠加恶性循环。
+#   缓存90秒: 轮询命中缓存秒回; ?refresh=1 强制刷新绕过缓存。
+_COURSE_LIST_CACHE = {}
+_COURSE_LIST_TTL = 90
+
+
+def account_course_list_service(uid: str, force_refresh: bool = False) -> dict:
+    """获取课程列表(2026-10-22: 加TTL缓存+refresh强制刷新)"""
+    import time as _t
+    if not force_refresh:
+        _hit = _COURSE_LIST_CACHE.get(str(uid))
+        if _hit and (_t.time() - float(_hit.get("ts", 0))) < _COURSE_LIST_TTL:
+            return _hit.get("data") or {}
+    try:
+        return _account_course_list_service_uncached(uid)
+    except Exception:
+        raise
+    finally:
+        pass
+
+
+def _account_course_list_service_uncached(uid: str) -> dict:
+    """获取课程列表(实时全量拉取, 结果写入缓存)"""
+    import time as _t
+    _resp = _account_course_list_service_impl(uid)
+    try:
+        _COURSE_LIST_CACHE[str(uid)] = {"ts": _t.time(), "data": _resp}
+    except Exception:
+        pass
+    return _resp
+
+
+def _account_course_list_service_impl(uid: str) -> dict:
     """获取课程列表"""
     session = get_session()
     try:
@@ -720,7 +753,8 @@ def log_accounts_service() -> dict:
                           "today": time.strftime("%Y-%m-%d")}).to_dict()
 
 
-def log_tail_service(lines: int = 200, date: str = "", account: str = "") -> dict:
+def log_tail_service(lines: int = 200, date: str = "", account: str = "",
+                     order: str = "desc", offset: int = 0) -> dict:
     """读取日志文件尾部 N 行(外部分离前端轮询用; 加密通道下与 SSE 等效)
 
     account 为空=全局日志(assets/logs/{date}.log);
@@ -729,11 +763,21 @@ def log_tail_service(lines: int = 200, date: str = "", account: str = "") -> dic
     性能(2026-09-28): 旧实现 f.readlines() 每次读整个文件——高强度刷课时
     日志可达数百MB, 加上路由阻塞事件循环, 前端轮询会拖垮整个后端。
     现改为 deque 流式尾读(内存只占 N 行), 当前文件不足时向前回溯轮转备份。
+
+    2026-10-22 需求升级(倒序+完整历史+分页):
+      · order=desc(默认)→返回时按时间倒序(最新行在最前); asc=正序
+      · offset=N →跳过最新的N行, 用于"加载更早"(逐页向后翻历史)
+      · 上限 2000 → 10000 行
     """
     try:
-        lines = max(1, min(int(lines or 200), 2000))
+        lines = max(1, min(int(lines or 200), 10000))
     except (TypeError, ValueError):
         lines = 200
+    try:
+        offset = max(0, min(int(offset or 0), 200000))
+    except (TypeError, ValueError):
+        offset = 0
+    _desc = str(order or "desc").lower() != "asc"
     log_id = (date or time.strftime("%Y-%m-%d")).strip()
     if account:
         # 目录穿越防护: 账号名仅允许单层目录
@@ -745,25 +789,38 @@ def log_tail_service(lines: int = 200, date: str = "", account: str = "") -> dic
         log_path = f"./assets/logs/{log_id}.log"
     if not os.path.exists(log_path):
         return Response(code=200, message="ok",
-                        data={"lines": [], "date": log_id}).to_dict()
+                        data={"lines": [], "date": log_id,
+                              "order": "desc" if _desc else "asc",
+                              "offset": offset, "hasMore": False}).to_dict()
     try:
         from collections import deque
+        # 需要 lines+offset 行(尾部)才能切出"更早的一页"
+        _need = lines + offset
         with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-            tail = list(deque(f, maxlen=lines))
+            tail = list(deque(f, maxlen=_need))
         # 当前文件不够时, 向前回溯轮转备份(.log.1 是最新备份)
-        if len(tail) < lines:
+        if len(tail) < _need:
             for i in range(1, 6):
                 backup = f"{log_path}.{i}"
                 if not os.path.exists(backup):
                     break
                 with open(backup, "r", encoding="utf-8",
                           errors="replace") as f:
-                    prev = list(deque(f, maxlen=lines - len(tail)))
+                    prev = list(deque(f, maxlen=_need - len(tail)))
                 tail = prev + tail
-                if len(tail) >= lines:
+                if len(tail) >= _need:
                     break
+        _has_more = len(tail) >= _need
         tail = [ln.rstrip("\r\n") for ln in tail]
+        # 分页: 跳过最新 offset 行, 取更早的 lines 行
+        if offset:
+            tail = tail[:max(0, len(tail) - offset)]
+        page = tail[-lines:] if len(tail) > lines else tail
+        if _desc:
+            page = list(reversed(page))
     except OSError as e:
         return Response(code=500, message=f"读取日志失败: {e}").to_dict()
     return Response(code=200, message="ok",
-                    data={"lines": tail, "date": log_id}).to_dict()
+                    data={"lines": page, "date": log_id,
+                          "order": "desc" if _desc else "asc",
+                          "offset": offset, "hasMore": _has_more}).to_dict()

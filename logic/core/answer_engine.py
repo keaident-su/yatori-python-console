@@ -183,6 +183,22 @@ class AnswerSource:
         return ""
 
 
+def _is_valid_answer(ans) -> bool:
+    """答案有效性校验(2026-10-21): 拒绝垃圾答案值
+    背景: 题库污染实测—"不知道"等无效值在题库中335+条, 命中后被判题强行猜true导致考试低分;
+    垃圾答案视为未命中, 引擎继续尝试后续答题源
+    """
+    s = str(ans or "").strip()
+    if not s:
+        return False
+    if s in ("不知道", "不确定", "无法确定", "不会", "不清楚", "不知道。", "无", "没学过", "不详"):
+        return False
+    import re as _re
+    if _re.fullmatch(r"[\?？。\.、，,！!：:；;~～ ]+", s):
+        return False
+    return True
+
+
 def _flatten_sources(cfg) -> List[AnswerSource]:
     """将配置(题库组/子项)展平为答题源列表"""
     result: List[AnswerSource] = []
@@ -758,7 +774,7 @@ class AnswerEngine:
                     f"{tag} 正在查询本地题库缓存(当前{self.cache.count}条记录)"
                     f" | 题目: {question[:40]}")
                 ans, _hit_q = self.cache.lookup(question)
-                if ans:
+                if ans and _is_valid_answer(ans):
                     log_debug_source(
                         src.name,
                         f"{tag} 命中答案: {ans[:80]} | 题目: {question[:40]}")
@@ -770,7 +786,7 @@ class AnswerEngine:
                         _cc = _get_collected_cache()
                         _cc.load()
                         _cans, _ = _cc.lookup(question)
-                        if _cans:
+                        if _cans and _is_valid_answer(_cans):
                             log_debug_source(
                                 src.name,
                                 f"{tag} 采集库填充命中: {_cans[:60]} | 题目: {question[:40]}")
@@ -790,7 +806,7 @@ class AnswerEngine:
                 log_debug_source(
                     src.name, f"{tag} 查询异常: {e}, 自动回退下一个答题源")
                 ans = ""
-            if ans:
+            if ans and _is_valid_answer(ans):
                 ans = ans.strip()
                 # 2026-10-03用户方案: 取消"即问即存"——统一改在"提交成功后"写入
                 # (提交成功=答案有效, 且用"提交链路的题目", 彻底避免误杀/失败题污染)

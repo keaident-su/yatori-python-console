@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from utils.log import log_print, INFO
 
 # 程序版本号(登录/认证响应回传, 便于前端确认部署版本)
-APP_VERSION = "2.0.9.4"
+APP_VERSION = "2.0.9.5"
 
 
 def _resolve_static_root() -> Path | None:

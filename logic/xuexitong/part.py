@@ -5224,8 +5224,11 @@ def _add_study_count_action(setting: Setting, user: User,
     # (用户报障"增加学习次数不好使"的根因: 动手学AI已满分10/10,
     #  而气韵生动停在0.33分——它的setlog从未执行过)
     _res_count = _res_video = _res_read = 0
-    # 平台规则: 章节学习次数达 30 次即满分, 超出无意义纯耗时 -> 智能封顶
-    _eff_count = min(count, 30) if count > 0 else 0
+    # 平台规则: 章节学习次数达 30 次即满分; 封顶与否看配置开关(study_count_cap)
+    # 1(默认)=封顶30省时 / 0=完全按设定次数执行(成绩不变仅耗时)
+    _cap_on = int(getattr(getattr(setting, "basic_setting", None),
+                          "study_count_cap", 1) or 0) == 1
+    _eff_count = (min(count, 30) if _cap_on else count) if count > 0 else 0
     for _c in _targets:
         try:
             if float(getattr(_c, "job_rate", 0) or 0) < 100:

@@ -43,6 +43,9 @@ class BasicSetting:
     # 大众云学(yxlearning)基地址(留空=默认 http://xjbt.gxk.yxlearning.com;
     # 同供应商其他局点填对应主机, 如 http://sddz-gxk.yxlearning.com)
     dzyx_base_url: str = ""
+    # 学习次数智能封顶开关: 1(默认)=超过平台满分线30次按30执行(省时);
+    # 0=完全按用户设定次数执行(如400次跑满, 成绩不变仅耗时)
+    study_count_cap: int = 1
 
 
 @dataclass

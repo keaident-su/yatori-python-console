@@ -86,13 +86,28 @@ class DzyxClient:
             return {}
 
     def study_list(self) -> List[dict]:
-        """我的学习列表(全部班级)"""
-        d = self._gson("/train/cms/study/find-my-study-info.gson", {
-            "studyStatus": "", "mylearnTaskId": "", "attribute": "",
-            "searchYear": "", "orderBy": 1,
-            "mathRandom": str(random.random())[:17],
-            "pageSize": 99999, "pageNo": 0})
-        return (d.get("attribute") or {}).get("list") or []
+        """我的学习列表(兼容 gxk 公需 + zyk 专业课两站)
+
+        2026-10-22 实测: gxk 站 orderBy=1 即学习列表; zyk 站需 orderBy=0&subject=0
+        才能拉到"学习任务(通配任务)"下的课程(否则为空)。双查询合并去重。
+        """
+        merged: Dict[str, dict] = {}
+        variants = [
+            {"orderBy": 1, "subject": ""},
+            {"orderBy": 0, "subject": 0},
+        ]
+        for v in variants:
+            d = self._gson("/train/cms/study/find-my-study-info.gson", {
+                "studyStatus": "", "mylearnTaskId": "", "attribute": "",
+                "subject": v["subject"], "searchYear": "",
+                "orderBy": v["orderBy"],
+                "mathRandom": str(random.random())[:17],
+                "pageSize": 99999, "pageNo": 1})
+            for x in ((d.get("attribute") or {}).get("list") or []):
+                mid = str(x.get("myClassId", ""))
+                if mid and mid not in merged:
+                    merged[mid] = x
+        return list(merged.values())
 
     def my_class(self, my_class_id: str) -> dict:
         d = self._gson("/train/class/my-class.gson",

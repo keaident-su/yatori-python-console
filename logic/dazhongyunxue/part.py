@@ -208,8 +208,13 @@ def _study_one_class(ctx, cache: DzyxCache, item: dict, log) -> None:
     try:
         page.goto(cache.base + "/learning/index?myClassId=" + my_class_id,
                   timeout=60000, wait_until="domcontentloaded")
-        page.wait_for_timeout(6000)
-        n = page.locator(".videoLi").count()
+        # 2026-10-22: 目录异步渲染, 轮询等 .videoLi 出现(最多20秒)
+        n = 0
+        for _ in range(20):
+            page.wait_for_timeout(1000)
+            n = page.locator(".videoLi").count()
+            if n:
+                break
         log(f"【{cname}】目录 {n} 讲")
         for i in range(n):
             row = page.locator(".videoLi").nth(i)
@@ -218,7 +223,18 @@ def _study_one_class(ctx, cache: DzyxCache, item: dict, log) -> None:
             rowtxt = row.inner_text() or ""
             if "已完成" in rowtxt or "100%" in rowtxt:
                 continue
-            row.click(timeout=8000)
+            # JS直点(绕过遮挡/可操作性检查), 失败回退 locator.click
+            clicked = page.evaluate("""(idx) => {
+                const rows = document.querySelectorAll('.videoLi');
+                if (rows[idx]) { rows[idx].scrollIntoView({block:'center'}); rows[idx].click(); return true; }
+                return false;
+            }""", i)
+            if not clicked:
+                try:
+                    row.click(timeout=5000)
+                except Exception:
+                    log(f"【{cname}】{title} 点击失败, 跳过")
+                    continue
             page.wait_for_timeout(random.uniform(5, 8))
             ok_play = page.evaluate("""() => {
                 const v = document.querySelector('video');

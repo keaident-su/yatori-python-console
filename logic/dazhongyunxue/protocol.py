@@ -87,7 +87,7 @@ def report_heartbeat(client: "dzyx_api.DzyxClient", my_class_id: str,
 
 
 def run_protocol_study(client: "dzyx_api.DzyxClient", my_class_id: str,
-                       log=print, interval: int = 20,
+                       log=print, interval: int = 8,
                        max_hours: float = 8.0) -> dict:
     """纯协议刷课: 逐讲按1倍速节奏心跳, 直到课程完成
 
@@ -137,3 +137,56 @@ def run_protocol_study(client: "dzyx_api.DzyxClient", my_class_id: str,
     log(f"纯协议学习结束: {rounds}轮, 课程进度{cur_rate:.2f}%")
     return {"rounds": rounds, "courseRate": cur_rate,
             "done": cur_rate >= 99.9}
+
+
+# ============ 纯协议登录(2026-10-22 实测: 一次通过) ============
+
+_LOGIN_CONST = {
+    "havingfilenameKey": "filename2", "tokenKey": "token2",
+    "location_y_Key": "location_y_2", "location_x_Key": "location_x_2",
+    "checkSliderKey": "checkSlider2",
+}
+
+
+def login_protocol(base: str, account: str, password_cipher: str,
+                   log=print, max_attempts: int = 8) -> dict:
+    """纯协议登录: get-slider→OpenCV解缺口x→login.gson(left=x)
+
+    :param password_cipher: 前端加密后的密码密文(如 "1mb5...==",
+        固定算法同密码恒定; 新账号可先用浏览器登录一次抓取或逆向前端js)
+    :return: cookie字典(成功) / {} (失败)
+    """
+    import requests
+    from logic.dazhongyunxue import slider as dzyx_slider
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/143.0.0.0 Safari/537.36"),
+        "Referer": base + "/login"})
+    s.get(base + "/login", timeout=20)
+    for attempt in range(max_attempts):
+        r = s.post(base + "/train/common-slider/get-slider.gson",
+                   data=dict(_LOGIN_CONST), timeout=20)
+        attr = (r.json().get("attribute") or {})
+        bg = dzyx_slider._decode_src(attr.get("bgImg", ""))
+        fg = dzyx_slider._decode_src(attr.get("slider", ""))
+        if not bg:
+            continue
+        gx = dzyx_slider.detect_gap_x(bg, fg or b"")
+        if not gx:
+            continue
+        data = dict(_LOGIN_CONST)
+        data.update({"account": account, "password": password_cipher,
+                     "code": "", "vcode": "332211", "roleType": "1",
+                     "isRemember": "0", "left": str(gx)})
+        r2 = s.post(base + "/train/login/login.gson", data=data, timeout=20)
+        try:
+            d = r2.json()
+        except Exception:
+            continue
+        if d.get("respCode") == 200:
+            log(f"纯协议登录成功(x={gx}, {attempt + 1}次)")
+            return {c.name: c.value for c in s.cookies}
+        log(f"  登录尝试{attempt + 1}: {d.get('respDesc', '')[:20]}")
+    return {}

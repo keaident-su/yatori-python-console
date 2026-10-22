@@ -1248,6 +1248,13 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
               "[", Green, display_account(cache.account), Default, "] ",
               "[", course.course_name, "] ", Purple, "正在学习该课程")
+    # 2026-10-22: 运行时状态埋点(前端实时展示当前阶段/课程)
+    try:
+        from web.service import runtime_status as _rt_st
+        _rt_st.set_stage(cache.account, "课程学习",
+                         course=course.course_name)
+    except Exception:
+        pass
 
     try:
         course_id_int = int(course.course_id)
@@ -1377,6 +1384,13 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                     # 实时显示任务点进度
                     with progress_lock:
                         progress_state["done"] += 1
+                        try:
+                            from web.service import runtime_status as _rt_st
+                            _rt_st.set_task(
+                                cache.account, course.course_name,
+                                f"任务点 {progress_state['done']}/{len(nodes)}")
+                        except Exception:
+                            pass
                         done = progress_state["done"]
                     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
                               "[", Green, display_account(
@@ -1468,6 +1482,12 @@ def _chapter_study(setting: Setting, user: User, cache: XueXiTUserCache,
                           cache.account), Default, "] ",
                       "[", course.course_name, "] ",
                       Yellow, f"任务点进度: {index+1}/{len(nodes)}")
+            try:
+                from web.service import runtime_status as _rt_st
+                _rt_st.set_task(cache.account, course.course_name,
+                                f"任务点 {index+1}/{len(nodes)}")
+            except Exception:
+                pass
 
     # === 任务点完成度复核 (2026-09-30 对齐参考实现) ===
     # 章节学习全部完毕后重新拉取任务点统计, 输出完成情况;
@@ -2635,6 +2655,12 @@ def _execute_video(setting: Setting, user: User, cache: XueXiTUserCache,
               "【", video.title, "】 >>> ",
               Yellow, "正在学习视频：", Default,
               f"duration={video.duration}s")
+    try:
+        from web.service import runtime_status as _rt_st
+        _rt_st.set_task(cache.account, course.course_name,
+                        str(video.title)[:60], "视频")
+    except Exception:
+        pass
 
     while True:
         # 停止检查点: Web 端点击"停止刷课"后, 视频轮询立即优雅退出
@@ -7154,10 +7180,23 @@ def _exam_gate_schedule_or_wait(cache, course, exam, gate: dict,
             left = int(rec["ready_ts"] - now)
             log_f(f"⏳已预约开考(前置已达标): 将在{rec.get('desc', '')}自动参加"
                   f"(剩余{left // 3600}小时{(left % 3600) // 60}分)")
+            # 2026-10-22: gate等待状态埋点(前端提示"暂不可考"及预约时间)
+            try:
+                from web.service import runtime_status as _rt_st
+                _rt_st.add_gate(cache.account, course.course_name,
+                                str(rec.get("desc", "")),
+                                "任务点前置已达标, 已预约届时自动开考")
+            except Exception:
+                pass
             return True
         _EXAM_GATE_READY.pop(key, None)
         _exam_gate_save()
         log_f("⌚预约开考时间已到, 开始参加考试")
+        try:
+            from web.service import runtime_status as _rt_st
+            _rt_st.clear_gate(cache.account, course.course_name)
+        except Exception:
+            pass
         return False
     # 2) 首次遇到: 查任务点完成率
     rate = _calc_course_job_rate(cache, course)
@@ -7179,6 +7218,12 @@ def _exam_gate_schedule_or_wait(cache, course, exam, gate: dict,
         _exam_gate_save()
         log_f(f"✅任务点完成率{rate}%≥{pct}%已达前置要求: 已自动预约考试"
               f"(拟人随机延时{delay // 60}分钟), 将于 {desc} 自动参加")
+        try:
+            from web.service import runtime_status as _rt_st
+            _rt_st.add_gate(cache.account, course.course_name, desc,
+                            "任务点前置已达标, 已预约届时自动开考")
+        except Exception:
+            pass
     else:
         log_f(f"⚠任务点完成率{rate}%<{pct}%未达前置要求: 将先自动刷任务点,"
               f"达标后自动预约次日开考(无需人工介入)")
@@ -7395,6 +7440,15 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
             else:
                 answer = _normalize_judge_answer(answer)
         stats["questions"] += 1
+        # 2026-10-22: 考试答题进度埋点(前端实时展示 done/total)
+        try:
+            from web.service import runtime_status as _rt_st
+            _rt_st.set_exam(cache.account,
+                            f"{course.course_name}·{exam_name}",
+                            stats["questions"],
+                            min(int(question_total or 0), 200) or 0)
+        except Exception:
+            pass
         _collect_exam_qa(q_text, answer, q_entity.get("questionTypeStr", ""))
         if not submit:
             continue
@@ -7457,6 +7511,12 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
             xxt_api.XXTEXAMUA = xxt_api.get_ua("exam")
         except Exception as e:
             stats["errors"].append("%s 最终交卷异常: %s" % (exam_name, str(e)[:60]))
+    # 2026-10-22: 考试结束清除实时进度埋点
+    try:
+        from web.service import runtime_status as _rt_st
+        _rt_st.clear_exam(cache.account)
+    except Exception:
+        pass
     return True
 
 
@@ -9117,18 +9177,43 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
                 cache, str(_c.course_id), str(_c.key), str(_c.cpi))
         except Exception:
             pass
-        return _qf, _qa, _os
+        # 2026-10-22: 每课考试状态(需求1) — 拉考试列表→待考/已完成/暂不可考
+        _ec, _ef, _eo, _ei = None, None, 0, []
+        try:
+            _eb, _ = xxt_api.pull_exam_list_api(
+                cache, _c.course_id, _c.key, str(_c.cpi), retry=1)
+            _es = _parse_exam_list_html(_eb or "")
+            if _es:
+                _ec = len(_es)
+                _ef = sum(1 for _e in _es if isinstance(_e, dict) and any(
+                    k in str(_e.get("status", ""))
+                    for k in ("已完成", "已批阅", "待批阅")))
+                _eo = sum(1 for _e in _es if isinstance(_e, dict) and (
+                    any(k in str(_e.get("status", ""))
+                        for k in ("未交", "待做", "进行中", "未完成", "未参加"))
+                    or ("已完成" not in str(_e.get("status", ""))
+                        and "待批阅" not in str(_e.get("status", ""))
+                        and "已批阅" not in str(_e.get("status", ""))
+                        and str(_e.get("status", "")) != "")))
+                for _e in _es[:3]:
+                    if isinstance(_e, dict):
+                        _ei.append({"name": str(_e.get("name", ""))[:60],
+                                    "status": str(_e.get("status", ""))[:20],
+                                    "deadline": str(_e.get("remainTime", ""))[:30]})
+        except Exception:
+            pass
+        return _qf, _qa, _os, _ec, _ef, _eo, _ei
 
     _extras = {}
     try:
-        # 2026-10-22: 实测每课quiz+score约1.6秒(个别0.2-0.8), 并发16即可63课降至约6秒
-        with ThreadPoolExecutor(max_workers=16) as _ex:
+        # 2026-10-22: 实测每课quiz+考试+score约2秒(并发20): 63课仍可压到约10秒内
+        with ThreadPoolExecutor(max_workers=20) as _ex:
             _futs = {_ex.submit(_fetch_one_extras, c): id(c) for c in courses}
             for _f in as_completed(_futs):
                 try:
                     _extras[_futs[_f]] = _f.result()
                 except Exception:
-                    _extras[_futs[_f]] = (None, None, None)
+                    _extras[_futs[_f]] = (None, None, None, None, None, 0, [])
     except Exception:
         _extras = {}
     result = []
@@ -9141,8 +9226,20 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
             status_str = "已结束"
         else:
             status_str = "进行中"
-        _quiz_fin, _quiz_all, _oscore = _extras.get(
-            id(c), (None, None, None))
+        _quiz_fin, _quiz_all, _oscore, _ecnt, _efin, _eongo, _eitems = _extras.get(
+            id(c), (None, None, None, None, None, 0, []))
+        # 2026-10-22: 考试gate预约提示(运行时状态合并, 需求1)
+        _gate_hint = ""
+        try:
+            from web.service import runtime_status as _rt_st
+            _st = _rt_st.get(cache.account)
+            for _g in (_st.get("examGates") or []):
+                if str(_g.get("course", "")) == str(c.course_name):
+                    _gate_hint = (f"预约{_g.get('waitDesc', '')}自动开考"
+                                  f"({_g.get('reason', '')})")
+                    break
+        except Exception:
+            pass
         result.append({
             "courseId": str(c.course_id),
             "courseName": c.course_name,
@@ -9153,6 +9250,11 @@ def web_course_list(cache: XueXiTUserCache, user: User) -> List[dict]:
             "quizFinishCount": _quiz_fin,
             "quizCount": _quiz_all,
             "overallScore": _oscore,
+            "examCount": _ecnt,
+            "examFinishCount": _efin,
+            "examOngoing": _eongo,
+            "examItems": _eitems,
+            "examGateHint": _gate_hint,
             "hasProgress": True,
             "statusText": status_str,
         })

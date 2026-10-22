@@ -450,6 +450,26 @@ def course_detail_stat_service(uid: str, course_id: str) -> dict:
     return Response(code=200, message="OK", data=data).to_dict()
 
 
+def runtime_status_service(uid: str) -> dict:
+    """运行时实时状态(2026-10-22: 当前阶段/课程/任务点/考试进度/gate预约)
+
+    轻量接口: 只读内存快照, 不触网不建活动——不阻塞、不限频。
+    若账号不在运行中, 返回空状态(前端隐藏实时条/卡片附加行)。
+    """
+    from web.service import runtime_status
+    session = get_session()
+    try:
+        user = user_mapper.query_user(session, uid=uid)
+        if not user:
+            return Response(code=400, message="该账号不存在").to_dict()
+        account = str(user.account)
+    finally:
+        session.close()
+    st = runtime_status.get(account)
+    st["isRunning"] = _is_account_running(uid)
+    return Response(code=200, message="OK", data=st).to_dict()
+
+
 def start_brush_service(uid: str) -> dict:
     """启动刷课(2026-09-28: 全链路日志 + 明确成败语义)
 

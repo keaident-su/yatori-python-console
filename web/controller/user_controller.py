@@ -89,6 +89,12 @@ def course_detail_stat(uid: str, course_id: str):
     return user_service.course_detail_stat_service(uid, course_id)
 
 
+@router.get("/getRuntimeStatus/{uid}")
+def get_runtime_status(uid: str):
+    """运行时实时状态(2026-10-22: 当前阶段/课程/任务点/考试进度/gate预约)"""
+    return user_service.runtime_status_service(uid)
+
+
 @router.get("/startBrush/{uid}")
 def start_brush(uid: str):
     """启动刷课"""

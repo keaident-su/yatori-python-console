@@ -174,6 +174,12 @@ class XXTActivity(UserActivityBase):
                       BoldRed, f"刷课异常: {type(e).__name__}: {e}")
         finally:
             self.is_running = False
+            # 2026-10-22: 运行时状态收尾(前端实时条显示"已结束")
+            try:
+                from web.service import runtime_status as _rt_st
+                _rt_st.finish(self.user.account)
+            except Exception:
+                pass
             log_print(INFO, "[", Green, self.user.account, Default, "] ",
                       "刷课状态已复位(is_running=False)")
 

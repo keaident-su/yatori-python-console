@@ -5219,21 +5219,31 @@ def _add_study_count_action(setting: Setting, user: User,
               f"预计总耗时约{_est_min:.0f}分钟)...")
     t0 = time.time()
 
-    # ===== 1) 学习次数(setlog 机制) =====
-    _res_count = 0
-    if count > 0:
-        _res_count = _add_study_setlog_times(cache, course, count, delay)
-
-    # ===== 2) 视频观看时长(视频播放进度上报) =====
-    _res_video = 0
-    if video_minutes > 0:
-        _res_video = _add_video_watch_minutes(
-            cache, course, video_minutes, delay)
-
-    # ===== 3) 阅读时长(阅读行为上报) =====
-    _res_read = 0
-    if read_minutes > 0:
-        _res_read = _add_read_minutes(cache, course, read_minutes, delay)
+    # ===== 三指标执行(2026-10-22修复: 遍历账号下所有已完成课程) =====
+    # 原实现仅作用于触发时的单课程, 导致其他课程"章节学习次数"永远不涨
+    # (用户报障"增加学习次数不好使"的根因: 动手学AI已满分10/10,
+    #  而气韵生动停在0.33分——它的setlog从未执行过)
+    _res_count = _res_video = _res_read = 0
+    # 平台规则: 章节学习次数达 30 次即满分, 超出无意义纯耗时 -> 智能封顶
+    _eff_count = min(count, 30) if count > 0 else 0
+    for _c in _targets:
+        try:
+            if float(getattr(_c, "job_rate", 0) or 0) < 100:
+                continue
+        except Exception:
+            continue
+        log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                  "【", _c.course_name, "】",
+                  Yellow, f"开始执行三指标"
+                  f"(学习次数{_eff_count}, 视频{video_minutes}分钟, "
+                  f"阅读{read_minutes}分钟)...")
+        if count > 0:
+            _res_count += _add_study_setlog_times(cache, _c, _eff_count, delay)
+        if video_minutes > 0:
+            _res_video += _add_video_watch_minutes(
+                cache, _c, video_minutes, delay)
+        if read_minutes > 0:
+            _res_read += _add_read_minutes(cache, _c, read_minutes, delay)
 
     # 结束汇总: 实际增加量与总耗时(不改变任何既有行为)
     _done_parts = []

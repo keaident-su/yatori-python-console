@@ -177,25 +177,26 @@ def _brush_account(setting: Setting, cache: DzyxCache) -> None:
     if not todo:
         log("全部班级已完成, 无需学习")
         return
-    log(f"待学习班级 {len(todo)} 个, 启动浏览器逐个刷课")
-    try:
-        from playwright.sync_api import sync_playwright
-    except Exception as e:
-        log(f"playwright 不可用: {e}")
-        return
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=_headless_flag(),
-                                    channel="chrome")
-        ctx = browser.new_context(viewport={"width": 1440, "height": 900},
-                                  ignore_https_errors=True,
-                                  storage_state=cache.state)
-        for item in todo:
-            try:
-                _study_one_class(ctx, cache, item, log)
-            except Exception as e:
-                log(f"班级学习异常: {str(e)[:80]}")
-            time.sleep(random.uniform(3, 8))
-        browser.close()
+    # 2026-10-22: 纯协议主路线(实测: cv.gson心跳=平台计时, 随机pid即回"正常计时!",
+    #   1倍速真实节奏, 全程requests无浏览器)。浏览器版保留为兼容回退。
+    from logic.dazhongyunxue import protocol as dzyx_proto
+    log(f"待学习班级 {len(todo)} 个, 纯协议模式启动")
+    for item in todo:
+        my_class_id = item.get("myClassId", "")
+        cname = ((item.get("classEntity") or {}).get("className")
+                 or my_class_id[:8])
+        log(f"【{cname}】纯协议学习开始")
+        try:
+            res = dzyx_proto.run_protocol_study(
+                cache.client, my_class_id,
+                log=lambda m: log(m), interval=20, max_hours=10.0)
+            if res.get("done"):
+                log(f"【{cname}】✅课程完成!")
+            else:
+                log(f"【{cname}】阶段结束, 进度{res.get('courseRate', 0):.2f}%")
+        except Exception as e:
+            log(f"【{cname}】纯协议异常: {str(e)[:80]}")
+        time.sleep(random.uniform(3, 8))
     log("账号刷课流程结束")
 
 

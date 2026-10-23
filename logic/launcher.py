@@ -512,6 +512,39 @@ def brush_block(config_data: JSONDataForConfig):
         t.join()
 
 
+_GUI_LOCK_FH = None
+
+
+def _acquire_gui_single_lock() -> bool:
+    """[2026-10-24] GUI单实例锁: 防止双开导致端口顺延/双窗口混乱
+    (历史上双实例同时跑 -> 一个绑8080一个绑8081, 用户看到错乱界面).
+    返回 True=获锁(首个实例), False=已有实例在运行."""
+    global _GUI_LOCK_FH
+    import os as _os
+    lock_path = _os.path.join("assets", ".gui.lock")
+    try:
+        _os.makedirs(_os.path.dirname(lock_path), exist_ok=True)
+        fh = open(lock_path, "a+")
+        if sys.platform == "win32":
+            import msvcrt
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            fh.seek(0)
+            fh.truncate()
+            fh.write(str(_os.getpid()))
+            fh.flush()
+        except Exception:
+            pass
+        _GUI_LOCK_FH = fh  # 持有引用, 进程存活期间保持锁
+        return True
+    except Exception:
+        return False
+
+
 def run_gui():
     """桌面GUI模式(2026-10-23): pywebview独立窗口 + 后台uvicorn服务
     默认启动方式(双击exe即GUI); --console 进入原控制台/webMode菜单。
@@ -519,6 +552,22 @@ def run_gui():
     """
     import threading
     import time as _time
+
+    # [2026-10-24] GUI单实例保护: 已有实例在跑则提示并退出
+    if not _acquire_gui_single_lock():
+        log_print(INFO, Red,
+                  "检测到 Yatori 已在运行中（单实例保护），本实例退出；"
+                  "如界面异常请先在任务管理器结束旧进程后重试")
+        try:
+            if sys.platform == "win32":
+                import ctypes as _ct2
+                _ct2.windll.user32.MessageBoxW(
+                    0, "Yatori 刷课系统已在运行中，请勿重复启动。\n"
+                       "（如旧窗口异常，请先结束旧进程再启动）",
+                    "Yatori", 0x40)
+        except Exception:
+            pass
+        return
 
     from dao.database import sqlite_init
     sqlite_init()
@@ -582,6 +631,12 @@ def run_gui():
 
     url = f"http://127.0.0.1:{port}/ui?token={_tk}"
     log_print(INFO, Green, f"桌面窗口加载: {url}")
+    # [2026-10-24] Linux WebKit2GTK 兼容(窗口有壳无内容/黑屏的已知主因):
+    #  VM/无GPU环境下 DMABUF 渲染器会黑屏, 强制软渲染保证页面可见
+    if sys.platform != "win32":
+        import os as _os3
+        _os3.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+        _os3.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
     try:
         import webview
         webview.create_window(

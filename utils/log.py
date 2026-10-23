@@ -414,6 +414,22 @@ def model_print(is_sw: bool, level: str, *args: Any):
 
 # ============ uvicorn 日志接入(access log 落盘) ============
 
+class _UiPollFilter(logging.Filter):
+    """[2026-10-24] GUI高频轮询路径不落盘: 日志中心tail/状态轮询等会把
+    access日志刷屏淹没业务日志, 此类请求直接丢弃(控制台仍可见)."""
+    _SKIP = ("/ui/api/logs/tail", "/ui/api/ping", "/ui/api/accounts",
+             "/ui/api/rtstatus", "/ui/api/task/status", "/favicon")
+
+    def filter(self, record):
+        try:
+            msg = str(record.msg)
+            args = record.args or ()
+            text = msg % args if args else msg
+            return not any(k in str(text) for k in self._SKIP)
+        except Exception:
+            return True
+
+
 def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
     """构建 uvicorn 的 log_config: 访问日志与错误日志全部写入全局日志文件
 
@@ -449,6 +465,9 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
                 "use_colors": False,
             },
         },
+        "filters": {
+            "ui_poll": {"()": "utils.log._UiPollFilter"},
+        },
         "handlers": {
             "default": {
                 "formatter": "default",
@@ -467,7 +486,7 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
             },
             "file_access": {
                 "()": "utils.log._DailyRotatingHandler",
-                "log_dir": log_dir,
+                "log_dir": log_dir + "/access",
                 "formatter": "access_file",
             },
         },
@@ -477,6 +496,7 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
             "uvicorn.error": {"handlers": ["default", "file"],
                               "level": "INFO", "propagate": False},
             "uvicorn.access": {"handlers": ["access", "file_access"],
-                               "level": "INFO", "propagate": False},
+                               "level": "INFO", "propagate": False,
+                               "filters": ["ui_poll"]},
         },
     }

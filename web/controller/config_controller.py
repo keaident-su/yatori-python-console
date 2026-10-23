@@ -24,6 +24,9 @@ BASIC_KEYS = [
     "completionTone", "colorLog", "logOutFileSw", "logLevel", "logModel",
     "ocrImageQuestion", "noticePrefix", "browserPath", "cdpHost", "cdpPort",
     "fullCpuMode", "performanceGear",
+    # 2026-10-23修复: 后加字段漏白名单导致前端保存被静默丢弃
+    #   (studyCountCap关闭后仍按30跑 / dzyxBaseUrl无法保存)
+    "dzyxBaseUrl", "studyCountCap",
 ]
 EMAIL_KEYS = ["sw", "SMTPHost", "SMTPPort", "userName", "password"]
 AI_KEYS = ["aiType", "aiUrl", "model", "API_KEY"]
@@ -59,7 +62,7 @@ def _pick(d: dict, keys: list) -> dict:
 
 # 需要强制转 int 的字段(避免前端字符串写入 yaml 后影响运行时解析)
 _INT_BASIC = {"completionTone", "colorLog", "logOutFileSw", "logModel",
-              "ocrImageQuestion", "cdpPort"}
+              "ocrImageQuestion", "cdpPort", "studyCountCap"}
 _INT_EMAIL = {"sw", "SMTPPort"}
 _INT_META = {"tokenCheck", "localCacheEnable"}
 

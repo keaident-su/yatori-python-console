@@ -708,12 +708,13 @@ def run_gui():
             _os4.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
             _os4.environ.setdefault("QT_QPA_PLATFORM", "xcb")
             try:
+                import qtpy  # noqa: F401
                 import PyQt5.QtWebEngineWidgets  # noqa: F401
                 _gui_backend = "qt"
                 log_print(INFO, Green, "Linux渲染后端: QtWebEngine(Chromium)")
             except Exception:
                 _gui_backend = "gtk"
-                log_print(INFO, Yellow, "Linux渲染后端: GTK/WebKit(未装PyQt5)")
+                log_print(INFO, Yellow, "Linux渲染后端: GTK/WebKit(缺PyQt5/qtpy)")
         _win = webview.create_window(
             f"Yatori 刷课系统 V{__import__('web.server', fromlist=['APP_VERSION']).APP_VERSION}",
             url, width=1280, height=840, min_size=(1024, 680))
@@ -739,7 +740,15 @@ def run_gui():
         # [2026-10-24] 窗口/任务栏图标(Windows必须.ico, PNG会触发Icon异常)
         _icon = os.path.join("assets", "app_icon.ico")
         if _gui_backend == "qt":
-            webview.start(gui="qt")
+            try:
+                webview.start(gui="qt")
+            except Exception as _qe:
+                log_print(INFO, Red, f"Qt窗口启动失败({_qe}), 回退GTK")
+                try:
+                    webview.start(
+                        icon=_icon if os.path.isfile(_icon) else None)
+                except Exception:
+                    raise
         else:
             webview.start(icon=_icon if os.path.isfile(_icon) else None)
     except Exception as _e:

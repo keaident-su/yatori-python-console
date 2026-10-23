@@ -734,6 +734,12 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
     # 夜间休息检查(2026-09-30, rest_sw开启时生效): 处于休息时段→暂停等待到点继续
     if _rest_wait_if_needed(cache, cc) and is_stopped(cache.account):
         return
+    # [2026-10-23] 开局考试守护: 优先消费已到期的gate预约(不等课程循环顺序)
+    if not is_stopped(cache.account):
+        try:
+            _exam_guard_due_consume(setting, user, cache)
+        except Exception:
+            pass
     if cc.video_model == 3:
         # 对齐 Go UserBlock: videoModel=3 时建立多任务点登录池
         # cxNode>0 → 预登录cxNode次形成池(同时任务点数量)
@@ -893,6 +899,12 @@ def _user_block(setting: Setting, user: User, cache: XueXiTUserCache):
     except Exception:
         pass
 
+    # [2026-10-23] 收尾考试守护: 全课程考试体检(能考必考, 考不了的写明原因)
+    if not is_stopped(cache.account):
+        try:
+            _exam_guard_action(setting, user, cache, course_list)
+        except Exception:
+            pass
     # 刷课结束后的积分复查(2026-09-30): 对比今日得分是否达标
     _jf_final_report(cache, course_list, cc)
     log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
@@ -7163,6 +7175,122 @@ def _calc_course_job_rate(cache, course) -> float:
         return round(fin * 100.0 / tot, 1) if tot else 100.0
     except Exception:
         return -1.0
+
+
+def _exam_guard_due_consume(setting: Setting, user: User,
+                            cache: XueXiTUserCache):
+    """[2026-10-23] 开局考试守护: 只消费"已到期"的 gate 预约(按账号),
+    不等课程循环顺序。解决"预约到期但轮转太久才轮到该账号"的延迟问题。"""
+    _exam_gate_load()
+    try:
+        course_list = _pull_course_action(cache) or []
+    except Exception:
+        return
+    now = time.time()
+    due_cids = []
+    for key, rec in list(_EXAM_GATE_READY.items()):
+        try:
+            acct, cid = key.split("|")[0], key.split("|")[1]
+        except Exception:
+            continue
+        if acct != str(cache.account):
+            continue
+        rs = rec.get("ready_ts")
+        if isinstance(rs, (int, float)) and now >= rs:
+            due_cids.append(cid)
+    if not due_cids:
+        return
+    for c in course_list:
+        if str(c.course_id) in due_cids:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, display_account(
+                          cache.account), Default, "] ",
+                      "[", c.course_name, "] ",
+                      Yellow, "预约已到期, 优先开考守护...")
+            try:
+                _exam_action(setting, user, cache, c)
+            except Exception as e:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, display_account(
+                              cache.account), Default, "] ",
+                          "[", c.course_name, "] ",
+                          Red, f"优先开考异常: {str(e)[:80]}")
+
+
+def _exam_guard_action(setting: Setting, user: User, cache: XueXiTUserCache,
+                       course_list: List) -> tuple:
+    """[2026-10-23] 账号收尾考试守护: 全课程考试体检
+      - 已完成(已完成/已批阅/待批阅) -> 跳过
+      - gate未到期 -> 日志明示"将于X自动开考"
+      - gate已到期 或 无gate未完成 -> 调_exam_action(内部处理gate/人脸/签名/重试)
+    返回 (驱动课程数, 复查后仍未完成考试数)"""
+    _exam_gate_load()
+    _pfx = f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]"
+    _acct = display_account(cache.account)
+
+    def _log(m, color=None):
+        log_print(INFO, _pfx, "[", Green, _acct, Default, "] ",
+                  "[考试守护] ", color or Default, m)
+
+    todo = {}
+    scheduled = []
+    for course in (course_list or []):
+        try:
+            body, _ = xxt_api.pull_exam_list_api(
+                cache, course.course_id, course.key, str(course.cpi), retry=2)
+            exams = _parse_exam_list_html(body or "")
+        except Exception:
+            continue
+        for ex in exams:
+            _st = str(ex.get("status", ""))
+            if any(k in _st for k in ("已完成", "已批阅", "待批阅", "已过期")):
+                continue  # 已完成类/已过期(不可考)均不驱动
+            key = _exam_gate_key(cache.account, str(course.course_id), ex)
+            rec = _EXAM_GATE_READY.get(key)
+            now = time.time()
+            if rec and isinstance(rec.get("ready_ts"), (int, float)) \
+                    and now < rec["ready_ts"]:
+                scheduled.append((course.course_name,
+                                  str(ex.get("name", ""))[:26],
+                                  rec.get("desc", "")))
+                continue
+            todo[str(course.course_id)] = course
+    for cn, en, desc in scheduled:
+        _log(f"⏳【{cn}】「{en}」前置已达标, 已预约 {desc} 自动开考", Yellow)
+    if todo:
+        _log(f"体检发现 {len(todo)} 门课程存在未完成考试, 执行考试流程(能考的立即考)...")
+    for cid, course in todo.items():
+        try:
+            _exam_action(setting, user, cache, course)
+        except Exception as e:
+            _log(f"【{course.course_name}】考试守护异常: {str(e)[:80]}", Red)
+    # 复查: 分类统计(已完成类/已过期不计数; gate预约中单列; 其他=真待完成)
+    left = 0
+    _sched_left = 0
+    for course in (course_list or []):
+        try:
+            body, _ = xxt_api.pull_exam_list_api(
+                cache, course.course_id, course.key, str(course.cpi), retry=1)
+            exams = _parse_exam_list_html(body or "")
+        except Exception:
+            continue
+        for ex in exams:
+            _st = str(ex.get("status", ""))
+            if any(k in _st for k in ("已完成", "已批阅", "待批阅", "已过期")):
+                continue  # 完成类/过期不计数
+            _k2 = _exam_gate_key(cache.account, str(course.course_id), ex)
+            _r2 = _EXAM_GATE_READY.get(_k2)
+            if _r2 and isinstance(_r2.get("ready_ts"), (int, float)) \
+                    and time.time() < _r2["ready_ts"]:
+                _sched_left += 1
+                continue  # 预约中(排队)
+            left += 1
+    if left or _sched_left:
+        _log(f"考试守护结束: 待完成 {left} 场(失败/待考, 原因见上方)" +
+             (f" + {_sched_left} 场已预约排队中" if _sched_left else ""), Yellow)
+    else:
+        _log("考试守护结束: 全部课程考试已完成/无待考 ✓", Green)
+    return (len(todo), left)
 
 
 def _exam_gate_schedule_or_wait(cache, course, exam, gate: dict,

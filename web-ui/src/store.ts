@@ -28,12 +28,12 @@ export const useUI = create<UIState>((set) => ({
   toast: null,
   setTheme: (t) => {
     set({ theme: t })
-    try { localStorage.setItem('yui_theme', t) } catch {}
+    try { localStorage.setItem('yui_theme', t) } catch { }
     applyTheme(t, useUI.getState().bgUrl)
   },
   setBgUrl: (u) => {
     set({ bgUrl: u })
-    try { localStorage.setItem('yui_bg', u) } catch {}
+    try { localStorage.setItem('yui_bg', u) } catch { }
     applyTheme(useUI.getState().theme, u)
   },
   setAccounts: (a) => set({ accounts: a }),

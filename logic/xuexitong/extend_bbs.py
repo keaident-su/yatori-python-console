@@ -78,24 +78,35 @@ def _parse_outer_menu(cache, course) -> dict:
 
 
 def fetch_topics(cache, course) -> list:
-    """拉课程讨论tab话题列表(分页), 返回话题dict列表"""
+    """拉课程讨论tab话题列表(分页), 返回话题dict列表
+    2026-10-23: 优先用缓存的讨论四件套cookie({courseId}cpi/ut/t/enc)
+    纯协议拉取(实测有四件套即可成功); 无缓存时退回旧式两段式请求"""
     info = _parse_outer_menu(cache, course)
     bbsid = info.get("bbsid", "")
     if not bbsid:
         return []
     s = _http(cache)
-    # 2026-10-18: 两段式——先 GET topicList 页(带 stuenc/bbsid)建立讨论会话,
-    # 再 POST getTopicList; 否则直接 POST 返回"你没有权限操作"
+    _ck4 = load_discuss_ck(cache)
+    if _ck4:
+        for _n, _v in _ck4.items():
+            try:
+                s.cookies.set(_n, _v, domain=".chaoxing.com", path="/")
+            except Exception:
+                pass
+    # 两段式——先 GET topicList 页(带 stuenc/bbsid)建立讨论会话, 再 POST getTopicList
+    # 2026-10-23: 有ck4四件套时跳过GET预热(实测预热会重置JSESSIONID导致四件套失配),
+    #   直接POST即可; 无ck4时保持旧式预热。
     _stuenc = info.get("stuenc", "")
     _t = str(int(time.time() * 1000))
     page_url = (f"https://groupweb.chaoxing.com/course/topic/topicList"
                 f"?courseid={course.course_id}&clazzid={course.key}"
                 f"&cpi={course.cpi}&ut=s&t={_t}&stuenc={_stuenc}"
                 f"&bbsid={bbsid}&learnSilverStartTime=&learnSilverEndTime=")
-    try:
-        s.get(page_url, timeout=25)
-    except Exception:
-        pass
+    if not _ck4:
+        try:
+            s.get(page_url, timeout=25)
+        except Exception:
+            pass
     topics = []
     for page in range(1, 6):
         url = (f"https://groupweb.chaoxing.com/course/topic/{bbsid}/getTopicList"
@@ -182,12 +193,17 @@ def _reply_topic(cache, course, topic: dict, text: str, info: dict = None) -> bo
 
 
 def _browser_session(cache):
-    """2026-10-18: 讨论接口需 stuenc(由外层页JS动态生成, 纯协议无法获取),
-    改用 Playwright 浏览器态: 打开 stucoursemiddle -> 点讨论 -> iframe 内 fetch。
-    返回 (playwright, browser, page, gw_frame) 或抛异常"""
+    """2026-10-23修复: 家机无系统Chrome(旧版channel="chrome"直接报
+    Chromium distribution 'chrome' is not found) -> 改用 Playwright 内置 chromium;
+    同时导出讨论四件套cookie({courseId}cpi/ut/t/enc)供纯协议列表/回复复用。
+    返回 (playwright, browser, ctx, page) 或抛异常"""
     from playwright.sync_api import sync_playwright
     p = sync_playwright().start()
-    browser = p.chromium.launch(headless=True, channel="chrome")
+    try:
+        browser = p.chromium.launch(headless=True)
+    except Exception:
+        # 内置浏览器缺失时回退系统通道(兼容开发机)
+        browser = p.chromium.launch(headless=True, channel="chrome")
     ctx = browser.new_context(viewport={"width": 1440, "height": 900},
                               ignore_https_errors=True)
     page = ctx.new_page()
@@ -203,6 +219,43 @@ def _browser_session(cache):
     except Exception:
         pass
     return p, browser, ctx, page
+
+
+def export_course_ck(ctx, course) -> dict:
+    """从浏览器态导出讨论四件套cookie(cpi/ut/t/enc) — 纯协议列表/回复的必备凭证"""
+    out = {}
+    for c in ctx.cookies():
+        n = c.get("name", "")
+        if n in (f"{course.course_id}cpi", f"{course.course_id}ut",
+                 f"{course.course_id}t", f"{course.course_id}enc"):
+            out[n] = c.get("value", "")
+    return out
+
+
+def _discuss_ck_path(cache):
+    import os
+    d = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))), "assets")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        pass
+    return os.path.join(d, f"discuss_ck_{cache.account}.json")
+
+
+def load_discuss_ck(cache) -> dict:
+    try:
+        return json.loads(open(_discuss_ck_path(cache), encoding="utf-8").read())
+    except Exception:
+        return {}
+
+
+def save_discuss_ck(cache, data: dict) -> None:
+    try:
+        open(_discuss_ck_path(cache), "w", encoding="utf-8").write(
+            json.dumps(data, ensure_ascii=False))
+    except Exception:
+        pass
 
 
 def _open_discuss_frame(page, course):
@@ -245,6 +298,13 @@ def run_discussions(cache, course, cc, log) -> int:
         if gw is None:
             log("讨论区打开失败(未找到iframe), 跳过")
             return 0
+        # 2026-10-23: 导出四件套cookie(cpi/ut/t/enc)存盘供纯协议复用
+        try:
+            _ck4 = export_course_ck(ctx, course)
+            if _ck4:
+                save_discuss_ck(cache, _ck4)
+        except Exception:
+            pass
         # iframe 内拉话题列表(分页)
         topics = gw.evaluate("""async (bbsid) => {
             const all = [];

@@ -5,7 +5,6 @@
 """
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 
 from entity.pojo import Base
 
@@ -22,10 +21,17 @@ def sqlite_init(db_path: str = "yatori.db"):
     """
     global _engine, _SessionFactory
 
+    # [2026-10-24] 修复多线程并发下的 sqlite3.InterfaceError(bad parameter or
+    # other API misuse): 原 StaticPool 全进程共享一个连接, 多刷课线程+API
+    # 并发取会话时连接/cursor 交叉使用→报错与 500。改用默认 QueuePool
+    # (每线程独立连接; WAL + busy_timeout 保证多连接并发安全)。
     _engine = create_engine(
         f"sqlite:///{db_path}",
         echo=False,
-        poolclass=StaticPool,
+        pool_size=8,
+        max_overflow=24,
+        pool_timeout=30,
+        pool_pre_ping=True,
         # timeout=30: 程序多开/多实例共用同一 yatori.db 时, 等待写锁而非立即报错
         connect_args={"check_same_thread": False, "timeout": 30},
     )

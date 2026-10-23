@@ -394,17 +394,21 @@ def _account_course_list_service_impl(uid: str) -> dict:
 
         if activity and hasattr(activity, 'pull_course_list'):
             course_list = activity.pull_course_list()
-            # 2026-10-13: 附带账号的"只刷/排除课程"配置(供进度页过滤显示)
+            # 2026-10-13/24: 附带账号的"只刷/排除课程"配置(供进度页过滤显示)
+            # [2026-10-24] 致命修复: 原先读 getattr(UserPO, "courses_custom")
+            # —— UserPO 并无该属性→永远为空→进度页永远拿到空过滤→全量显示。
+            # 现改为从 user_config_json.coursesCustom 同源解析(与accountList一致)。
             _inc, _exc = [], []
             try:
-                _cc = getattr(user, "courses_custom", None)
-                if _cc is not None:
-                    _inc = [str(x) for x in
-                            (getattr(_cc, "include_courses", []) or [])
-                            if str(x).strip()]
-                    _exc = [str(x) for x in
-                            (getattr(_cc, "exclude_courses", []) or [])
-                            if str(x).strip()]
+                _cfgj = user.user_config_turn_entity() or {}
+                _ccj = _cfgj.get("coursesCustom") \
+                    or _cfgj.get("courses_custom") or {}
+                _inc = [str(x) for x in (_ccj.get("includeCourses")
+                                         or _ccj.get("include_courses") or [])
+                        if str(x).strip()]
+                _exc = [str(x) for x in (_ccj.get("excludeCourses")
+                                         or _ccj.get("exclude_courses") or [])
+                        if str(x).strip()]
             except Exception:
                 pass
             # 2026-10-15: 注入平台名称+账号(前端进度页展示"平台：智慧树 · 账号：xxx")

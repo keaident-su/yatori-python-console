@@ -6989,7 +6989,8 @@ def collect_exams_manual(cache: XueXiTUserCache,
     acct = display_account(cache.account)
     stats = {"courses": 0, "examsScanned": 0, "examsEntered": 0,
              "examsSubmitted": 0, "questions": 0, "collectedNew": 0,
-             "collectedUpd": 0, "skipped": 0, "errors": []}
+             "collectedUpd": 0, "skipped": 0, "errors": [],
+             "defaultFallback": 0, "defaultGuard": 1}
 
     def _log(msg):
         log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
@@ -7182,6 +7183,12 @@ def _exam_guard_due_consume(setting: Setting, user: User,
     """[2026-10-23] 开局考试守护: 只消费"已到期"的 gate 预约(按账号),
     不等课程循环顺序。解决"预约到期但轮转太久才轮到该账号"的延迟问题。"""
     _exam_gate_load()
+    # [2026-10-23] 答题引擎初始化保障(防任何调用路径绕过配置导致全兜底低分)
+    try:
+        from logic.core.answer_engine import configure_answer_engine
+        configure_answer_engine(setting)
+    except Exception:
+        pass
     try:
         course_list = _pull_course_action(cache) or []
     except Exception:
@@ -7224,6 +7231,12 @@ def _exam_guard_action(setting: Setting, user: User, cache: XueXiTUserCache,
       - gate未到期 -> 日志明示"将于X自动开考"
       - gate已到期 或 无gate未完成 -> 调_exam_action(内部处理gate/人脸/签名/重试)
     返回 (驱动课程数, 复查后仍未完成考试数)"""
+    # [2026-10-23] 答题引擎初始化保障(防任何调用路径绕过配置导致全兜底低分)
+    try:
+        from logic.core.answer_engine import configure_answer_engine
+        configure_answer_engine(setting)
+    except Exception:
+        pass
     _exam_gate_load()
     _pfx = f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]"
     _acct = display_account(cache.account)
@@ -7553,6 +7566,12 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         if not answer:
             answer = "A" if q_type_code in ("0", "1") else (
                 "true" if q_type_code == "3" else "")
+            # [2026-10-23] 兜底计数(题库/AI均未命中, 防全A低分)
+            try:
+                stats["defaultFallback"] = int(
+                    stats.get("defaultFallback", 0) or 0) + 1
+            except Exception:
+                pass
         if q_type_code in ("0", "1") and options:
             _lt = _match_answer_to_options(
                 answer, options, multi=(q_type_code == "1"))
@@ -7596,6 +7615,14 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
             if _wrong:
                 answer = _wrong
         is_last = (qi + 1 == question_total)
+        # [2026-10-23] 兜底率保护: 题库/AI均未命中超50%且≥3题时暂停自动交卷(防全A低分)
+        if is_last and int(stats.get("defaultGuard", 0) or 0) == 1:
+            _fb = int(stats.get("defaultFallback", 0) or 0)
+            _qn = int(stats.get("questions", 0) or 0)
+            if _fb >= max(3, int(_qn * 0.5)):
+                stats["defaultGuardStop"] = True
+                _log("⚠兜底率过高(%d/%d题无题库/AI答案, 默认兜底), 已暂停自动交卷以免低分; 请检查答题源配置, 下轮重考" % (_fb, _qn))
+                is_last = False
         submit_data = {
             "courseId": q_entity.get("courseId", "") or course.course_id,
             "testPaperId": q_entity.get("testPaperId", "") or test_paper_id,
@@ -7630,7 +7657,8 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
                 exam_name, qi + 1, str(e)[:60]))
     # 2026-10-20: 逐题流转式新卷(无"共包含X题"文案, question_total=200上界探底) —
     #   循环遇空qid break时 is_last 永不触发 → 此处用最后一道题正式交卷(is_submit=True)
-    if submit and qt_match is None and _last_submit_data and stats["examsSubmitted"] == 0:
+    if submit and qt_match is None and _last_submit_data and stats["examsSubmitted"] == 0 \
+            and not stats.get("defaultGuardStop"):
         try:
             xxt_api.submit_exam_answer_api(
                 cache, _last_submit_data, is_submit=True, retry=2)
@@ -8855,6 +8883,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         _last_exam_submit_str = ""
         # 翻页去重集合(2026-09-21): 考试同样防止翻页失效导致重复提交同一题
         _exam_seen_qids = set()
+        _exam_dfl_cnt = 0  # [2026-10-23] 默认兜底计数(防全A低分)
         # 图片题干/选项自动OCR解析器(整场考试复用, 带URL缓存与限流)
         _img_ocr = _make_img_ocr(
             cache, enabled=(getattr(setting.basic_setting, "ocr_image_question", 1) == 1))
@@ -8956,6 +8985,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             if not answer:
                 answer = "A" if q_type_code in ("0", "1") else (
                     "true" if q_type_code == "3" else "答案")
+                _exam_dfl_cnt += 1  # [2026-10-23] 默认兜底计数(防全A低分)
 
             # 答题来源日志: 明确标注本题由哪个题库/AI源回答成功
             _ans_src_show = answer_src or "默认"
@@ -9056,6 +9086,15 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             # 构建提交数据 - 对齐Go SubmitExamAnswerApi
             is_last = (qi + 1 == question_total)
             is_submit = cc.exam_auto_submit in (1, 2) and is_last
+            # [2026-10-23] 兜底率保护: 题库/AI均未命中超50%且≥3题时暂停自动交卷(防全A低分)
+            if is_submit and int(getattr(cc, "cx_exam_default_guard", 1) or 0) == 1:
+                _qn2 = qi + 1
+                if _exam_dfl_cnt >= max(3, int(_qn2 * 0.5)):
+                    log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",
+                              "【", course.course_name, "】【", exam_name, "】",
+                              Red, f"⚠兜底率过高({_exam_dfl_cnt}/{_qn2}题无题库/AI答案), "
+                              "已暂停自动交卷以免低分; 请检查答题源配置后依赖下轮重考")
+                    is_submit = False
             # ★ 拟人节奏: 交卷前"检查时间"(等待期间不产生任何事件)
             if is_submit and _pace_mode >= 1:
                 _check_secs = max(30.0, min(_pace.pause(scale=10.0), 120.0))

@@ -440,6 +440,14 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
                 "use_colors": None,
             },
             "file_plain": {"format": "%(asctime)s %(message)s"},
+            # [2026-10-24] uvicorn.access 专用文件格式: AccessFormatter会把 record.args
+            # 改写为3元组, 若与普通file handler共用标准Formatter会报
+            # "not enough arguments for format string" 刷屏
+            "access_file": {
+                "()": "uvicorn.logging.AccessFormatter",
+                "fmt": '%(asctime)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+                "use_colors": False,
+            },
         },
         "handlers": {
             "default": {
@@ -457,13 +465,18 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
                 "log_dir": log_dir,
                 "formatter": "file_plain",
             },
+            "file_access": {
+                "()": "utils.log._DailyRotatingHandler",
+                "log_dir": log_dir,
+                "formatter": "access_file",
+            },
         },
         "loggers": {
             "uvicorn": {"handlers": ["default", "file"], "level": "INFO",
                         "propagate": False},
             "uvicorn.error": {"handlers": ["default", "file"],
                               "level": "INFO", "propagate": False},
-            "uvicorn.access": {"handlers": ["access", "file"],
+            "uvicorn.access": {"handlers": ["access", "file_access"],
                                "level": "INFO", "propagate": False},
         },
     }

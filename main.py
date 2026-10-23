@@ -43,11 +43,13 @@ def _ensure_stdio():
                 def __init__(self, f):
                     self._f = f
                     self.buffer = f
+
                 def write(self, x):
                     try:
                         self._f.write(x)
                     except Exception:
                         pass
+
                 def flush(self):
                     try:
                         self._f.flush()
@@ -59,17 +61,27 @@ def _ensure_stdio():
         pass
 
 
-
 # 程序版本号(与 web/server.py APP_VERSION 保持一致)
 APP_VERSION = "3.0.0"
 
 # 路径解析：兼容 PyInstaller 打包(冻结)环境与源码开发环境
 if getattr(sys, "frozen", False):
-    # 打包后：exe 可执行文件所在目录即“主程序目录”，
-    # config.yaml、assets(日志/人脸) 都应放在这里，与 main.py 同目录的语义保持一致
-    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
-    # 打包内置的只读资源(logo.txt、tls dll 等)解压到临时目录 sys._MEIPASS
-    RES_DIR = getattr(sys, "_MEIPASS", BASE_DIR)
+    # 打包后：只读资源(logo/tls dll/内置静态页)在 sys._MEIPASS
+    RES_DIR = getattr(sys, "_MEIPASS", os.path.dirname(
+        os.path.abspath(sys.executable)))
+    if sys.platform == "win32":
+        # Windows: exe 所在目录即数据目录(config.yaml/assets/日志), 与历史习惯一致
+        BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        # [2026-10-24] Linux: 程序安装目录(/opt)只读不可写!
+        # 数据(config.yaml/assets/日志/背景图)统一放用户目录(标准 XDG 约定),
+        # 避免新装系统上 PermissionError 崩溃
+        BASE_DIR = os.path.join(os.path.expanduser("~"),
+                                ".local", "share", "yatori")
+        try:
+            os.makedirs(BASE_DIR, exist_ok=True)
+        except Exception:
+            pass
 else:
     # 源码运行：项目根目录（main.py 所在目录）
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -156,6 +168,11 @@ def main():
     """主函数"""
     # 0. stdio守护(windowed下stdout为None, 必须最先兜底)
     _ensure_stdio()
+    # 0.1 统一工作目录=数据目录(打包版资源相对路径全部落此; 防只读目录崩溃)
+    try:
+        os.chdir(BASE_DIR)
+    except Exception:
+        pass
     # 1. 初始化
     init_console()
 

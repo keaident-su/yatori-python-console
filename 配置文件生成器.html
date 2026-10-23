@@ -1600,6 +1600,34 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
   else loadState();
 })();
 </script>
+
+<script>
+/* 2026-10-23: 导入导出体验兜底(检测file://下载被浏览器拦截时给出明确指引) */
+(function(){
+  window.__ycDlHint = true;
+  var downloadSeen = false;
+  document.addEventListener('click', function(ev){
+    var a = ev.target;
+    if (a && a.tagName === 'A' && a.download) { downloadSeen = true; }
+  }, true);
+  document.addEventListener('click', function(e){
+    var t = (e.target && e.target.innerText || '').trim();
+    if (t === '导出') {
+      downloadSeen = false;
+      setTimeout(function(){
+        if (!downloadSeen) {
+          alert('导出已触发，但浏览器可能拦截了下载。
+
+如果没看到 config.yaml 下载：
+① 点击地址栏右侧的「已阻止/下载」图标 → 允许下载
+② 或改用 Edge / 把本文件拖入浏览器打开（而非双击）
+③ 或检查「下载」文件夹中是否已有 config.yaml');
+        }
+      }, 1800);
+    }
+  }, false);
+})();
+</script>
 </body>
 
 </html>

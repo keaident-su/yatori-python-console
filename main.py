@@ -12,6 +12,54 @@ Yatori Python Console - 主入口文件
 import sys
 import os
 
+
+def _ensure_stdio():
+    """[2026-10-24] windowed GUI(pythonw / PyInstaller console=False)下
+    sys.stdout/stderr 为 None, 任何 print 都会 AttributeError 崩溃;
+    统一重定向到 assets/logs/gui_console.log(无黑框但日志保留)。
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    _f = None
+    try:
+        _base = (os.path.dirname(os.path.abspath(sys.executable))
+                 if getattr(sys, "frozen", False)
+                 else os.path.dirname(os.path.abspath(__file__)))
+        _dir = os.path.join(_base, "assets", "logs")
+        os.makedirs(_dir, exist_ok=True)
+        _f = open(os.path.join(_dir, "gui_console.log"), "a",
+                  encoding="utf-8", buffering=1)
+    except Exception:
+        import io as _io
+        _f = _io.StringIO()
+    if sys.stdout is None:
+        sys.stdout = _f
+    if sys.stderr is None:
+        sys.stderr = _f
+    # 标准输出兜底文本包装(部分库直接调 sys.stdout.buffer)
+    try:
+        if not hasattr(sys.stdout, "buffer"):
+            class _W:
+                def __init__(self, f):
+                    self._f = f
+                    self.buffer = f
+                def write(self, x):
+                    try:
+                        self._f.write(x)
+                    except Exception:
+                        pass
+                def flush(self):
+                    try:
+                        self._f.flush()
+                    except Exception:
+                        pass
+            sys.stdout = _W(sys.stdout)
+            sys.stderr = _W(sys.stderr)
+    except Exception:
+        pass
+
+
+
 # 程序版本号(与 web/server.py APP_VERSION 保持一致)
 APP_VERSION = "2.0.9.7"
 
@@ -37,6 +85,20 @@ def init_console():
     Windows 下设置虚拟终端以支持 ANSI 颜色
     """
     if sys.platform == "win32":
+        # [2026-10-24] windowed打包(console=False)下带 --console 启动时
+        # 动态附加一个新控制台窗口, 保留原CLI能力
+        if getattr(sys, "frozen", False) and "--console" in sys.argv:
+            try:
+                import ctypes as _ct
+                if _ct.windll.kernel32.GetConsoleWindow() == 0:
+                    _ct.windll.kernel32.AllocConsole()
+                    sys.stdout = open("CONOUT$", "w", encoding="utf-8",
+                                      errors="ignore", buffering=1)
+                    sys.stderr = sys.stdout
+                    sys.stdin = open("CONIN$", "r", encoding="utf-8",
+                                     errors="ignore")
+            except Exception:
+                pass
         try:
             import ctypes
             kernel32 = ctypes.windll.kernel32
@@ -92,6 +154,8 @@ def _verify_build_integrity():
 
 def main():
     """主函数"""
+    # 0. stdio守护(windowed下stdout为None, 必须最先兜底)
+    _ensure_stdio()
     # 1. 初始化
     init_console()
 

@@ -587,8 +587,8 @@ def run_gui():
         webview.create_window(
             f"Yatori 刷课系统 V{__import__('web.server', fromlist=['APP_VERSION']).APP_VERSION}",
             url, width=1280, height=840, min_size=(1024, 680))
-        # [2026-10-24] 窗口/任务栏图标(桌面原生应用观感)
-        _icon = os.path.join("assets", "app_icon.png")
+        # [2026-10-24] 窗口/任务栏图标(Windows必须.ico, PNG会触发Icon异常)
+        _icon = os.path.join("assets", "app_icon.ico")
         webview.start(icon=_icon if os.path.isfile(_icon) else None)
     except Exception as _e:
         # 无WebView2/pywebview异常 → 退化为开浏览器

@@ -5,7 +5,7 @@ import { useUI, applyRandomBgApi } from '../store'
 
 export default function SettingsPage() {
     const { showToast, theme, setTheme, bgUrl, setBgUrl,
-    bgMode, setBgMode, bgApi, setBgApi } = useUI()
+        bgMode, setBgMode, bgApi, setBgApi } = useUI()
     const [bs, setBs] = useState<any>({})
     const [ai, setAi] = useState<any>({})
     const [em, setEm] = useState<any>({})

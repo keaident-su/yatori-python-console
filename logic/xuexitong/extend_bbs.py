@@ -92,7 +92,8 @@ def fetch_topics(cache, course) -> list:
             try:
                 if isinstance(_meta, dict):
                     s.cookies.set(_n, _meta.get("value", ""),
-                                  domain=_meta.get("domain") or ".chaoxing.com",
+                                  domain=_meta.get(
+                                      "domain") or ".chaoxing.com",
                                   path="/")
                 else:
                     s.cookies.set(_n, _meta, domain=".chaoxing.com", path="/")
@@ -197,6 +198,72 @@ def _reply_topic(cache, course, topic: dict, text: str, info: dict = None) -> bo
         return False
 
 
+def reply_topic_protocol(cache, course, topic: dict, text: str,
+                         info: dict = None) -> bool:
+    """纯协议回复话题(2026-10-23 实测请求结构):
+    GET 详情页(replysList) -> 解析 urlToken + replyEdit uuid ->
+    POST /pc/invitation/{topicId}/addReplys
+      courseId/classId/replyId=-1/uuid/topic_content(双重编码)/urlToken/bbsid
+    前提: 全套讨论cookie(含课程四件套+groupweb JSESSIONID)已加载到session
+    """
+    from urllib.parse import quote as _quote
+    info = info or _parse_outer_menu(cache, course)
+    bbsid = info.get("bbsid", "")
+    topic_uuid = str(topic.get("uuid", ""))
+    topic_id = str(topic.get("id", ""))
+    if not bbsid or not topic_uuid:
+        return False
+    s = _http(cache)
+    _ck = load_discuss_ck(cache)
+    for _n, _meta in (_ck or {}).items():
+        try:
+            if isinstance(_meta, dict):
+                s.cookies.set(_n, _meta.get("value", ""),
+                              domain=_meta.get("domain") or ".chaoxing.com",
+                              path="/")
+            else:
+                s.cookies.set(_n, _meta, domain=".chaoxing.com", path="/")
+        except Exception:
+            pass
+    # 1) 详情页解析 urlToken / replyEdit uuid
+    du = (f"https://groupweb.chaoxing.com/course/topic/v3/bbs/"
+          f"{bbsid}/{topic_uuid}/replysList"
+          f"?courseId={course.course_id}&classId={course.key}"
+          f"&cpi={course.cpi}&ut=s")
+    try:
+        _dr = s.get(du, timeout=25)
+        detail = str(_dr.text or "")
+    except Exception:
+        detail = ""
+    if not detail:
+        return False
+    m_tk = re.search(r"urlToken\s*:\s*'([^']+)'", detail)
+    m_uu = re.search(r'class="replyEdit"\s+uuid="([^"]+)"', detail)
+    m_uu2 = re.search(r'replyEdit[^>]*uuid="([^"]+)"', detail)
+    url_token = m_tk.group(1) if m_tk else ""
+    reply_uuid = (m_uu.group(1) if m_uu else (m_uu2.group(1) if m_uu2 else ""))
+    if not reply_uuid:
+        return False
+    # 2) POST addReplys (topic_content需手动再编码一层)
+    body = (f"courseId={course.course_id}&classId={course.key}"
+            f"&replyId=-1&uuid={reply_uuid}"
+            f"&topic_content={_quote(text, safe='')}"
+            f"&anonymous=&urlToken={url_token}&bbsid={bbsid}")
+    try:
+        r = s.post(
+            f"https://groupweb.chaoxing.com/pc/invitation/{topic_uuid}/addReplys",
+            data=body, timeout=20,
+            headers={"Content-Type":
+                     "application/x-www-form-urlencoded; charset=UTF-8",
+                     "X-Requested-With": "XMLHttpRequest",
+                     "Referer": du})
+        d = r.json() if r.text.strip().startswith("{") else {}
+        return bool(d.get("status") or d.get("msg") == "success"
+                    or d.get("result"))
+    except Exception:
+        return False
+
+
 def _browser_session(cache):
     """2026-10-23修复: 家机无系统Chrome(旧版channel="chrome"直接报
     Chromium distribution 'chrome' is not found) -> 改用 Playwright 内置 chromium;
@@ -283,7 +350,9 @@ def _open_discuss_frame(page, course):
 
 
 def run_discussions(cache, course, cc, log) -> int:
-    """课程讨论tab全套(浏览器态: 全部话题·未回复的; AI回复+话术兜底; 拟人延时)"""
+    """课程讨论tab全套(2026-10-23纯协议化): 凭证导出后零浏览器
+    流程: 加载讨论凭证 -> 纯协议fetch_topics -> 逐条纯协议reply_topic_protocol;
+    凭证缺失/失效(列表空) -> 浏览器(内置chromium)一次刷新凭证 -> 纯协议重试"""
     if int(getattr(cc, "cx_bbs_sw", 1) or 0) != 1:
         return 0
     info = _parse_outer_menu(cache, course)
@@ -291,163 +360,66 @@ def run_discussions(cache, course, cc, log) -> int:
     if not bbsid:
         log("该课程无讨论区(bbsid缺失), 跳过")
         return 0
-    try:
-        p, browser, ctx, page = _browser_session(cache)
-    except Exception as e:
-        log(f"讨论浏览器启动失败: {str(e)[:80]}")
-        return 0
-    done = 0
-    try:
-        gw = _open_discuss_frame(page, course)
-        if gw is None:
-            log("讨论区打开失败(未找到iframe), 跳过")
-            return 0
-        # 2026-10-23: 导出四件套cookie(cpi/ut/t/enc)存盘供纯协议复用
+    topics = fetch_topics(cache, course)
+    if not topics:
+        # 凭证缺失/过期 -> 浏览器一次刷新(内置chromium, 家机可跑)
+        log("讨论凭证缺失/失效, 启动浏览器刷新(一次)...")
+        p = browser = ctx = None
         try:
-            _ck4 = export_course_ck(ctx, course)
-            if _ck4:
-                save_discuss_ck(cache, _ck4)
-        except Exception:
-            pass
-        # iframe 内拉话题列表(分页)
-        topics = gw.evaluate("""async (bbsid) => {
-            const all = [];
-            for (let pg = 1; pg <= 5; pg++) {
-                const u = '/course/topic/' + bbsid + '/getTopicList?folder_uuid='
-                    + '&page=' + pg + '&pageSize=20&kw=&courseId=' + new URLSearchParams(location.search).get('courseid')
-                    + '&isSetTop=&selectedStartTime=&selectedEndTime=&selectedType=0'
-                    + '&learnSilverStartTime=&learnSilverEndTime=';
-                const cid = new URLSearchParams(location.search).get('courseid');
-                const cls = new URLSearchParams(location.search).get('clazzid');
-                const res = await fetch(u, {method:'POST',
-                    headers:{'Content-Type':'application/x-www-form-urlencoded; charset=UTF-8','X-Requested-With':'XMLHttpRequest'},
-                    body:'tags=classId0000001,classId'+cls+',courseId'+cid, credentials:'include'});
-                const d = await res.json();
-                if (!d || !d.datas || !d.datas.length) break;
-                all.push(...d.datas);
-                if (d.datas.length < 20) break;
-            }
-            return all;
-        }""", bbsid)
-        if not topics:
-            log("讨论区无话题")
-            return 0
-        log(f"讨论区共{len(topics)}个话题, 开始处理未回复的...")
-        my_uid = str(info.get("uid", "") or "")
-        _q = {}
-        try:
-            from urllib.parse import urlparse, parse_qs
-            _q = {k: v[0] for k, v in parse_qs(urlparse(gw.url).query).items()}
-        except Exception:
-            pass
-        _cid = _q.get("courseid", str(course.course_id))
-        _cls = _q.get("clazzid", str(course.key))
-        _cpi = _q.get("cpi", str(course.cpi))
-        for tp in topics:
+            p, browser, ctx, page = _browser_session(cache)
+            gw = _open_discuss_frame(page, course)
+            if gw is None:
+                log("讨论区打开失败(未找到iframe), 跳过")
+                return 0
             try:
-                if str(tp.get("createrId", "")) == my_uid and my_uid:
-                    continue  # 自己发的话题跳过
-                _uuid = str(tp.get("uuid", ""))
-                if not _uuid:
-                    continue
-                text = _gen_reply_text(tp, cc)
-                if not text:
-                    continue
-                # 2026-10-18 真人UI流程(实测发回复唯一可靠路径):
-                #   打开话题详情页(replysList) → 点回复需钮 → 填textarea → 点addReply
-                #   (addReplys请求的 replyId/uuid/urlToken 由页面JS自动生成带入)
-                dp = ctx.new_page()
-                try:
-                    detail_url = (f"https://groupweb.chaoxing.com/course/topic/v3/bbs/"
-                                  f"{bbsid}/{_uuid}/replysList"
-                                  f"?courseId={_cid}&classId={_cls}&cpi={_cpi}&ut=s")
-                    dp.goto(detail_url, timeout=60000,
-                            wait_until="domcontentloaded")
-                    dp.wait_for_timeout(5000)
-                    if "话题详情" not in (dp.evaluate("() => document.body ? document.body.innerText : ''") or ""):
-                        log(f"详情页打开异常, 跳过[{_uuid[:8]}]")
-                        continue
-                    # 1. 点「回复」打开输入框
-                    dp.evaluate("""() => {
-                        var els = Array.from(document.querySelectorAll('div,a,span'));
-                        for (var i = 0; i < els.length; i++) {
-                            var t = (els[i].innerText || '').trim();
-                            var c = String(els[i].className);
-                            if (t === '回复' && c.indexOf('replyBtn') >= 0 && els[i].offsetParent !== null) {
-                                els[i].click(); return;
-                            }
-                        }
-                        for (var i = 0; i < els.length; i++) {
-                            var t = (els[i].innerText || '').trim();
-                            var c = String(els[i].className);
-                            if (t === '回复' && c.indexOf('reply') >= 0 && els[i].offsetParent !== null) {
-                                els[i].click(); return;
-                            }
-                        }
-                    }""")
-                    dp.wait_for_timeout(2000)
-                    # 2. 填内容到可见 textarea
-                    filled = dp.evaluate("""(content) => {
-                        var eds = Array.from(document.querySelectorAll('textarea, [contenteditable=true]')).filter(x => x.offsetParent !== null);
-                        if (!eds.length) return '';
-                        var ed = eds[eds.length - 1];
-                        ed.focus();
-                        if (ed.tagName === 'TEXTAREA') {
-                            ed.value = content;
-                            ed.dispatchEvent(new Event('input', {bubbles:true}));
-                            ed.dispatchEvent(new Event('change', {bubbles:true}));
-                        } else {
-                            ed.innerHTML = content;
-                        }
-                        return ed.tagName;
-                    }""", text)
-                    if not filled:
-                        log(f"未找到回复输入框, 跳过[{_uuid[:8]}]")
-                        continue
-                    dp.wait_for_timeout(800)
-                    # 3. 点提交(addReply按钮)
-                    dp.evaluate("""() => {
-                        var els = Array.from(document.querySelectorAll('div,a,span,button'));
-                        for (var i = 0; i < els.length; i++) {
-                            var c = String(els[i].className);
-                            if (c.indexOf('addReply') >= 0 && els[i].offsetParent !== null) {
-                                els[i].click(); return;
-                            }
-                        }
-                    }""")
-                    dp.wait_for_timeout(4000)
-                    # 4. 验证: 页面出现刚发的内容
-                    ok_page = dp.evaluate(
-                        """(c) => document.body ? document.body.innerText.indexOf(c.slice(0,15)) >= 0 : false""", text)
-                    _t = re.sub(r"<[^>]+>", "",
-                                str(tp.get("content", "")))[:30]
-                    if ok_page:
-                        done += 1
-                        log(f"讨论回复成功[{_t}]: {text[:40]}")
-                    else:
-                        log(f"讨论回复未确认[{_t}](页面未见回显)")
-                finally:
-                    try:
-                        dp.close()
-                    except Exception:
-                        pass
-                time.sleep(random.uniform(3, 8))
-            except Exception as e:
-                log(f"讨论处理异常: {str(e)[:80]}")
-        return done
-    except Exception as e:
-        log(f"讨论流程异常: {str(e)[:100]}")
-        return done
-    finally:
+                _ck = export_course_ck(ctx, course)
+                if _ck:
+                    save_discuss_ck(cache, _ck)
+                    log(f"讨论凭证已导出({len(_ck)}个cookie)")
+            except Exception:
+                pass
+        except Exception as e:
+            log(f"讨论浏览器启动失败: {str(e)[:80]}")
+            return 0
+        finally:
+            try:
+                if browser:
+                    browser.close()
+            except Exception:
+                pass
+            try:
+                if p:
+                    p.stop()
+            except Exception:
+                pass
+        topics = fetch_topics(cache, course)
+    if not topics:
+        log("讨论区无话题")
+        return 0
+    log(f"讨论区共{len(topics)}个话题, 纯协议处理未回复的...")
+    my_uid = str(info.get("uid", "") or "")
+    done = 0
+    for tp in topics:
         try:
-            browser.close()
-        except Exception:
-            pass
-        try:
-            p.stop()
-        except Exception:
-            pass
-
+            if str(tp.get("createrId", "")) == my_uid and my_uid:
+                continue  # 自己发的话题跳过
+            _uuid = str(tp.get("uuid", ""))
+            if not _uuid:
+                continue
+            text = _gen_reply_text(tp, cc)
+            if not text:
+                continue
+            ok = reply_topic_protocol(cache, course, tp, text, info)
+            _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
+            if ok:
+                done += 1
+                log(f"讨论回复成功[{_t}]: {text[:40]}")
+            else:
+                log(f"讨论回复失败[{_t}]")
+            time.sleep(random.uniform(20, 45))  # 拟人节奏(防重复发布风控)
+        except Exception as e:
+            log(f"讨论处理异常: {str(e)[:80]}")
+    return done
 
 
 def run_extend_read(cache, course, cc, log, read_books: int = 5,
@@ -524,7 +496,8 @@ def run_extend_read(cache, course, cc, log, read_books: int = 5,
                 rd = s.post(
                     f"https://appcd.chaoxing.com/read/api/dot/{uid}/{rid}_{pg}",
                     timeout=15)
-                body = (rd.text or "").replace(" ", "").replace("\n", "").replace("\t", "")
+                body = (rd.text or "").replace(
+                    " ", "").replace("\n", "").replace("\t", "")
                 if rd.status_code == 200 and '"code":1' in body:
                     pages_ok += 1
             except Exception:
@@ -589,4 +562,3 @@ def fetch_read_books(cache, course):
     except Exception:
         pass
     return uid, books
-

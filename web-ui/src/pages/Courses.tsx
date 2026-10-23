@@ -19,7 +19,7 @@ export default function Courses() {
         setLoading(true)
         try {
             const d: any = await UI.courses(uid, force)
-            const courses = d?.data?.courses || d?.courses || d?.data || []
+            const courses = Array.isArray(d) ? d : (d?.courses || d?.data?.courses || d?.list || [])
             setList(Array.isArray(courses) ? courses : [])
         } catch (e: any) { showToast(e.message, 'err') }
         finally { setLoading(false) }

@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -168,3 +168,7 @@ chaoxing_app/
 # 迁移验证脚本(含本地路径/私钥引用, 不入库)
 build/ref_migration/key_verify.py
 
+
+# 桌面GUI前端构建(node_modules/dist不入库)
+web-ui/node_modules/
+web-ui/dist/

@@ -47,18 +47,16 @@ export const useUI = create<UIState>((set) => ({
 export function applyTheme(t: ThemeId, bgUrl: string) {
   const el = document.documentElement
   el.setAttribute('data-theme', t === 'blue' ? '' : t)
+  // 清除可能残留的行内变量(行内优先级最高, 会盖掉主题CSS变量, 导致暗色主题卡片发白)
+  el.style.removeProperty('--panel')
+  el.style.removeProperty('--panel-blur')
+  el.style.removeProperty('--bg-image')
   if (bgUrl) {
     el.style.setProperty('--bg-image', `url("${bgUrl}")`)
-    // 有自定义背景时面板加毛玻璃保证可读
+    // 仅蓝白主题下用自定义背景时给面板加半透明毛玻璃保证可读
     if (t === 'blue') {
       el.style.setProperty('--panel', 'rgba(255,255,255,0.82)')
       el.style.setProperty('--panel-blur', '12px')
-    }
-  } else {
-    el.style.setProperty('--bg-image', 'none')
-    if (t === 'blue') {
-      el.style.setProperty('--panel', '#ffffff')
-      el.style.setProperty('--panel-blur', '0px')
     }
   }
 }

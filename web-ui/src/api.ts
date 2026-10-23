@@ -20,7 +20,8 @@ export async function api<T = any>(path: string, opts: {
     })
     const data = await res.json()
     if (data.code !== 200) throw new Error(data.msg || ('HTTP ' + res.status))
-    return data as T
+    // 统一解包: 返回 data 字段(各页面直接拿到业务数据)
+    return (data.data !== undefined ? data.data : data) as T
   } finally {
     clearTimeout(timer)
   }

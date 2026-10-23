@@ -639,9 +639,28 @@ def run_gui():
         _os3.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
     try:
         import webview
-        webview.create_window(
+        _win = webview.create_window(
             f"Yatori 刷课系统 V{__import__('web.server', fromlist=['APP_VERSION']).APP_VERSION}",
             url, width=1280, height=840, min_size=(1024, 680))
+        # [2026-10-24] 加载看门狗: 20s未触发loaded则自动重载一次
+        # (治理 Linux WebKit 偶发"有壳无内容")
+        _load_flag = {"ok": False}
+        try:
+            _win.events.loaded += lambda: _load_flag.update(ok=True)
+        except Exception:
+            _load_flag["ok"] = True
+
+        def _load_watchdog():
+            _time.sleep(20)
+            if not _load_flag.get("ok"):
+                log_print(INFO, Red, "窗口20s未完成加载, 自动重载页面…")
+                try:
+                    _win.load_url(url)
+                except Exception:
+                    pass
+
+        import threading as _thw
+        _thw.Thread(target=_load_watchdog, daemon=True).start()
         # [2026-10-24] 窗口/任务栏图标(Windows必须.ico, PNG会触发Icon异常)
         _icon = os.path.join("assets", "app_icon.ico")
         webview.start(icon=_icon if os.path.isfile(_icon) else None)

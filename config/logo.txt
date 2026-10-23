@@ -13,5 +13,5 @@
       :  \  \;  :   .'   \ |  ,   /  `----'   ---'    ;  :    ;
        \  ' ;|  ,     .-./  ---`-'                    |  ,   /
         `--`  `--`---'                                 ---`-'
-                      Yatori-python-console V3.0.0
+                      Yatori-python-console V3.0.1
                 更新与修复记录: 见项目根目录 CHANGELOG.md

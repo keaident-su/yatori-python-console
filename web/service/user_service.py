@@ -101,6 +101,17 @@ def user_list_service() -> dict:
             user_dict["school"] = _cfg.get("school", "")
             user_dict["realName"] = _cfg.get("realName", "")
             user_dict["stuNo"] = _cfg.get("stuNo", "")
+            # [2026-10-24] 课程显示过滤兜底: 把「只刷/排除课程」提升到账号顶层,
+            # 供进度页/第三方集成(即使不解析 userConfigJson 也能取得过滤配置)
+            try:
+                _cc = _cfg.get("coursesCustom") or {}
+                user_dict["includeCourses"] = [str(x) for x in
+                                               (_cc.get("includeCourses") or []) if str(x).strip()]
+                user_dict["excludeCourses"] = [str(x) for x in
+                                               (_cc.get("excludeCourses") or []) if str(x).strip()]
+            except Exception:
+                user_dict["includeCourses"] = []
+                user_dict["excludeCourses"] = []
             activity = global_var.get_user_activity(user.uid)
             if activity is not None and hasattr(activity, 'is_running'):
                 user_dict["isRunning"] = activity.is_running

@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Save, Image as ImageIcon, Palette, RefreshCw, X } from 'lucide-react'
 import { UI } from '../api'
-import { useUI } from '../store'
+import { useUI, applyRandomBgApi } from '../store'
 
 export default function SettingsPage() {
-    const { showToast, theme, setTheme, bgUrl, setBgUrl } = useUI()
+    const { showToast, theme, setTheme, bgUrl, setBgUrl,
+    bgMode, setBgMode, bgApi, setBgApi } = useUI()
     const [bs, setBs] = useState<any>({})
     const [ai, setAi] = useState<any>({})
     const [em, setEm] = useState<any>({})
@@ -99,27 +100,73 @@ export default function SettingsPage() {
                         <option value="frost">磨砂灰白黑</option>
                     </select>
                 </Row>
-                <Row label="自定义背景图片" hint="支持 图片URL(含图片API) 或 上传本地图片">
-                    <div className="flex gap-2">
-                        <input className="yinput flex-1" placeholder="https://...图片地址"
-                            value={bgInput} onChange={e => setBgInput(e.target.value)} />
-                        <button className="ybtn py-1.5 px-3 text-xs" onClick={() => {
-                            if (bgInput.trim()) { setBgUrl(bgInput.trim()); showToast('背景已应用') }
-                        }}>应用</button>
-                    </div>
-                </Row>
-                <Row label="本地上传背景 / 清除">
-                    <div className="flex gap-2">
-                        <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                            onChange={e => e.target.files?.[0] && uploadBg(e.target.files[0])} />
-                        <button className="ybtn py-1.5 px-3 text-xs" onClick={() => fileRef.current?.click()}>
-                            <ImageIcon size={13} /> 上传图片
-                        </button>
-                        <button className="ybtn py-1.5 px-3 text-xs" onClick={() => { setBgUrl(''); setBgInput(''); }}>
+                {/* ===== 背景设置(2026-10-24三来源: 本地上传WebP / 固定URL / 随机图片API) ===== */}
+                <div className="py-3 border-b" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center justify-between mb-2">
+                        <div>
+                            <div className="text-sm">背景图片来源</div>
+                            <div className="text-xs mt-0.5" style={{ color: 'var(--subtext)' }}>
+                                本地上传支持 PNG/JPG/WebP(自动压缩) · 随机图片API每次启动自动换图
+                            </div>
+                        </div>
+                        <button className="ybtn py-1.5 px-3 text-xs"
+                            onClick={() => { setBgUrl(''); setBgMode(''); setBgInput(''); }}>
                             <X size={13} /> 清除背景
                         </button>
                     </div>
-                </Row>
+                    <div className="flex gap-2 mb-3">
+                        {([['upload', '本地上传'], ['url', '固定图片URL'], ['api', '随机图片API']] as const).map(([m, label]) => (
+                            <button key={m} className={'ybtn py-1.5 px-3 text-xs'}
+                                style={{
+                                    background: bgMode === m ? 'var(--primary)' : 'var(--panel-2)',
+                                    color: bgMode === m ? '#fff' : 'var(--text)',
+                                    borderColor: bgMode === m ? 'var(--primary)' : 'var(--border)',
+                                    fontWeight: bgMode === m ? 600 : 400,
+                                }}
+                                onClick={() => setBgMode(m)}>{label}</button>
+                        ))}
+                    </div>
+                    {bgMode === 'upload' && (
+                        <div className="flex gap-2 items-center">
+                            <input ref={fileRef} type="file"
+                                accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" className="hidden"
+                                onChange={e => e.target.files?.[0] && uploadBg(e.target.files[0])} />
+                            <button className="ybtn py-1.5 px-3 text-xs" onClick={() => fileRef.current?.click()}>
+                                <ImageIcon size={13} /> 选择图片(支持 WebP)
+                            </button>
+                            <span className="text-xs" style={{ color: 'var(--subtext)' }}>
+                                上传后自动转 WebP 并限制宽度1920(加载更快)
+                            </span>
+                        </div>
+                    )}
+                    {bgMode === 'url' && (
+                        <div className="flex gap-2">
+                            <input className="yinput flex-1" placeholder="https://...图片地址"
+                                value={bgInput} onChange={e => setBgInput(e.target.value)} />
+                            <button className="ybtn py-1.5 px-3 text-xs" onClick={() => {
+                                if (bgInput.trim()) { setBgUrl(bgInput.trim()); showToast('背景已应用') }
+                            }}>应用</button>
+                        </div>
+                    )}
+                    {bgMode === 'api' && (
+                        <div>
+                            <div className="flex gap-2">
+                                <input className="yinput flex-1"
+                                    placeholder="随机图片API地址, 如 https://api.example.com/random"
+                                    value={bgApi} onChange={e => setBgApi(e.target.value)} />
+                                <button className="ybtn py-1.5 px-3 text-xs" onClick={() => {
+                                    if (bgApi.trim()) {
+                                        applyRandomBgApi(bgApi.trim())
+                                        showToast('已从API换一张背景')
+                                    }
+                                }}>应用并换一张</button>
+                            </div>
+                            <div className="text-xs mt-1.5" style={{ color: 'var(--subtext)' }}>
+                                每次程序启动时会自动从该地址拉取新图(自动附加随机参数防缓存)
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* 基础设置 */}

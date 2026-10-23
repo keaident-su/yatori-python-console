@@ -26,8 +26,17 @@ _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
 
 
-def resolve_base(setting=None) -> str:
-    """基地址: 配置优先, 缺省 DEFAULT_BASE"""
+def resolve_base(setting=None, user=None) -> str:
+    """基地址解析(2026-10-24, 对齐英华URL平台模式):
+    账号级 url 优先(每账号可填自己的平台地址) → 全局 dzyx_base_url → 内置默认"""
+    # ① 账号级 URL(与英华学堂等URL平台同语义)
+    try:
+        u = str(getattr(user, "url", "") or "").strip()
+        if u and u.startswith("http"):
+            return u.rstrip("/")
+    except Exception:
+        pass
+    # ② 全局基地址
     try:
         u = getattr(getattr(setting, "basic_setting", None),
                     "dzyx_base_url", "") or ""

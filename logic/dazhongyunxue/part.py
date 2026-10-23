@@ -104,11 +104,24 @@ def _playwright_login(user: User, base: str, headless: bool, log) -> Optional[di
         return None
 
 
+def _load_setting():
+    """加载全局配置(供 resolve_base 读取 dzyx_base_url; 失败返回None)"""
+    try:
+        from web.service.user_service import load_web_setting
+        return load_web_setting()
+    except Exception:
+        try:
+            from config.config import read_config
+            return read_config("config.yaml").setting
+        except Exception:
+            return None
+
+
 def user_login_operation(users: List[User]) -> List[DzyxCache]:
     caches: List[DzyxCache] = []
     for u in users:
         log = _log_f(u)
-        base = dzyx_api.resolve_base()
+        base = dzyx_api.resolve_base(setting=_load_setting(), user=u)
         state = dzyx_api.load_state(u.account)
         cookies = dzyx_api.cookies_from_state(state) if state else {}
         cache = DzyxCache(u.account, getattr(u, "password", ""), base,

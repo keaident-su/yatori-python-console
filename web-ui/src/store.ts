@@ -2,15 +2,20 @@
 import { create } from 'zustand'
 
 export type ThemeId = 'blue' | 'dark' | 'frost'
+export type BgMode = '' | 'upload' | 'url' | 'api'
 
 interface UIState {
   theme: ThemeId
-  bgUrl: string          // 自定义背景图片URL(本地图/网络图片API)
+  bgUrl: string          // 当前生效背景图片URL(本地图/网络图片API)
+  bgMode: BgMode         // 背景来源: ''无 / upload本地上传 / url固定URL / api随机图片API
+  bgApi: string          // 随机图片API地址(bgMode=api时使用)
   accounts: any[]
   loading: boolean
   toast: { text: string; type: 'ok' | 'err' } | null
   setTheme: (t: ThemeId) => void
   setBgUrl: (u: string) => void
+  setBgMode: (m: BgMode) => void
+  setBgApi: (u: string) => void
   setAccounts: (a: any[]) => void
   setLoading: (b: boolean) => void
   showToast: (text: string, type?: 'ok' | 'err') => void
@@ -23,6 +28,8 @@ const saved = (k: string, d: string) => {
 export const useUI = create<UIState>((set) => ({
   theme: (saved('yui_theme', 'blue') as ThemeId),
   bgUrl: saved('yui_bg', ''),
+  bgMode: (saved('yui_bg_mode', '') as BgMode),
+  bgApi: saved('yui_bg_api', ''),
   accounts: [],
   loading: false,
   toast: null,
@@ -36,6 +43,14 @@ export const useUI = create<UIState>((set) => ({
     try { localStorage.setItem('yui_bg', u) } catch { }
     applyTheme(useUI.getState().theme, u)
   },
+  setBgMode: (m) => {
+    set({ bgMode: m })
+    try { localStorage.setItem('yui_bg_mode', m) } catch { }
+  },
+  setBgApi: (u) => {
+    set({ bgApi: u })
+    try { localStorage.setItem('yui_bg_api', u) } catch { }
+  },
   setAccounts: (a) => set({ accounts: a }),
   setLoading: (b) => set({ loading: b }),
   showToast: (text, type = 'ok') => {
@@ -43,6 +58,14 @@ export const useUI = create<UIState>((set) => ({
     setTimeout(() => set({ toast: null }), 3200)
   },
 }))
+
+/** 随机图片API换一张: 拼接防缓存参数并应用 */
+export function applyRandomBgApi(apiUrl: string) {
+  if (!apiUrl) return
+  const sep = apiUrl.includes('?') ? '&' : '?'
+  const u = `${apiUrl}${sep}_r=${Date.now()}`
+  useUI.getState().setBgUrl(u)
+}
 
 export function applyTheme(t: ThemeId, bgUrl: string) {
   const el = document.documentElement

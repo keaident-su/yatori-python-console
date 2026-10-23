@@ -3,9 +3,14 @@ import ReactDOM from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App'
 import './theme.css'
-import { applyTheme, useUI } from './store'
+import { applyTheme, useUI, applyRandomBgApi } from './store'
 
-applyTheme(useUI.getState().theme, useUI.getState().bgUrl)
+const _st = useUI.getState()
+applyTheme(_st.theme, _st.bgUrl)
+// [2026-10-24] 随机图片API模式: 每次启动自动拉取一张新背景(防缓存参数)
+if (_st.bgMode === 'api' && _st.bgApi) {
+  applyRandomBgApi(_st.bgApi)
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

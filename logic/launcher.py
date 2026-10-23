@@ -511,6 +511,7 @@ def brush_block(config_data: JSONDataForConfig):
     for t in threads:
         t.join()
 
+
 def run_gui():
     """桌面GUI模式(2026-10-23): pywebview独立窗口 + 后台uvicorn服务
     默认启动方式(双击exe即GUI); --console 进入原控制台/webMode菜单。
@@ -586,7 +587,9 @@ def run_gui():
         webview.create_window(
             f"Yatori 刷课系统 V{__import__('web.server', fromlist=['APP_VERSION']).APP_VERSION}",
             url, width=1280, height=840, min_size=(1024, 680))
-        webview.start()
+        # [2026-10-24] 窗口/任务栏图标(桌面原生应用观感)
+        _icon = os.path.join("assets", "app_icon.png")
+        webview.start(icon=_icon if os.path.isfile(_icon) else None)
     except Exception as _e:
         # 无WebView2/pywebview异常 → 退化为开浏览器
         log_print(INFO, Yellow, f"桌面窗口不可用({_e}), 改用浏览器打开")

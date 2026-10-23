@@ -1601,8 +1601,9 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
 })();
 </script>
 
+
 <script>
-/* 2026-10-23: 导入导出体验兜底(检测file://下载被浏览器拦截时给出明确指引) */
+/* 2026-10-23: 导入导出体验兜底(下载被拦截时指引) */
 (function(){
   window.__ycDlHint = true;
   var downloadSeen = false;
@@ -1612,16 +1613,11 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
   }, true);
   document.addEventListener('click', function(e){
     var t = (e.target && e.target.innerText || '').trim();
-    if (t === '导出') {
+    if (t === '\u5bfc\u51fa') {
       downloadSeen = false;
       setTimeout(function(){
         if (!downloadSeen) {
-          alert('导出已触发，但浏览器可能拦截了下载。
-
-如果没看到 config.yaml 下载：
-① 点击地址栏右侧的「已阻止/下载」图标 → 允许下载
-② 或改用 Edge / 把本文件拖入浏览器打开（而非双击）
-③ 或检查「下载」文件夹中是否已有 config.yaml');
+          alert('\u5bfc\u51fa\u5df2\u89e6\u53d1\uff0c\u4f46\u6d4f\u89c8\u5668\u53ef\u80fd\u62e6\u622a\u4e86\u4e0b\u8f7d\u3002\n\n\u5982\u679c\u6ca1\u770b\u5230 config.yaml \u4e0b\u8f7d\uff1a\n1) \u70b9\u51fb\u5730\u5740\u680f\u53f3\u4fa7\u7684\u300c\u5df2\u963b\u6b62/\u4e0b\u8f7d\u300d\u56fe\u6807\u2192\u5141\u8bb8\u4e0b\u8f7d\n2) \u6216\u6539\u7528 Edge / \u628a\u672c\u6587\u4ef6\u62d6\u5165\u6d4f\u89c8\u5668\u6253\u5f00\uff08\u800c\u975e\u53cc\u51fb\uff09\n3) \u6216\u68c0\u67e5\u300c\u4e0b\u8f7d\u300d\u6587\u4ef6\u5939\u4e2d\u662f\u5426\u5df2\u6709 config.yaml');
         }
       }, 1800);
     }

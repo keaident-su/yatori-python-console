@@ -696,6 +696,24 @@ def run_gui():
         _os3.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
     try:
         import webview
+        # [2026-10-24] Linux 渲染后端选择: WebKit2GTK 在 VM(VMware)/部分显卡环境
+        # 存在"有壳无内容"问题且多变量补丁无效; QtWebEngine(Chromium内核)实测
+        # 离屏渲染正常, 故 Linux 优先 Qt, 缺失时回退 GTK
+        _gui_backend = None
+        if sys.platform != "win32":
+            import os as _os4
+            _os4.environ.setdefault(
+                "QTWEBENGINE_CHROMIUM_FLAGS",
+                "--no-sandbox --disable-gpu --disable-dev-shm-usage")
+            _os4.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
+            _os4.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+            try:
+                import PyQt5.QtWebEngineWidgets  # noqa: F401
+                _gui_backend = "qt"
+                log_print(INFO, Green, "Linux渲染后端: QtWebEngine(Chromium)")
+            except Exception:
+                _gui_backend = "gtk"
+                log_print(INFO, Yellow, "Linux渲染后端: GTK/WebKit(未装PyQt5)")
         _win = webview.create_window(
             f"Yatori 刷课系统 V{__import__('web.server', fromlist=['APP_VERSION']).APP_VERSION}",
             url, width=1280, height=840, min_size=(1024, 680))
@@ -720,7 +738,10 @@ def run_gui():
         _thw.Thread(target=_load_watchdog, daemon=True).start()
         # [2026-10-24] 窗口/任务栏图标(Windows必须.ico, PNG会触发Icon异常)
         _icon = os.path.join("assets", "app_icon.ico")
-        webview.start(icon=_icon if os.path.isfile(_icon) else None)
+        if _gui_backend == "qt":
+            webview.start(gui="qt")
+        else:
+            webview.start(icon=_icon if os.path.isfile(_icon) else None)
     except Exception as _e:
         # 无WebView2/pywebview异常 → 退化为开浏览器
         log_print(INFO, Yellow, f"桌面窗口不可用({_e}), 改用浏览器打开")

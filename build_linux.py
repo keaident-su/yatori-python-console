@@ -25,6 +25,9 @@ HIDDEN = [
     "rapidocr_onnxruntime", "onnxruntime", "cv2",
     "playwright", "playwright.sync_api",
     "websockets", "mss",
+    # [2026-10-24] QtWebEngine渲染后端(VM/WebKit空白修复): 触发PyInstaller钩子
+    "PyQt5", "PyQt5.QtWebEngineWidgets", "PyQt5.QtWebEngineCore",
+    "PyQt5.QtCore", "PyQt5.QtWidgets", "PyQt5.QtGui", "PyQt5.sip",
     "logic.xuexitong.api", "logic.zhihuishu.yidun.yidun_solver",
 ]
 
@@ -58,6 +61,7 @@ args = [
     "--noconfirm",
     "--clean",
     "--console",
+    "--collect-all", "PyQt5",
 ]
 for h in HIDDEN:
     args += ["--hidden-import", h]

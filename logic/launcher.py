@@ -586,6 +586,17 @@ def run_gui():
     except Exception:
         _bs = None
 
+    # [2026-10-24] 通信密钥初始化必须在 create_app 之前(config 优先→文件→自动),
+    # 否则认证/加密模块会缓存自动生成的密钥, 与中心控制台配置的不一致
+    try:
+        from web.crypto_channel import get_web_secret
+        get_web_secret(getattr(_bs, "web_secret", "") or "")
+    except Exception:
+        pass
+
+    # 对外安全入口开关(basicSetting.webExternal): 1=绑定0.0.0.0并由webSsl决定HTTPS
+    _external = int(getattr(_bs, "web_external", 0) or 0) == 1
+
     try:
         from web import ui_bridge
         _tk = ui_bridge.UI_TOKEN
@@ -597,10 +608,24 @@ def run_gui():
         base_port = int(getattr(_bs, "web_port", 8080) or 8080)
     except (TypeError, ValueError):
         base_port = 8080
-    port = _pick_free_port(base_port)
-    if port != base_port:
+    # 窗口内部通道(仅127): 避免与对外端口同端冲突(external时对外用webPort)
+    _local_base = base_port + 100 if _external else base_port
+    port = _pick_free_port(_local_base)
+    if port != _local_base:
         log_print(INFO, Yellow,
-                  f"端口 {base_port} 已被占用, GUI服务改用空闲端口 {port}")
+                  f"端口 {_local_base} 已被占用, GUI内部服务改用空闲端口 {port}")
+
+    # HTTPS 证书准备(webSsl=1; 与 lunch 同源逻辑)
+    ssl_kw = {}
+    if _bs is not None and int(getattr(_bs, "web_ssl", 0) or 0) == 1:
+        try:
+            _cert, _key = _ensure_self_signed_cert(
+                getattr(_bs, "web_ssl_cert", "") or "",
+                getattr(_bs, "web_ssl_key", "") or "")
+            if _cert and _key:
+                ssl_kw = {"ssl_certfile": _cert, "ssl_keyfile": _key}
+        except Exception as _e:
+            log_print(INFO, Red, f"HTTPS证书加载失败: {_e}")
 
     def _serve():
         try:
@@ -613,6 +638,34 @@ def run_gui():
 
     t = threading.Thread(target=_serve, daemon=True)
     t.start()
+
+    # [2026-10-24] 对外安全入口(webExternal=1): 0.0.0.0 + (webSsl=1则HTTPS),
+    # 供 yatori.keaident.cn 等中心控制台安全连接; 强制要求AES加密通道(server已内置)
+    if _external:
+        _ext_port = _pick_free_port(base_port)
+        _ext_scheme = "https" if ssl_kw else "http"
+        if not ssl_kw:
+            log_print(INFO, Red,
+                      "警告: 外部入口未启用HTTPS(webSsl=0); 浏览器混合内容会拦截,"
+                      "请配置 webSsl: 1 + 证书(或使用反向代理收口HTTPS)")
+
+        def _serve_ext():
+            try:
+                import uvicorn as _uv2
+                from utils.log import build_uvicorn_log_config as _blc
+                _app2 = __import__("web.server", fromlist=[
+                                   "create_app"]).create_app()
+                _uv2.run(_app2, host="0.0.0.0", port=_ext_port,
+                         log_config=_blc(os.path.join("assets", "logs")),
+                         **ssl_kw)
+            except Exception as _e:
+                log_print(INFO, Red, f"对外服务入口异常: {_e}")
+
+        _te = threading.Thread(target=_serve_ext, daemon=True)
+        _te.start()
+        log_print(INFO, Green,
+                  f"对外安全入口已开启: {_ext_scheme}://0.0.0.0:{_ext_port}"
+                  f" (AES-256-GCM强制; 中心控制台/局域网客户端可用)")
 
     # 等待服务就绪(最多15秒)
     import urllib.request as _ur
@@ -637,6 +690,10 @@ def run_gui():
         import os as _os3
         _os3.environ.setdefault("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
         _os3.environ.setdefault("WEBKIT_DISABLE_COMPOSITING_MODE", "1")
+        # [2026-10-24] VM/AppArmor 环境下 WebKit 沙箱导致渲染进程崩溃(空窗口):
+        # 桌面应用加载的是本机可信页面, 关闭 WebKit 沙箱是安全的
+        _os3.environ.setdefault("WEBKIT_FORCE_SANDBOX", "0")
+        _os3.environ.setdefault("LIBGL_ALWAYS_SOFTWARE", "1")
     try:
         import webview
         _win = webview.create_window(

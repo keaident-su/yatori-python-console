@@ -37,6 +37,9 @@ class BasicSetting:
     web_ssl_cert: str = ""         # HTTPS证书路径(留空=自动生成自签证书)
     web_ssl_key: str = ""          # HTTPS私钥路径(留空=自动生成)
     web_secret: str = ""           # 前后端通信加密密钥(留空=自动生成并存 assets/web_secret.txt)
+    # 【2026-10-24】对外安全入口: 1=GUI模式同时监听0.0.0.0(供中心控制台/局域网),
+    # 由webSsl决定是否HTTPS; 默认0=仅本机127(最安全)
+    web_external: int = 0
     full_cpu_mode: int = 0         # 全速开关: 0(默认)=基准核数n-1 / 1=吃满全部逻辑核
     # 性能档位: aggressive(激进:登录×1.5/提交×1) / conservative(稳健)
     performance_gear: str = "aggressive"
@@ -446,6 +449,7 @@ def _default_value(config: JSONDataForConfig):
     bs.web_ssl_cert = (bs.web_ssl_cert or "").strip()
     bs.web_ssl_key = (bs.web_ssl_key or "").strip()
     bs.web_secret = (bs.web_secret or "").strip()
+    bs.web_external = _safe_int(bs.web_external, 0)
     # 性能策略: 全速开关(0/1) + 档位(aggressive/conservative)
     bs.full_cpu_mode = 1 if _safe_int(bs.full_cpu_mode, 0) == 1 else 0
     _gear_v = str(bs.performance_gear or "").strip().lower()

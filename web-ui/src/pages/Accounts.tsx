@@ -34,6 +34,8 @@ const CC_DEFAULT: any = {
     addStudySw: 0, addStudyCount: 0, addStudyVideoMinutes: 0,
     addStudyReadMinutes: 0, addStudyDelay: 30,
     restSw: 0, restStart: '23:00', restEnd: '06:00', jfSw: 0,
+    // [2026-10-24] 课程过滤(与生成器/unified语义一致): 空=全部; 只刷非空=仅显示/只刷命中; 排除=剔除; 都填=交集
+    includeCourses: [], excludeCourses: [],
     cxExamRetake: 0, cxRetakeRate: 80, cxWorkRetake: 0,
     cxExtendReadSw: 1, cxOtherReadSw: 1, cxBbsSw: 1,
     bruteSpeed: 2.4, deviceFlag: '',
@@ -60,6 +62,33 @@ export default function Accounts() {
     const [modal, setModal] = useState<any>(null)
     const [tab, setTab] = useState(0)
     const [checking, setChecking] = useState('')
+    // [2026-10-24] 查课选择器: 拉取账号真实课程供只刷/排除勾选
+    const [picker, setPicker] = useState<any>(null)
+
+    const openCoursePicker = async (kind: 'includeCourses' | 'excludeCourses') => {
+        if (!modal?.uid) {
+            return showToast('请先保存账号后再查课（新账号需先保存一次）', 'err')
+        }
+        setPicker({ kind, list: [], loading: true, checked: new Set<string>() })
+        try {
+            const d: any = await UI.courses(String(modal.uid))
+            const names = (d?.courseList || []).map((c: any) => String(c.courseName || '')).filter(Boolean)
+            setPicker({ kind, list: names, loading: false, checked: new Set<string>() })
+            if (!names.length) showToast('未获取到课程（可能登录失效或无课程）', 'err')
+        } catch (e: any) {
+            setPicker(null)
+            showToast('查课失败: ' + (e?.message || e), 'err')
+        }
+    }
+
+    const applyPicker = () => {
+        if (!picker) return
+        const cur: string[] = modal.coursesCustom?.[picker.kind] || []
+        const add = [...picker.checked].filter((x: string) => !cur.includes(x))
+        updCC(picker.kind, [...cur, ...add])
+        setPicker(null)
+        showToast(`已添加 ${add.length} 门到${picker.kind === 'includeCourses' ? '只刷' : '排除'}列表`)
+    }
 
     const load = async () => {
         setLoading(true)
@@ -273,18 +302,48 @@ export default function Accounts() {
 
                             {/* ===== Tab1 学习 ===== */}
                             {tab === 1 && (
-                                <div className="grid grid-cols-3 gap-x-4">
-                                    <Sel k="videoModel" label="观看视频模式" opts={[[0, '0 不刷'], [1, '1 串行'], [2, '2 并发课程'], [3, '3 多任务点']]} />
-                                    <Num k="cxNode" label="多任务点数量(cxNode)" hint="videoModel=3时生效" />
-                                    <Num k="otherTaskStay" label="其它任务点停留(秒)" />
-                                    {SW('章测开关(cxChapterTestSw)', 'cxChapterTestSw')}
-                                    {SW('作业开关(cxWorkSw)', 'cxWorkSw')}
-                                    {SW('互动测验(视频弹题)', 'cxInteractiveQuizSw')}
-                                    {SW('拓展阅读', 'cxExtendReadSw')}
-                                    {SW('其他阅读(图文素材)', 'cxOtherReadSw')}
-                                    {SW('讨论区(cxBbsSw)', 'cxBbsSw')}
-                                    {SW('打乱顺序(shuffleSw)', 'shuffleSw')}
-                                    <Txt k="studyTime" label="学习时段(studyTime)" ph="如 08:00-22:00, 可空" />
+                                <div>
+                                    {/* [2026-10-24] 课程过滤(学习Tab顶部): 只刷/排除, 每行一门; 支持查课选择 */}
+                                    <div className="grid grid-cols-2 gap-x-4"
+                                        style={{ paddingBottom: 8, marginBottom: 8, borderBottom: '1px dashed var(--border)' }}>
+                                        <Field label="只刷课程（每行一门；留空=不过滤；与排除同时填写时取交集）"
+                                            hint="课程名包含关键词即命中（模糊匹配）">
+                                            <textarea className="yinput" rows={3}
+                                                value={(cc.includeCourses || []).join('\n')}
+                                                onChange={e => updCC('includeCourses',
+                                                    e.target.value.split('\n').map((x: string) => x.trim()).filter(Boolean))}
+                                                placeholder={'创新创业\n垃圾分类'} />
+                                            <button className="ybtn py-1 px-3 text-xs mt-1" type="button"
+                                                onClick={() => openCoursePicker('includeCourses')}>
+                                                查课并加入只刷
+                                            </button>
+                                        </Field>
+                                        <Field label="排除课程（每行一门；留空=不排除）"
+                                            hint="命中排除列表的课程不刷、不在进度页显示">
+                                            <textarea className="yinput" rows={3}
+                                                value={(cc.excludeCourses || []).join('\n')}
+                                                onChange={e => updCC('excludeCourses',
+                                                    e.target.value.split('\n').map((x: string) => x.trim()).filter(Boolean))}
+                                                placeholder={'大学英语\n高等数学'} />
+                                            <button className="ybtn py-1 px-3 text-xs mt-1" type="button"
+                                                onClick={() => openCoursePicker('excludeCourses')}>
+                                                查课并加入排除
+                                            </button>
+                                        </Field>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-x-4">
+                                        <Sel k="videoModel" label="观看视频模式" opts={[[0, '0 不刷'], [1, '1 串行'], [2, '2 并发课程'], [3, '3 多任务点']]} />
+                                        <Num k="cxNode" label="多任务点数量(cxNode)" hint="videoModel=3时生效" />
+                                        <Num k="otherTaskStay" label="其它任务点停留(秒)" />
+                                        {SW('章测开关(cxChapterTestSw)', 'cxChapterTestSw')}
+                                        {SW('作业开关(cxWorkSw)', 'cxWorkSw')}
+                                        {SW('互动测验(视频弹题)', 'cxInteractiveQuizSw')}
+                                        {SW('拓展阅读', 'cxExtendReadSw')}
+                                        {SW('其他阅读(图文素材)', 'cxOtherReadSw')}
+                                        {SW('讨论区(cxBbsSw)', 'cxBbsSw')}
+                                        {SW('打乱顺序(shuffleSw)', 'shuffleSw')}
+                                        <Txt k="studyTime" label="学习时段(studyTime)" ph="如 08:00-22:00, 可空" />
+                                    </div>
                                 </div>
                             )}
 
@@ -408,6 +467,42 @@ export default function Accounts() {
                                 </div>
                             )}
                         </div>
+
+                        {picker && (
+                            <div className="ymask" style={{ zIndex: 60 }}
+                                onClick={e => e.target === e.currentTarget && setPicker(null)}>
+                                <div className="ymodal" style={{
+                                    width: 'min(640px, 92vw)', maxHeight: '80vh',
+                                    display: 'flex', flexDirection: 'column'
+                                }}>
+                                    <div className="font-bold mb-2">
+                                        查课选择（{picker.kind === 'includeCourses' ? '加入只刷' : '加入排除'}）
+                                    </div>
+                                    <div style={{ flex: 1, overflowY: 'auto', minHeight: 120 }}>
+                                        {picker.loading && <div className="text-sm p-4" style={{ color: 'var(--subtext)' }}>正在拉取课程（首次约15～60秒）…</div>}
+                                        {!picker.loading && picker.list.map((n: string) => (
+                                            <label key={n} className="flex items-center gap-2 text-sm py-1.5"
+                                                style={{ borderBottom: '1px solid var(--border)' }}>
+                                                <input type="checkbox" checked={picker.checked.has(n)}
+                                                    onChange={e => {
+                                                        const s = new Set<string>(picker.checked)
+                                                        if (e.target.checked) s.add(n); else s.delete(n)
+                                                        setPicker({ ...picker, checked: s })
+                                                    }} />
+                                                <span>{n}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-3" style={{ flexShrink: 0 }}>
+                                        <button className="ybtn" onClick={() => setPicker(null)}>取消</button>
+                                        <button className="ybtn ybtn-primary" onClick={applyPicker}
+                                            disabled={picker.loading || picker.checked.size === 0}>
+                                            加入列表（{picker.checked.size}）
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="flex justify-between items-center mt-3" style={{
                             flexShrink: 0,

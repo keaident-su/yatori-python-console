@@ -7180,6 +7180,68 @@ def _calc_course_job_rate(cache, course) -> float:
         return -1.0
 
 
+def _collect_viewable_exam(cache, course, exam, log_fn=None) -> int:
+    """[2026-10-23] 考前采集增强(MOGO"采集即高分"理念):
+    对"已完成且允许查看"的考试, 经 look-detail 接口采集 题目+正确答案入库
+    (同课程考题重合度高, 供后续考试直接命中)
+    不允许查看/解析不到 → 返回0(安全跳过)"""
+    _taskref = str(exam.get("taskrefId", ""))
+    if not _taskref:
+        return 0
+    # 详情页解析 examAnswerId
+    try:
+        client = xxt_api._build_client(cache)
+        try:
+            body, _ = client.get(exam.get("rawUrl", ""), retry=2)
+        finally:
+            client.close()
+    except Exception:
+        return 0
+    h = str(body or "")
+    if not h or "不允许查看" in h:
+        return 0
+    m = re.search(r"examAnswerId=(\d+)", h)
+    if not m:
+        return 0
+    _aid = m.group(1)
+    u = ("https://mooc1-api.chaoxing.com/exam-ans/exam/phone/look-detail"
+         f"?courseId={course.course_id}&classId={course.key}"
+         f"&examId={_taskref}&examAnswerId={_aid}")
+    try:
+        client = xxt_api._build_client(cache)
+        try:
+            body2, _ = client.get(u, retry=2)
+        finally:
+            client.close()
+    except Exception:
+        return 0
+    h2 = str(body2 or "")
+    if not h2 or "不允许查看" in h2:
+        return 0
+    # 宽松解析: 常见查看页题目容器 + "正确答案:"文本
+    caught = 0
+    try:
+        from bs4 import BeautifulSoup as _BS
+        soup = _BS(h2, "html.parser")
+        nodes = soup.select(".questionLi, [data-qid], .question-item, .TiMu, .questionBox")
+        for nd in nodes[:200]:
+            txt = nd.get_text(" ", strip=True)
+            ansm = re.search(r"正确答案[：:]\s*([^\n]{1,100})", txt)
+            parts = re.split(r"正确答案[：:]", txt, maxsplit=1)
+            if ansm and parts:
+                q_text = parts[0].strip()[:300]
+                ans = ansm.group(1).strip()
+                if q_text and ans:
+                    try:
+                        _collect_exam_qa(q_text, ans, "")
+                        caught += 1
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return caught
+
+
 def _smart_fallback_answer(cache, course, q_text, q_entity,
                            q_type_code, cpi_val=None):
     """[2026-10-23] 智能兜底(替代全A, 应对"到点强制收卷+无重考"场景):
@@ -7293,6 +7355,16 @@ def _exam_guard_action(setting: Setting, user: User, cache: XueXiTUserCache,
             continue
         for ex in exams:
             _st = str(ex.get("status", ""))
+            if "已完成" in _st and int(
+                    getattr(setting.basic_setting, "cx_exam_pre_collect", 1) or 0) == 1:
+                # [2026-10-23] 考前采集增强: 已完成考试尝试采集(允许查看的)
+                try:
+                    _ccn = _collect_viewable_exam(cache, course, ex, _log)
+                    if _ccn > 0:
+                        _log(f"📥考前采集【{course.course_name}】"
+                             f"「{str(ex.get('name',''))[:22]}」+{_ccn}题入库")
+                except Exception:
+                    pass
             if any(k in _st for k in ("已完成", "已批阅", "待批阅", "已过期")):
                 continue  # 已完成类/已过期(不可考)均不驱动
             key = _exam_gate_key(cache.account, str(course.course_id), ex)

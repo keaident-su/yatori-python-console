@@ -6232,8 +6232,10 @@ def _work_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 except Exception:
                     answer = ""
             if not answer:
-                answer = "A" if q_type_code in ("0", "1") else (
-                    "true" if q_type_code == "3" else "答案")
+                # [2026-10-23] 智能兜底(作业同享): 强制AI->智能猜
+                answer, _sfb_src = _smart_fallback_answer(
+                    cache, course, q_text, q_entity, q_type_code)
+                answer_src = _sfb_src
 
             # 答题来源日志: 明确标注本题由哪个题库/AI源回答成功
             _ans_src_show = answer_src or "默认"
@@ -7178,6 +7180,41 @@ def _calc_course_job_rate(cache, course) -> float:
         return -1.0
 
 
+def _smart_fallback_answer(cache, course, q_text, q_entity,
+                           q_type_code, cpi_val=None):
+    """[2026-10-23] 智能兜底(替代全A, 应对"到点强制收卷+无重考"场景):
+    ① 强制尝试学习通内置AI(即使未在答题源配置中启用——考试场景不放过AI)
+    ② AI失败→智能猜测: 单选按选项均匀随机/多选随机1-2/判断50% true-false
+    返回 (answer, src_desc)"""
+    # ① 强制AI
+    try:
+        _wt_map = {'0': 'single_choice', '1': 'multiple_choice', '2': 'fill',
+                   '3': 'judge', '4': 'short', '5': 'term_explanation',
+                   '6': 'essay', '11': 'matching', '8': 'short'}
+        ai_body, _r = xxt_api.xxt_ai_api(
+            cache, q_text, course.course_id, course.key,
+            str(cpi_val or course.cpi),
+            options=(q_entity.get('options', []) if q_entity else []),
+            q_type=_wt_map.get(q_type_code, ''))
+        if ai_body and str(ai_body).strip():
+            return str(ai_body).strip(), "兜底AI(学习通)"
+    except Exception:
+        pass
+    # ② 智能猜测
+    import random as _rand
+    _opts = (q_entity.get('options', []) if q_entity else []) or []
+    if q_type_code == "0":
+        n = max(1, len(_opts) or 4)
+        return chr(65 + _rand.randrange(n)), "智能猜(单选)"
+    if q_type_code == "1":
+        n = max(1, len(_opts) or 4)
+        k = 1 if n < 3 else _rand.choice((1, 2))
+        return "".join(chr(65 + i) for i in sorted(_rand.sample(range(n), k))), "智能猜(多选)"
+    if q_type_code == "3":
+        return _rand.choice(("true", "false")), "智能猜(判断)"
+    return "", "无答案(主观题)"
+
+
 def _exam_guard_due_consume(setting: Setting, user: User,
                             cache: XueXiTUserCache):
     """[2026-10-23] 开局考试守护: 只消费"已到期"的 gate 预约(按账号),
@@ -7564,9 +7601,10 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
         except Exception:
             answer = ""
         if not answer:
-            answer = "A" if q_type_code in ("0", "1") else (
-                "true" if q_type_code == "3" else "")
-            # [2026-10-23] 兜底计数(题库/AI均未命中, 防全A低分)
+            # [2026-10-23] 智能兜底: 强制学习通AI->智能猜(替代全A, 应对到点强制收卷)
+            answer, _sfb_src = _smart_fallback_answer(
+                cache, course, q_text, q_entity, q_type_code, cpi_val)
+            answer_src = _sfb_src
             try:
                 stats["defaultFallback"] = int(
                     stats.get("defaultFallback", 0) or 0) + 1
@@ -7621,7 +7659,8 @@ def _collect_one_exam(cache, course, exam, submit, submit_rate,
             _qn = int(stats.get("questions", 0) or 0)
             if _fb >= max(3, int(_qn * 0.5)):
                 stats["defaultGuardStop"] = True
-                _log("⚠兜底率过高(%d/%d题无题库/AI答案, 默认兜底), 已暂停自动交卷以免低分; 请检查答题源配置, 下轮重考" % (_fb, _qn))
+                _log(
+                    "⚠兜底率过高(%d/%d题无题库/AI答案, 默认兜底), 已暂停自动交卷以免低分; 请检查答题源配置, 下轮重考" % (_fb, _qn))
                 is_last = False
         submit_data = {
             "courseId": q_entity.get("courseId", "") or course.course_id,
@@ -8983,9 +9022,11 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
                 except Exception:
                     answer = ""
             if not answer:
-                answer = "A" if q_type_code in ("0", "1") else (
-                    "true" if q_type_code == "3" else "答案")
-                _exam_dfl_cnt += 1  # [2026-10-23] 默认兜底计数(防全A低分)
+                # [2026-10-23] 智能兜底: 强制学习通AI->智能猜(替代全A, 应对到点强制收卷)
+                answer, _sfb_src = _smart_fallback_answer(
+                    cache, course, q_text, q_entity, q_type_code, cpi_val)
+                answer_src = _sfb_src
+                _exam_dfl_cnt += 1  # 智能兜底计数
 
             # 答题来源日志: 明确标注本题由哪个题库/AI源回答成功
             _ans_src_show = answer_src or "默认"
@@ -9087,7 +9128,7 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
             is_last = (qi + 1 == question_total)
             is_submit = cc.exam_auto_submit in (1, 2) and is_last
             # [2026-10-23] 兜底率保护: 题库/AI均未命中超50%且≥3题时暂停自动交卷(防全A低分)
-            if is_submit and int(getattr(cc, "cx_exam_default_guard", 1) or 0) == 1:
+            if is_submit and int(getattr(cc, "cx_exam_default_guard", 0) or 0) == 1:
                 _qn2 = qi + 1
                 if _exam_dfl_cnt >= max(3, int(_qn2 * 0.5)):
                     log_print(INFO, f"[{platform}]", "[", Green, acct, Default, "] ",

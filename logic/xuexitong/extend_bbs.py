@@ -88,9 +88,14 @@ def fetch_topics(cache, course) -> list:
     s = _http(cache)
     _ck4 = load_discuss_ck(cache)
     if _ck4:
-        for _n, _v in _ck4.items():
+        for _n, _meta in _ck4.items():
             try:
-                s.cookies.set(_n, _v, domain=".chaoxing.com", path="/")
+                if isinstance(_meta, dict):
+                    s.cookies.set(_n, _meta.get("value", ""),
+                                  domain=_meta.get("domain") or ".chaoxing.com",
+                                  path="/")
+                else:
+                    s.cookies.set(_n, _meta, domain=".chaoxing.com", path="/")
             except Exception:
                 pass
     # 两段式——先 GET topicList 页(带 stuenc/bbsid)建立讨论会话, 再 POST getTopicList
@@ -222,13 +227,12 @@ def _browser_session(cache):
 
 
 def export_course_ck(ctx, course) -> dict:
-    """从浏览器态导出讨论四件套cookie(cpi/ut/t/enc) — 纯协议列表/回复的必备凭证"""
+    """从浏览器态导出讨论全套cookie(2026-10-23修正: 四件套与groupweb会话
+    JSESSIONID/route强绑定, 必须整套导出) — 纯协议列表/回复的必备凭证"""
     out = {}
     for c in ctx.cookies():
-        n = c.get("name", "")
-        if n in (f"{course.course_id}cpi", f"{course.course_id}ut",
-                 f"{course.course_id}t", f"{course.course_id}enc"):
-            out[n] = c.get("value", "")
+        out[c.get("name", "")] = {"value": c.get("value", ""),
+                                  "domain": c.get("domain", "")}
     return out
 
 

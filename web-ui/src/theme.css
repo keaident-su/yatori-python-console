@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============ 主题系统(2026-10-23): 蓝白默认/暗色霓虹/磨砂灰白黑 ============ */
+:root {
+    /* 蓝白简洁(默认, 对齐WP控制台) */
+    --bg: #f3f6fc;
+    --bg-image: none;
+    --panel: #ffffff;
+    --panel-2: #f6f9ff;
+    --text: #1f2937;
+    --subtext: #6b7280;
+    --primary: #4f6ef7;
+    --primary-2: #3b5bdb;
+    --border: #e3e9f5;
+    --danger: #e5484d;
+    --ok: #18a058;
+    --warn: #e6a23c;
+    --radius: 12px;
+    --panel-blur: 0px;
+    --panel-alpha: 1;
+    --glow: none;
+}
+
+[data-theme="dark"] {
+    /* 暗色霓虹(参考yatori-UI) */
+    --bg: #0a0e17;
+    --bg-image: none;
+    --panel: rgba(16, 22, 38, 0.86);
+    --panel-2: rgba(22, 30, 50, 0.8);
+    --text: #e6f1ff;
+    --subtext: #8b9bb4;
+    --primary: #00e5ff;
+    --primary-2: #7c4dff;
+    --border: rgba(0, 229, 255, 0.22);
+    --danger: #ff5c77;
+    --ok: #2fe6a8;
+    --warn: #ffcf5c;
+    --radius: 10px;
+    --panel-blur: 10px;
+    --panel-alpha: 0.86;
+    --glow: 0 0 18px rgba(0, 229, 255, 0.25);
+}
+
+[data-theme="frost"] {
+    /* 灰白黑半透明磨砂(参考yatori-go-desktop) */
+    --bg: #e9ecf1;
+    --bg-image: none;
+    --panel: rgba(255, 255, 255, 0.62);
+    --panel-2: rgba(255, 255, 255, 0.45);
+    --text: #22262e;
+    --subtext: #667085;
+    --primary: #3a3f4b;
+    --primary-2: #14171d;
+    --border: rgba(255, 255, 255, 0.55);
+    --danger: #d64550;
+    --ok: #2e9e6b;
+    --warn: #c9932e;
+    --radius: 14px;
+    --panel-blur: 18px;
+    --panel-alpha: 0.62;
+    --glow: 0 8px 32px rgba(31, 38, 60, 0.12);
+}
+
+html,
+body,
+#root {
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    transition: background-color .25s ease, color .25s ease;
+}
+
+.ycard {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(var(--panel-blur));
+    -webkit-backdrop-filter: blur(var(--panel-blur));
+    box-shadow: var(--glow);
+    transition: all .2s ease;
+}
+
+.ycard-2 {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.ybtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 13px;
+    transition: all .15s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.ybtn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.ybtn-primary {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+[data-theme="dark"] .ybtn-primary {
+    color: #03121a;
+    font-weight: 600;
+}
+
+.ybtn-primary:hover {
+    background: var(--primary-2);
+    border-color: var(--primary-2);
+    color: #fff;
+}
+
+.ybtn-danger {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+}
+
+.ybtn-danger:hover {
+    opacity: .88;
+    color: #fff;
+}
+
+.ybtn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.yinput,
+.yselect,
+.ytextarea {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+}
+
+.yinput:focus,
+.yselect:focus,
+.ytextarea:focus {
+    border-color: var(--primary);
+}
+
+.ytag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+}
+
+.ytag-ok {
+    color: var(--ok);
+    border-color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+
+.ytag-run {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.ytag-warn {
+    color: var(--warn);
+    border-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.ytag-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+.yprogress {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.yprogress>i {
+    display: block;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 999px;
+    transition: width .4s ease;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 模态框 */
+.ymask {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 25, 0.45);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.ymodal {
+    width: min(720px, 92vw);
+    max-height: 86vh;
+    overflow: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(var(--panel-blur));
+    -webkit-backdrop-filter: blur(var(--panel-blur));
+    padding: 22px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
+}

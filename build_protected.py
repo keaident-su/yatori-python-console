@@ -382,6 +382,8 @@ THIRD_PARTY = [
     "playwright",  # 2026-10-19: 学习通讨论(extend_bbs浏览器态)依赖; channel=chrome用系统Chrome
 ]
 hiddenimports = []
+# 桌面GUI(2026-10-23): pywebview 隐式导入(WebView2窗口)
+hiddenimports.append("webview")
 for _p in THIRD_PARTY:
     try:
         if _p == "tls_client":

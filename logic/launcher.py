@@ -510,3 +510,91 @@ def brush_block(config_data: JSONDataForConfig):
     # 等待所有平台完成
     for t in threads:
         t.join()
+
+def run_gui():
+    """桌面GUI模式(2026-10-23): pywebview独立窗口 + 后台uvicorn服务
+    默认启动方式(双击exe即GUI); --console 进入原控制台/webMode菜单。
+    复用 web_mode_block 的全部服务能力(加密通道/端口顺延/认证), 窗口加载 /ui 页面。
+    """
+    import threading
+    import time as _time
+
+    from dao.database import sqlite_init
+    sqlite_init()
+
+    try:
+        import uvicorn  # noqa: F401
+        from web.server import create_app
+    except ImportError:
+        log_print(INFO, Red, "Web组件缺失, 回退控制台模式")
+        from logic.launcher import lunch
+        return lunch()
+
+    try:
+        from web.service.user_service import load_web_setting
+        _bs = load_web_setting().basic_setting
+    except Exception:
+        _bs = None
+
+    try:
+        from web import ui_bridge
+        _tk = ui_bridge.UI_TOKEN
+    except Exception:
+        _tk = ""
+
+    app = create_app()
+    try:
+        base_port = int(getattr(_bs, "web_port", 8080) or 8080)
+    except (TypeError, ValueError):
+        base_port = 8080
+    port = _pick_free_port(base_port)
+    if port != base_port:
+        log_print(INFO, Yellow,
+                  f"端口 {base_port} 已被占用, GUI服务改用空闲端口 {port}")
+
+    def _serve():
+        try:
+            import uvicorn as _uv
+            from utils.log import build_uvicorn_log_config
+            _log_cfg = build_uvicorn_log_config(os.path.join("assets", "logs"))
+            _uv.run(app, host="127.0.0.1", port=port, log_config=_log_cfg)
+        except Exception as _e:
+            log_print(INFO, Red, f"GUI后端服务异常: {_e}")
+
+    t = threading.Thread(target=_serve, daemon=True)
+    t.start()
+
+    # 等待服务就绪(最多15秒)
+    import urllib.request as _ur
+    _ready = False
+    for _i in range(80):
+        try:
+            with _ur.urlopen(f"http://127.0.0.1:{port}/ui", timeout=1):
+                _ready = True
+                break
+        except Exception:
+            _time.sleep(0.25)
+    if not _ready:
+        log_print(INFO, Red, "GUI后端服务启动超时, 回退控制台模式")
+        from logic.launcher import lunch
+        return lunch()
+
+    url = f"http://127.0.0.1:{port}/ui?token={_tk}"
+    log_print(INFO, Green, f"桌面窗口加载: {url}")
+    try:
+        import webview
+        webview.create_window(
+            f"Yatori 刷课系统 V{__import__('web.server', fromlist=['APP_VERSION']).APP_VERSION}",
+            url, width=1280, height=840, min_size=(1024, 680))
+        webview.start()
+    except Exception as _e:
+        # 无WebView2/pywebview异常 → 退化为开浏览器
+        log_print(INFO, Yellow, f"桌面窗口不可用({_e}), 改用浏览器打开")
+        try:
+            import webbrowser
+            webbrowser.open(url)
+            while True:
+                _time.sleep(3600)
+        except Exception:
+            from logic.launcher import lunch
+            return lunch()

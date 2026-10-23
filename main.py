@@ -150,9 +150,18 @@ def main():
     from utils.announcement import show_announcement
     show_announcement()
 
-    # 4. 启动主逻辑
-    from logic.launcher import lunch
-    lunch()
+    # 4. 启动主逻辑(2026-10-23: 默认桌面GUI; --console 进入原控制台/webMode菜单)
+    if "--console" in sys.argv:
+        from logic.launcher import lunch
+        lunch()
+    else:
+        try:
+            from logic.launcher import run_gui
+            run_gui()
+        except Exception as _ge:
+            print(f"[GUI] 桌面窗口启动失败({_ge}), 回退控制台模式")
+            from logic.launcher import lunch
+            lunch()
 
 
 if __name__ == "__main__":

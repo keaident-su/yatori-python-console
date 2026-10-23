@@ -176,6 +176,13 @@ def create_app() -> FastAPI:
     from web.router import register_routes
     register_routes(app)
 
+    # 桌面GUI本地桥(2026-10-23): /ui 静态页 + /ui/api 本地免密接口(仅127.0.0.1+token)
+    try:
+        from web.ui_bridge import mount_ui
+        mount_ui(app)
+    except Exception:
+        pass
+
     if web_auth is not None:
         _register_auth_plugins(app, web_auth)
 

@@ -7223,7 +7223,8 @@ def _collect_viewable_exam(cache, course, exam, log_fn=None) -> int:
     try:
         from bs4 import BeautifulSoup as _BS
         soup = _BS(h2, "html.parser")
-        nodes = soup.select(".questionLi, [data-qid], .question-item, .TiMu, .questionBox")
+        nodes = soup.select(
+            ".questionLi, [data-qid], .question-item, .TiMu, .questionBox")
         for nd in nodes[:200]:
             txt = nd.get_text(" ", strip=True)
             ansm = re.search(r"正确答案[：:]\s*([^\n]{1,100})", txt)
@@ -7362,7 +7363,7 @@ def _exam_guard_action(setting: Setting, user: User, cache: XueXiTUserCache,
                     _ccn = _collect_viewable_exam(cache, course, ex, _log)
                     if _ccn > 0:
                         _log(f"📥考前采集【{course.course_name}】"
-                             f"「{str(ex.get('name',''))[:22]}」+{_ccn}题入库")
+                             f"「{str(ex.get('name', ''))[:22]}」+{_ccn}题入库")
                 except Exception:
                     pass
             if any(k in _st for k in ("已完成", "已批阅", "待批阅", "已过期")):
@@ -8995,6 +8996,9 @@ def _exam_action(setting: Setting, user: User, cache: XueXiTUserCache,
         # 翻页去重集合(2026-09-21): 考试同样防止翻页失效导致重复提交同一题
         _exam_seen_qids = set()
         _exam_dfl_cnt = 0  # [2026-10-23] 默认兜底计数(防全A低分)
+        # [2026-10-23 BUGFIX] _monitor_enc提前初始化: 原定义在v2签名分支内,
+        # 若某路径跳过该分支(如限时考试重试/直接进卷), L9243 keeper交卷上报处引用会 NameError 崩溃导致考试未交卷
+        _monitor_enc = ""
         # 图片题干/选项自动OCR解析器(整场考试复用, 带URL缓存与限流)
         _img_ocr = _make_img_ocr(
             cache, enabled=(getattr(setting.basic_setting, "ocr_image_question", 1) == 1))

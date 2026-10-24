@@ -577,11 +577,10 @@ def run_gui():
     try:
         from web.service.user_service import sync_yaml_users_to_db
         _sync_r = sync_yaml_users_to_db()
-        if any(_sync_r.get(k) for k in ("imported", "updated", "removed")):
+        if _sync_r.get("imported"):
             log_print(INFO, Green,
-                      f"[账号同步] config.yaml(单一事实源): 新增{_sync_r.get('imported', 0)} "
-                      f"更新{_sync_r.get('updated', 0)} 删除{_sync_r.get('removed', 0)} "
-                      f"跳过{_sync_r.get('skipped', 0)}")
+                      f"[账号同步] config.yaml 补漏导入 {_sync_r['imported']} 个账号"
+                      f"(已存在跳过 {_sync_r.get('skipped', 0)})")
     except Exception as _se:
         log_print(INFO, Yellow, f"[账号同步] config.yaml 同步跳过: {_se}")
 

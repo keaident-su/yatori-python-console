@@ -1,104 +1,127 @@
 # -*- coding: utf-8 -*-
 """
-用户数据访问层 - 对应 Go 项目的 UserMapper.go
-提供用户的增删改查操作
-"""
-from typing import List, Tuple, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+[2026-10-24 V3.0.8] user_mapper 适配层 —— 数据库已移除, 改为 config.yaml(ConfigStore)。
 
+保持与旧版完全一致的函数签名与返回值语义(会话参数兼容接收但不使用),
+使上层 100+ 处调用(web/logic 各处)零改动。
+"""
+import json
+from typing import List, Optional, Tuple
+
+from dao.config_store import ConfigStore
 from entity.pojo import UserPO
 
 
-def insert_user(session: Session, user: UserPO) -> Optional[str]:
-    """
-    插入用户
-    :return: None 成功, 错误信息字符串 失败
-    """
+def _store() -> ConfigStore:
+    return ConfigStore.instance()
+
+
+def _row_to_po(row: dict) -> UserPO:
+    """yaml 行 -> UserPO 瞬时对象(未挂会话, 属性与 user_config_turn_entity 均可用)"""
+    cfg = {k: v for k, v in row.items()
+           if k not in ("uid", "accountType", "url", "account", "password")}
+    cfg["accountType"] = row.get(
+        "accountType") or row.get("account_type") or ""
+    cfg["URL"] = row.get("url") or ""
+    cfg["account"] = row.get("account") or ""
+    cfg["password"] = row.get("password") or ""
+    return UserPO(
+        uid=str(row.get("uid") or ""),
+        account_type=cfg["accountType"],
+        url=cfg["URL"],
+        account=cfg["account"],
+        password=cfg["password"],
+        user_config_json=json.dumps(cfg, ensure_ascii=False),
+    )
+
+
+def _po_to_row(user: UserPO) -> dict:
     try:
-        session.add(user)
-        session.commit()
-        return None
+        cfg = json.loads(user.user_config_json or "{}")
+        if not isinstance(cfg, dict):
+            cfg = {}
+    except Exception:
+        cfg = {}
+    row = {
+        "uid": user.uid,
+        "accountType": cfg.get("accountType") or user.account_type or "",
+        "url": cfg.get("URL") or cfg.get("url") or user.url or "",
+        "account": cfg.get("account") or user.account or "",
+        "password": cfg.get("password") or user.password or "",
+    }
+    for k in ("remarkName", "informEmails", "showdocSw", "showdocUrls",
+              "isProxy"):
+        if cfg.get(k) not in (None, "", [], {}, 0):
+            row[k] = cfg[k]
+    cc = cfg.get("coursesCustom") or cfg.get("courses_custom") or {}
+    row["coursesCustom"] = cc if isinstance(cc, dict) else {}
+    return row
+
+
+def insert_user(session=None, user: UserPO = None) -> Optional[str]:
+    """插入用户(签名兼容旧版)"""
+    try:
+        return _store().insert_user_row(_po_to_row(user))
     except Exception as e:
-        session.rollback()
         return f"插入数据失败: {str(e)}"
 
 
-def delete_user(session: Session, uid: str = "", account_type: str = "",
+def delete_user(session=None, uid: str = "", account_type: str = "",
                 url: str = "", account: str = "") -> Optional[str]:
-    """
-    删除用户（动态条件拼接）
-    :return: None 成功, 错误信息字符串 失败
-    """
+    """删除用户(动态条件, 签名兼容旧版)"""
     try:
-        query = session.query(UserPO)
-        if uid:
-            query = query.filter(UserPO.uid == uid)
-        if account_type:
-            query = query.filter(UserPO.account_type == account_type)
-        if url:
-            query = query.filter(UserPO.url == url)
-        if account:
-            query = query.filter(UserPO.account == account)
-        query.delete()
-        session.commit()
+        _store().delete_users(uid=uid, account_type=account_type,
+                              url=url, account=account)
         return None
     except Exception as e:
-        session.rollback()
         return f"删除用户失败: {str(e)}"
 
 
-def query_users(session: Session, page: int = 1,
+def query_users(session=None, page: int = 1,
                 page_size: int = 10) -> Tuple[List[UserPO], int]:
-    """
-    分页查询用户
-    :return: (用户列表, 总数)
-    """
-    total = session.query(func.count(UserPO.uid)).scalar() or 0
-    offset = (page - 1) * page_size
-    users = (session.query(UserPO)
-             .order_by(UserPO.uid.asc())
-             .limit(page_size)
-             .offset(offset)
-             .all())
-    return users, total
+    """分页查询(返回 UserPO 瞬时对象列表, 按 uid 升序)"""
+    rows, total = _store().list_users(page=page, page_size=page_size)
+    return [_row_to_po(r) for r in rows], total
 
 
-def query_user(session: Session, uid: str = "", account_type: str = "",
+def query_user(session=None, uid: str = "", account_type: str = "",
                url: str = "", account: str = "",
                password: str = "") -> Optional[UserPO]:
-    """
-    查询单个用户（动态条件拼接）
-    :return: UserPO 或 None
-    """
-    query = session.query(UserPO)
-    if uid:
-        query = query.filter(UserPO.uid == uid)
-    if account_type:
-        query = query.filter(UserPO.account_type == account_type)
-    if url:
-        query = query.filter(UserPO.url == url)
-    if account:
-        query = query.filter(UserPO.account == account)
-    if password:
-        query = query.filter(UserPO.password == password)
-    return query.first()
+    """查询单个用户(动态条件, 签名兼容旧版)"""
+    row = _store().find_user(uid=uid, account_type=account_type,
+                             url=url, account=account, password=password)
+    return _row_to_po(row) if row else None
 
 
-def update_user(session: Session, uid: str,
-                update_data: dict) -> Optional[str]:
-    """
-    更新指定 UID 用户信息
-    :param uid: 用户 UID
-    :param update_data: 要更新的字段字典
-    :return: None 成功, 错误信息字符串 失败
-    """
+def update_user(session=None, uid: str = "",
+                update_data: dict = None) -> Optional[str]:
+    """更新指定 UID(update_data 为旧列名风格: account_type/url/account/
+    password/user_config_json)——内部映射为 yaml 键风格并合并。"""
     if not uid:
         return "更新失败: UID 不能为空"
     try:
-        session.query(UserPO).filter(UserPO.uid == uid).update(update_data)
-        session.commit()
-        return None
+        patch = {}
+        ud = update_data or {}
+        if "account_type" in ud:
+            patch["accountType"] = ud["account_type"]
+        for k_src, k_dst in (("url", "url"), ("account", "account"),
+                             ("password", "password")):
+            if k_src in ud:
+                patch[k_dst] = ud[k_src]
+        if "user_config_json" in ud:
+            try:
+                cfg = json.loads(ud["user_config_json"] or "{}")
+                if not isinstance(cfg, dict):
+                    cfg = {}
+            except Exception:
+                cfg = {}
+            # 展开扩展字段到 yaml 行
+            for k in ("remarkName", "informEmails", "showdocSw",
+                      "showdocUrls", "isProxy"):
+                if k in cfg:
+                    patch[k] = cfg[k]
+            patch["coursesCustom"] = (cfg.get("coursesCustom")
+                                      or cfg.get("courses_custom") or {})
+        return _store().update_user_row(uid, patch)
     except Exception as e:
-        session.rollback()
         return f"更新用户失败: {str(e)}"

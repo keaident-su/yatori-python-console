@@ -1,60 +1,58 @@
 # -*- coding: utf-8 -*-
 """
-数据库初始化 - 对应 Go 项目的 SqliteInit.go
-使用 SQLAlchemy 初始化 SQLite 数据库连接并自动建表
+[2026-10-24 V3.0.8] 数据库初始化 -> 已改为 config.yaml(ConfigStore) 唯一事实源。
+
+保留 sqlite_init() / get_session() 的调用兼容:
+- sqlite_init(): 初始化 ConfigStore, 并一次性迁移旧 yatori.db(若存在, 只读迁移, 文件保留作备份)
+- get_session():  返回兼容用的空会话对象(不再有真实数据库连接)
 """
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
+import os
 
-from entity.pojo import Base
+from dao.config_store import ConfigStore
 
-# 全局引擎和会话工厂
 _engine = None
 _SessionFactory = None
+_store = None
+
+
+class _DummySession:
+    """兼容旧接口的空会话(数据库已被 config.yaml 取代)"""
+
+    def add(self, *a, **k):
+        pass
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+    def close(self):
+        pass
+
+    def query(self, *a, **k):
+        raise RuntimeError("数据库已移除(改为 config.yaml), 请使用 user_mapper 接口")
 
 
 def sqlite_init(db_path: str = "yatori.db"):
     """
-    初始化 SQLite 数据库
-    :param db_path: 数据库文件路径
-    :return: sessionmaker 实例
+    [V3.0.8] 初始化配置存储(config.yaml 唯一事实源)
+    - 首次启动时把旧 sqlite 中的账号(含原 uid)一次性迁入 config.yaml
+    - db 文件不删除, 仅作历史备份, 之后不再读写
     """
-    global _engine, _SessionFactory
-
-    # [2026-10-24] 修复多线程并发下的 sqlite3.InterfaceError(bad parameter or
-    # other API misuse): 原 StaticPool 全进程共享一个连接, 多刷课线程+API
-    # 并发取会话时连接/cursor 交叉使用→报错与 500。改用默认 QueuePool
-    # (每线程独立连接; WAL + busy_timeout 保证多连接并发安全)。
-    _engine = create_engine(
-        f"sqlite:///{db_path}",
-        echo=False,
-        pool_size=8,
-        max_overflow=24,
-        pool_timeout=30,
-        pool_pre_ping=True,
-        # timeout=30: 程序多开/多实例共用同一 yatori.db 时, 等待写锁而非立即报错
-        connect_args={"check_same_thread": False, "timeout": 30},
-    )
-
-    # 开启 WAL 模式，提升并发性能(多实例同时读写更稳)
-    @event.listens_for(_engine, "connect")
-    def set_sqlite_pragma(dbapi_conn, connection_record):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA synchronous=NORMAL")
-        # busy_timeout: 多实例并发写时最多等待30秒锁释放, 避免 database is locked
-        cursor.execute("PRAGMA busy_timeout=30000")
-        cursor.close()
-
-    # 自动创建表
-    Base.metadata.create_all(_engine)
-
-    _SessionFactory = sessionmaker(bind=_engine, expire_on_commit=False)
-    return _SessionFactory
+    global _store
+    _store = ConfigStore.instance()
+    try:
+        if os.path.exists(db_path):
+            _store.migrate_from_sqlite(db_path)
+    except Exception as e:
+        try:
+            print(f"[Init] 旧数据库迁移异常(忽略): {e}")
+        except Exception:
+            pass
+    return _store
 
 
-def get_session() -> Session:
-    """获取数据库会话"""
-    if _SessionFactory is None:
-        raise RuntimeError("数据库未初始化，请先调用 sqlite_init()")
-    return _SessionFactory()
+def get_session():
+    """[V3.0.8] 兼容接口: 返回空会话对象"""
+    return _DummySession()

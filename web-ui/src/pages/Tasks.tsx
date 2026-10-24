@@ -14,7 +14,14 @@ export default function Tasks() {
         catch (e: any) { showToast(e.message, 'err') }
         finally { setLoading(false) }
     }
-    useEffect(() => { load() }, [])
+    useEffect(() => {
+        load()
+        // [V3.0.8] 每5秒静默刷新运行状态(启动/停止后状态可见、可持续刷新)
+        const t = setInterval(() => {
+            UI.accounts().then((d: any) => setAccounts(d)).catch(() => { })
+        }, 5000)
+        return () => clearInterval(t)
+    }, [])
 
     const act = async (uid: string, kind: 'start' | 'stop') => {
         setBusy(b => ({ ...b, [uid]: true }))

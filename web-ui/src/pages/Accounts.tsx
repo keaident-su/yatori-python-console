@@ -217,7 +217,12 @@ export default function Accounts() {
                                             </span>
                                         </div>
                                         <div className="text-xs mt-0.5" style={{ color: 'var(--subtext)' }}>
-                                            {a.account}{a.url ? ` | ${a.url}` : ''}{a.collegeName ? ' | ' + a.collegeName : ''}
+                                            {a.account}{a.url ? ` | ${a.url}` : ''}
+                                            {/* [V3.0.9] 身份三要素展示: 学校 · 姓名 · 学号(有则显示) */}
+                                            {a.school ? ` | ${a.school}` : ''}
+                                            {a.realName ? ` · ${a.realName}` : ''}
+                                            {a.stuNo ? ` · 学号${a.stuNo}` : ''}
+                                            {!a.school && !a.realName && a.collegeName ? ' | ' + a.collegeName : ''}
                                         </div>
                                     </div>
                                 </div>

@@ -49,12 +49,16 @@ def _po_to_row(user: UserPO) -> dict:
         "account": cfg.get("account") or user.account or "",
         "password": cfg.get("password") or user.password or "",
     }
-    for k in ("remarkName", "informEmails", "showdocSw", "showdocUrls",
-              "isProxy"):
-        if cfg.get(k) not in (None, "", [], {}, 0):
-            row[k] = cfg[k]
-    cc = cfg.get("coursesCustom") or cfg.get("courses_custom") or {}
-    row["coursesCustom"] = cc if isinstance(cc, dict) else {}
+    # [V3.0.9] 不再白名单: 保留全部扩展键(school/realName/stuNo/coursesCustom/
+    # remarkName/informEmails/... 及未来任何字段), 避免身份三要素等被丢掉
+    for k, v in cfg.items():
+        if k in ("accountType", "URL", "url", "account", "password"):
+            continue
+        if k in ("courses_custom", "coursesCustom"):
+            row["coursesCustom"] = v if isinstance(v, dict) else {}
+        elif v not in (None, "", [], {}):
+            row[k] = v
+    row.setdefault("coursesCustom", {})
     return row
 
 
@@ -115,13 +119,15 @@ def update_user(session=None, uid: str = "",
                     cfg = {}
             except Exception:
                 cfg = {}
-            # 展开扩展字段到 yaml 行
-            for k in ("remarkName", "informEmails", "showdocSw",
-                      "showdocUrls", "isProxy"):
-                if k in cfg:
-                    patch[k] = cfg[k]
-            patch["coursesCustom"] = (cfg.get("coursesCustom")
-                                      or cfg.get("courses_custom") or {})
+            # [V3.0.9] 不再白名单: user_config_json 的全部扩展键均合并回 yaml 行
+            # (含 school/realName/stuNo 身份三要素), 避免保存时被覆盖丢失
+            for k, v in cfg.items():
+                if k in ("accountType", "URL", "url", "account", "password"):
+                    continue
+                if k in ("courses_custom", "coursesCustom"):
+                    patch["coursesCustom"] = v if isinstance(v, dict) else {}
+                elif v not in (None, "", [], {}):
+                    patch[k] = v
         return _store().update_user_row(uid, patch)
     except Exception as e:
         return f"更新用户失败: {str(e)}"

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-打包流水线 —— yatori-python刷课系统 V3.0.8
+打包流水线 —— yatori-python刷课系统 V3.0.9
 
 流程:
   1. 复制源码到隔离的 build_stage 目录(不动原始源码树)
@@ -11,7 +11,7 @@
   5. 对全部自研原生扩展计算 SHA-256 清单, 生成 _integrity_data.py
      (运行时由 utils/integrity.py 比对, 防篡改)
   6. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
-  7. 产物输出到 dist/yatori-python刷课系统V3.0.8.exe
+  7. 产物输出到 dist/yatori-python刷课系统V3.0.9.exe
 
 用法: python build_protected.py
 """
@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parent
 # 构建临时目录(可迁移): 目标盘空间不足时用环境变量 YATORI_BUILD_STAGE
 # 指向其他盘, 如 $env:YATORI_BUILD_STAGE="C:\yatori_build_stage" (输出仍回 ROOT/dist)
 STAGE = Path(os.environ.get("YATORI_BUILD_STAGE", str(ROOT / "build_stage")))
-APP_NAME = "yatori-python刷课系统V3.0.8"
+APP_NAME = "yatori-python刷课系统V3.0.9"
 PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
 ENTRY = "main.py"
 

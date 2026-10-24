@@ -240,11 +240,15 @@ class ConfigStore:
                     "coursesCustom": cfg.get("coursesCustom")
                     or cfg.get("courses_custom") or {},
                 }
-                for k in ("remarkName", "informEmails", "showdocSw",
-                          "showdocUrls", "isProxy"):
-                    if cfg.get(k):
-                        row[k] = cfg[k]
-                # 判重: 账号+平台(+url) 已存在则只补 uid, 不覆盖
+                # [V3.0.9] 全键迁移: 保留全部扩展字段(remarkName/informEmails/
+                # school/realName/stuNo/... 及未来任何键), 不再白名单丢失
+                for k, v in cfg.items():
+                    if k in ("accountType", "URL", "url", "account",
+                             "password", "coursesCustom", "courses_custom"):
+                        continue
+                    if v not in (None, "", [], {}):
+                        row[k] = v
+                # 判重: 账号+平台已存在→合并缺失扩展键(不覆盖已有值)+补uid
                 exist = None
                 for u in self._users():
                     if (isinstance(u, dict)
@@ -254,8 +258,19 @@ class ConfigStore:
                         exist = u
                         break
                 if exist is not None:
+                    merged = False
                     if not exist.get("uid"):
                         exist["uid"] = row["uid"]
+                        merged = True
+                    # 关键: 把旧库中的身份要素/扩展键补回(已有值不覆盖)
+                    for k, v in row.items():
+                        if k in ("uid", "accountType", "account", "password",
+                                 "url", "coursesCustom"):
+                            continue
+                        if v not in (None, "", [], {}) and not exist.get(k):
+                            exist[k] = v
+                            merged = True
+                    if merged:
                         changed = True
                         stats["migrated"] += 1
                     else:

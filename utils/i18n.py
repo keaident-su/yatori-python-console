@@ -38,8 +38,14 @@ def _current_lang() -> str:
     return "zh-CN"
 
 
+def _norm(lang: str) -> str:
+    """[MC 风格] 语言代码归一化: 小写下划线(zh_CN/zh-CN -> zh_cn)"""
+    return str(lang or "").strip().lower().replace("-", "_")
+
+
 def _load(lang: str) -> dict:
     now = time.time()
+    lang = _norm(lang)
     hit = _CACHE.get(lang)
     if hit and now - hit["ts"] < _TTL:
         return hit["data"]
@@ -55,20 +61,33 @@ def _load(lang: str) -> dict:
     return data
 
 
+def _lookup(d: dict, zh: str):
+    """兼容 MC 扁平包 与旧 {server,ui} 结构"""
+    if not isinstance(d, dict):
+        return None
+    v = d.get(zh)
+    if isinstance(v, str) and v:
+        return v
+    for sec in ("server", "ui"):
+        sub = d.get(sec)
+        if isinstance(sub, dict):
+            v = sub.get(zh)
+            if isinstance(v, str) and v:
+                return v
+    return None
+
+
 def srv_msg(zh: str, **fmt) -> str:
-    """中文原文 -> 当前语言译文(自动回退)"""
+    """中文原文 -> 当前语言译文(自动回退; 兼容 MC 扁平包)"""
     text = zh
     try:
-        lang = _current_lang()
-        if lang and lang != "zh-CN":
-            d = _load(lang)
-            v = (d.get("server") or {}).get(zh) or (d.get("ui") or {}).get(zh)
+        lang = _norm(_current_lang())
+        if lang and lang not in ("zh_cn", "zh"):
+            v = _lookup(_load(lang), zh)
             if v:
                 text = v
             else:
-                en = _load("en-US")
-                v = (en.get("server") or {}).get(
-                    zh) or (en.get("ui") or {}).get(zh)
+                v = _lookup(_load("en_us"), zh)
                 if v:
                     text = v
     except Exception:

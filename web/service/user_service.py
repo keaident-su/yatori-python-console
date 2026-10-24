@@ -117,10 +117,25 @@ def user_list_service() -> dict:
                 user_dict["includeCourses"] = []
                 user_dict["excludeCourses"] = []
             activity = global_var.get_user_activity(user.uid)
+            _running = False
             if activity is not None and hasattr(activity, 'is_running'):
                 user_dict["isRunning"] = activity.is_running
+                _running = bool(activity.is_running)
             else:
                 user_dict["isRunning"] = False
+            # [V3.1.1] 夜间休息状态(供 GUI/WP控制台/进度页 显示"休息中+预计恢复")
+            try:
+                from web.service import runtime_status as _rt_rs
+                _rs = _rt_rs.get(user.account) or {}
+                if _running and _rs.get("resting"):
+                    user_dict["resting"] = 1
+                    user_dict["restResumeHm"] = _rs.get("restResumeHm", "")
+                    user_dict["restStart"] = _rs.get("restStart", "")
+                    user_dict["restEnd"] = _rs.get("restEnd", "")
+                else:
+                    user_dict["resting"] = 0
+            except Exception:
+                user_dict["resting"] = 0
             res_user_list.append(user_dict)
 
         return Response(

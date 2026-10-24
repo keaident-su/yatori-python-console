@@ -73,16 +73,35 @@ def rest_wait_if_needed(account: str, cc, platform_name: str,
     if end_dt <= now:
         end_dt += datetime.timedelta(days=1)
     wait_s = int((end_dt - now).total_seconds())
+    # [V3.1.1] 夜间休息状态上报: 进度大屏/GUI 显示"夜间休息中 + 预计恢复时间"
+    _RT = None
+    try:
+        from web.service import runtime_status as _RT
+        _RT.update(account, stage="夜间休息",
+                   resting=1,
+                   restStart=str(getattr(cc, "rest_start", "") or ""),
+                   restEnd=str(getattr(cc, "rest_end", "") or ""),
+                   restResumeAt=int(end_dt.timestamp() * 1000),
+                   restResumeHm=end_dt.strftime("%H:%M"))
+    except Exception:
+        _RT = None
     log_print(INFO, f"[{platform_name}]",
               "[", Green, account, Default, "] ",
               Yellow,
               f"夜间休息中({cc.rest_start}-{cc.rest_end})，"
               f"暂停等待约{wait_s/3600:.1f}小时后自动继续...")
     # 分段睡眠(每15秒检查停止回调, 支持Web端随时"停止刷课")
+    _tick = 0
     while wait_s > 0:
         if stop_fn is not None:
             try:
                 if stop_fn():
+                    try:
+                        if _RT:
+                            _RT.update(account, resting=0, restResumeAt=0,
+                                       restResumeHm="", stage="已停止")
+                    except Exception:
+                        pass
                     log_print(INFO, f"[{platform_name}]",
                               "[", Green, account, Default, "] ",
                               Yellow, "休息等待期间收到停止请求，已退出")
@@ -92,6 +111,21 @@ def rest_wait_if_needed(account: str, cc, platform_name: str,
         chunk = min(15, wait_s)
         time.sleep(chunk)
         wait_s -= chunk
+        _tick += 1
+        # [V3.1.1] 每约60秒刷新一次恢复时间(保持状态新鲜)
+        if _RT is not None and _tick % 4 == 0:
+            try:
+                _RT.update(account, resting=1,
+                           restResumeAt=int(end_dt.timestamp() * 1000),
+                           restResumeHm=end_dt.strftime("%H:%M"))
+            except Exception:
+                pass
+    try:
+        if _RT:
+            _RT.update(account, resting=0, restResumeAt=0, restResumeHm="",
+                       stage="夜间休息结束，恢复刷课")
+    except Exception:
+        pass
     log_print(INFO, f"[{platform_name}]",
               "[", Green, account, Default, "] ",
               Green, "夜间休息结束，恢复刷课")

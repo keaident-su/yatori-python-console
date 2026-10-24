@@ -76,8 +76,11 @@ export default function Tasks() {
         const uid = String(a.uid || a.account);
         return <div key={uid} className="ycard p-4 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <span className={a.running ? 'ytag ytag-run' : 'ytag'}>
-                                    {a.running ? t("● 运行中") : t("○ 空闲")}
+                                <span className={a.running ? 'ytag ytag-run' : 'ytag'}
+                                    style={a.resting ? { background: '#fff7e6', color: '#ad6800', borderColor: '#ffe58f' } : undefined}>
+                                    {a.resting
+                                        ? ('🌙 ' + t("夜间休息") + (a.restResumeHm ? (' · ' + t("预计") + ' ' + a.restResumeHm + ' ' + t("自动恢复")) : ''))
+                                        : (a.running ? t("● 运行中") : t("○ 空闲"))}
                                 </span>
                                 <div>
                                     <div className="font-medium text-sm">{a.remarkName || a.account}</div>

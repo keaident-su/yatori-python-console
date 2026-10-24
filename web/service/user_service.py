@@ -3,6 +3,8 @@
 用户业务逻辑 - 对应 Go 项目的 UserService.go
 实现所有用户相关的业务处理
 """
+import yaml as _sync_yaml
+import os as _sync_os
 import json
 import os
 import time
@@ -169,6 +171,9 @@ def add_user_service(body: dict) -> dict:
         if err:
             return Response(code=400, message=err).to_dict()
 
+        # [2026-10-24] GUI/WP 新增账号后回写 config.yaml(双向同步)
+        _after_user_change()
+
         # ★ 2026-10-08 修复: 新增账号后清理同名残留缓存(防御性; 新uid理论无缓存)
         try:
             global_var.remove_user_activity(uid)
@@ -235,6 +240,9 @@ def delete_user_service(body: dict) -> dict:
                 global_var.remove_user_activity(uid)
             except Exception:
                 pass
+
+        # [2026-10-24] 删除账号后回写 config.yaml(双向同步)
+        _after_user_change()
 
         return Response(code=200, message="删除成功").to_dict()
     finally:
@@ -307,6 +315,9 @@ def update_user_service(body: dict) -> dict:
             global_var.remove_user_activity(uid)
         except Exception:
             pass
+        # [2026-10-24] 更新账号后回写 config.yaml(双向同步)
+        _after_user_change()
+
         return Response(code=200, message="更新成功").to_dict()
     finally:
         session.close()
@@ -859,3 +870,132 @@ def log_tail_service(lines: int = 200, date: str = "", account: str = "",
                     data={"lines": page, "date": log_id,
                           "order": "desc" if _desc else "asc",
                           "offset": offset, "hasMore": _has_more}).to_dict()
+
+
+# ==================== [2026-10-24] config.yaml <-> 数据库 双向同步 ====================
+# 规则(用户确认): 启动时 yaml 补漏导入 DB(账号+平台判重, DB 已有则保留);
+# GUI/WP 增删改后把 DB 全量回写 config.yaml(settings 段原样保留)。
+
+_CFG_YAML_PATH = "./config.yaml"
+_SYNC_GUARD = {"busy": False}
+
+
+def _yaml_user_to_body(u: dict) -> dict:
+    """config.yaml 的用户 dict -> add_user_service 的 body"""
+    body = {
+        "accountType": u.get("accountType") or u.get("account_type") or "",
+        "url": u.get("url") or "",
+        "account": u.get("account") or "",
+        "password": u.get("password") or "",
+    }
+    for k in ("remarkName", "informEmails", "showdocSw",
+              "showdocUrls", "isProxy", "coursesCustom"):
+        v = u.get(k)
+        if v not in (None, "", [], {}):
+            body[k] = v
+    return body
+
+
+def sync_yaml_users_to_db(path: str = None) -> dict:
+    """[2026-10-24] 启动补漏: config.yaml 有而 DB 没有的账号导入 DB(不覆盖已有)"""
+    p = path or _CFG_YAML_PATH
+    imported = skipped = 0
+    try:
+        if not _sync_os.path.exists(p):
+            return {"imported": 0, "skipped": 0, "reason": "no-yaml"}
+        with open(p, "r", encoding="utf-8") as f:
+            cfg = _sync_yaml.safe_load(f) or {}
+        users = cfg.get("users") or []
+        if not isinstance(users, list):
+            return {"imported": 0, "skipped": 0, "reason": "bad-users"}
+        _SYNC_GUARD["busy"] = True   # 防止 add 内回写循环
+        try:
+            for u in users:
+                if not isinstance(u, dict) or not u.get("account"):
+                    continue
+                at = u.get("accountType") or u.get("account_type") or ""
+                ac = u.get("account")
+                url = u.get("url") or ""
+                s = get_session()
+                try:
+                    ex = user_mapper.query_user(
+                        s, account_type=at, url=url, account=ac)
+                    if ex:
+                        skipped += 1
+                        continue
+                finally:
+                    s.close()
+                r = add_user_service(_yaml_user_to_body(u))
+                if isinstance(r, dict) and r.get("code") == 200:
+                    imported += 1
+                else:
+                    skipped += 1
+        finally:
+            _SYNC_GUARD["busy"] = False
+        return {"imported": imported, "skipped": skipped}
+    except Exception as e:
+        _SYNC_GUARD["busy"] = False
+        return {"imported": imported, "skipped": skipped, "error": repr(e)[:200]}
+
+
+def sync_db_users_to_yaml(path: str = None) -> dict:
+    """[2026-10-24] 把 DB 全量账号回写 config.yaml 的 users 段(settings 保留)"""
+    p = path or _CFG_YAML_PATH
+    try:
+        base = {}
+        if _sync_os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                base = _sync_yaml.safe_load(f) or {}
+        if not isinstance(base, dict):
+            base = {}
+        # 直接查库(不分页上限), 避免 user_list_service 的 50 条截断
+        s = get_session()
+        try:
+            users, _total = user_mapper.query_users(
+                s, page=1, page_size=100000)
+            rows = []
+            for u in users:
+                try:
+                    uc = json.loads(u.user_config_json or "{}")
+                    if not isinstance(uc, dict):
+                        uc = {}
+                except Exception:
+                    uc = {}
+                row = {
+                    "accountType": u.account_type,
+                    "url": u.url,
+                    "account": u.account,
+                    "password": u.password,
+                }
+                if uc.get("remarkName"):
+                    row["remarkName"] = uc["remarkName"]
+                if uc.get("informEmails"):
+                    row["informEmails"] = uc["informEmails"]
+                if uc.get("showdocSw"):
+                    row["showdocSw"] = uc["showdocSw"]
+                if uc.get("showdocUrls"):
+                    row["showdocUrls"] = uc["showdocUrls"]
+                if uc.get("isProxy"):
+                    row["isProxy"] = uc["isProxy"]
+                cc = uc.get("coursesCustom") or uc.get("courses_custom") or {}
+                row["coursesCustom"] = cc if isinstance(cc, dict) else {}
+                rows.append(row)
+        finally:
+            s.close()
+        base["users"] = rows
+        with open(p, "w", encoding="utf-8") as f:
+            _sync_yaml.dump(base, f, allow_unicode=True,
+                            default_flow_style=False, sort_keys=False)
+        return {"written": len(rows)}
+    except Exception as e:
+        return {"written": 0, "error": repr(e)[:200]}
+
+
+def _after_user_change() -> None:
+    """增/删/改账号成功后的回写钩子(带防递归/静默)"""
+    if _SYNC_GUARD.get("busy"):
+        return
+    try:
+        sync_db_users_to_yaml()
+    except Exception:
+        pass

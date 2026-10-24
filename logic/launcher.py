@@ -572,6 +572,18 @@ def run_gui():
     from dao.database import sqlite_init
     sqlite_init()
 
+    # [2026-10-24] 启动补漏: 把 config.yaml 中已存在但 DB 没有的账号导入 DB
+    # (账号+平台判重; DB 已有则保留不覆盖; GUI 后续增删改会回写 config.yaml)
+    try:
+        from web.service.user_service import sync_yaml_users_to_db
+        _sync_r = sync_yaml_users_to_db()
+        if _sync_r.get("imported"):
+            log_print(INFO, Green,
+                      f"[账号同步] config.yaml 补漏导入 {_sync_r['imported']} 个账号"
+                      f"(已存在跳过 {_sync_r.get('skipped', 0)})")
+    except Exception as _se:
+        log_print(INFO, Yellow, f"[账号同步] config.yaml 同步跳过: {_se}")
+
     try:
         import uvicorn  # noqa: F401
         from web.server import create_app

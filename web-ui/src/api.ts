@@ -19,9 +19,15 @@ export async function api<T = any>(path: string, opts: {
       signal: ctrl.signal,
     })
     const data = await res.json()
-    if (data.code !== 200) throw new Error(data.msg || ('HTTP ' + res.status))
+    if (data.code !== 200) throw new Error(data.msg || data.message || ('HTTP ' + res.status))
     // 统一解包: 返回 data 字段(各页面直接拿到业务数据)
-    return (data.data !== undefined ? data.data : data) as T
+    // [V3.1.2] 兑底: 若 data.data 内又是完整响应(code/message) 再解一层
+    let out = (data.data !== undefined ? data.data : data)
+    if (out && typeof out === 'object' && !Array.isArray(out)
+      && out.code === 200 && ('message' in out) && ('data' in out)) {
+      out = out.data
+    }
+    return out as T
   } finally {
     clearTimeout(timer)
   }

@@ -45,7 +45,7 @@ export default function Logs() {
                     <select className="yselect w-48" value={acct} onChange={e => setAcct(e.target.value)}>
                         <option value="">全部账号</option>
                         {accounts.map((a: any) => (
-                            <option key={String(a.uid || a.account)} value={String(a.uid || a.account)}>
+                            <option key={String(a.uid || a.account)} value={String(a.account || a.uid)}>
                                 {a.remarkName || a.account}
                             </option>
                         ))}

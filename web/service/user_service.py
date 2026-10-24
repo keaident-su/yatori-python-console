@@ -832,6 +832,34 @@ def log_tail_service(lines: int = 200, date: str = "", account: str = "",
         if "/" in safe or ".." in safe:
             return Response(code=400, message="非法账号名").to_dict()
         log_path = f"./assets/logs/accounts/{safe}/{log_id}.log"
+        # [V3.0.10] 兼容解析: 前端可能传 uid/账号/备注, 而目录名为"账号_备注"
+        # 先精确匹配, 再按 uid 映射为账号, 最后目录前缀匹配(取最新修改)
+        if not os.path.exists(log_path):
+            try:
+                _po = user_mapper.query_user(None, uid=safe)
+                if _po is not None and _po.account and _po.account != safe:
+                    alt = f"./assets/logs/accounts/{_po.account}/{log_id}.log"
+                    if os.path.exists(alt):
+                        log_path = alt
+                    else:
+                        safe = str(_po.account)
+            except Exception:
+                pass
+        if not os.path.exists(log_path):
+            try:
+                _base = "./assets/logs/accounts"
+                if os.path.isdir(_base):
+                    _cands = []
+                    for _d in os.listdir(_base):
+                        if _d == safe or _d.startswith(safe + "_"):
+                            _p = os.path.join(_base, _d, f"{log_id}.log")
+                            if os.path.exists(_p):
+                                _cands.append(_p)
+                    if _cands:
+                        log_path = max(
+                            _cands, key=lambda x: os.path.getmtime(x))
+            except Exception:
+                pass
     else:
         log_path = f"./assets/logs/{log_id}.log"
     if not os.path.exists(log_path):
@@ -871,7 +899,6 @@ def log_tail_service(lines: int = 200, date: str = "", account: str = "",
                     data={"lines": page, "date": log_id,
                           "order": "desc" if _desc else "asc",
                           "offset": offset, "hasMore": _has_more}).to_dict()
-
 
 
 # ==================== [2026-10-24 V3.0.8] config.yaml 单一事实源 ====================

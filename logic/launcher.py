@@ -572,6 +572,40 @@ def run_gui():
     from dao.database import sqlite_init
     sqlite_init()
 
+    # [2026-10-24 V3.0.10] GUI模式补日志初始化(与控制台模式一致):
+    # 之前 log_init 只在 lunch() 里调用 → GUI 下 _file_logger 未初始化,
+    # 导致全局 {日期}.log 与账号独立日志 accounts/{账号_备注}/{日期}.log 全不写。
+    # 此处补调后: 日志中心"全部账号/指定账号"双视图均可用。
+    _log_ok = False
+    try:
+        from utils.log import log_init, string_to_log_level
+        if os.path.exists("./config.yaml"):
+            from config.config import read_config
+            _cfg = read_config("./config.yaml")
+            _bs2 = _cfg.setting.basic_setting
+            log_init(
+                level=string_to_log_level(_bs2.log_level),
+                log_file_sw=(_bs2.log_out_file_sw == 1),
+                color_log=(_bs2.color_log == 1),
+                log_dir=os.path.join("assets", "logs")
+            )
+            _log_ok = True
+    except BaseException as _le:   # SystemExit 也捕获: read_config 异常不得拖垮 GUI
+        try:
+            log_print(INFO, Yellow, f"[日志] GUI文件日志初始化跳过: {_le}")
+        except Exception:
+            pass
+
+    # [V3.0.10] 降噪: 文件日志就绪后, 日常 print 不再堆积到 gui_console
+    # (仅保留启动期输出与 stderr 异常) -> 磁盘最省、gui_console 干净
+    if _log_ok:
+        try:
+            import sys as _sys2
+            _sys2.stdout = open(
+                os.devnull, "w", encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     # [2026-10-24] 启动补漏: 把 config.yaml 中已存在但 DB 没有的账号导入 DB
     # (账号+平台判重; DB 已有则保留不覆盖; GUI 后续增删改会回写 config.yaml)
     try:

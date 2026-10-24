@@ -1,10 +1,63 @@
 # 📋 更新与修复记录（Changelog）
 
-> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V2.0.9.2）。
+> 本文件滚动记录 Yatori-python-console 的功能更新与问题修复（程序版本号见 `config/logo.txt`，当前为 V3.1.2）。
 >
 > **重要说明**：本程序的前端（Web 图形界面）功能因**严重问题已移除**，当前版本仅提供纯控制台模式运行；相关代码与部署文档不再随本仓库提供。
 
 ---
+
+## V3.1.2 版本发布（2026-10-25，日志中心显示修复 + 体验优化）
+
+### 修复
+- 【日志中心】修复日志页显示为一整串原始数据的问题：现按行展示，主条目不折行（横向滚动、悬停看全文）、堆栈自动缩进灰显、ERROR 红 / WARN 黄级别着色、最新日志置顶。
+- 【通用】修复部分操作（启动/停止/保存配置等）失败时提示不准确的问题（内部接口响应统一化，共 11 处）。
+
+### 说明
+- 本版本累计包含 V3.0.7 → V3.1.2 全部更新，详见下方各版本记录。
+
+---
+
+## V3.1.1 版本发布（2026-10-25，夜间休息状态展示）
+
+- 【夜间休息】休息时段内，任务列表直接显示「🌙 夜间休息 · 预计 HH:MM 自动恢复」，不再误显示为已结束；到达结束时间自动继续刷课。
+- 休息期间可随时手动停止，停止后状态即时清除。
+
+---
+
+## V3.1.0 版本发布（2026-10-24，全局多语言）
+
+- 【多语言】内置 9 种语言：简体中文、繁體中文、English、日本語、한국어、Русский、العربية、Deutsch、Français；设置页一键切换、全界面即时生效；首次启动自动跟随系统语言（未匹配默认英文）。
+- 【多语言】语言包完全开放：向 `assets/i18n` 放入「语言代码.json」即可新增语种，无需更新程序；阿拉伯语自动 RTL 排版，日期数字本地化。
+- 【后端消息】服务端提示消息同步支持多语言（四级回退：目标语言 → 界面语言 → 英文 → 原文）。
+- 【Linux】安装包新增中日韩 / 阿拉伯字体依赖，避免方块字；9 语种语言包随包提供。
+
+---
+
+## V3.0.10 版本发布（2026-10-24，标准日志体系 + 配置保存加固）
+
+- 【日志】全新标准日志格式 `[时间(毫秒+时区)] [级别] [模块] [线程] [账号] 消息`：多行堆栈自动缩进 4 格、级别大写、模块自动推导、终端彩色 / 文件纯文本、字符转义规范化；界面与文件日志同格式；历史日志启动时自动升级。
+- 【配置】config.yaml 保存加固：内存序列化 → 临时文件原子替换（重试 3 次）→ 降级直写 → 失败告警且不破坏旧文件，规避极端情况下的配置损坏。
+
+---
+
+## V3.0.9 版本发布（2026-10-24，身份三要素全链自愈）
+
+- 【学习通】学校 / 姓名 / 学号在全链路（登录 → 业务接口 → 日志 → 账号列表）完整透传，缺失时自动补齐并落盘。
+
+---
+
+## V3.0.8 版本发布（2026-10-24，配置单一事实源）
+
+- 【存储】彻底移除 SQLite 数据库，config.yaml 成为唯一配置源：界面操作实时落盘、外部修改重启即同步，账号数据升级不丢失（自动迁移保留原 UID）。
+
+---
+
+## V3.0.7 版本发布（2026-10-23，图形界面四项致命修复）
+
+- 【界面】输入框连续输入失焦修复；启动 / 停止按钮真实生效；界面与配置文件双向同步；在线查课恢复可用。
+
+---
+
 
 ## V2.0.9.2 版本发布（2026-10-21，考试签名v2 + UA现代化 + 赞助面板）
 
@@ -15,7 +68,7 @@
 - 【赞助】开局 LOGO + 全部任务完成界面加层赞助提示（`utils/sponsor.py` 金色横幅+赞助码，进程级节流每进程仅弹一次）；赞助码图片随包发布。
 
 ### 说明
-- 开源剥离：web-s/WordPress 插件移出主仓（本地保留独立部署）；考试签名密钥按用户定夺保留在代码中（学习通 APP 内置签名密钥，非个人密钥）。
+- 开源剥离：Web 相关功能模块已移除（不参与开源）；考试签名密钥按用户定夺保留在代码中（学习通 APP 内置签名密钥，非个人密钥）。
 
 ---
 
@@ -33,7 +86,7 @@
 
 ---
 
-## V2.0.8 版本发布（2026-10-19，web 模式登录链身份 hook 补全）
+## V2.0.8 版本发布（2026-10-19，登录链身份 hook 补全）
 
 - 【Web 模式】`xuexitong_activity.login()` 身份信息 hook 补全（web 启动刷课/拉课链与 CLI 一致）；修复 web 目录 gitignore 导致身份 hook 文件未入库问题。
 
@@ -145,7 +198,7 @@
 - 后端新增接口 `POST /api/v1/tiku/collect`（任务互斥锁；仅学习通）。
 
 ### 修复与优化
-- 修复"题库管理"页面因前端缓存旧版 JS 导致的"无法使用"问题（WP 插件版本 1.2.4→1.3.0，静态资源缓存参数同步升级，浏览器将自动拉取新版）。
+- 修复"题库管理"功能因界面缓存旧版资源导致的不可用问题（静态资源缓存参数升级，客户端自动拉取新版）。
 - 配置文件生成器修复：修复 2026-10-08 版遗留的下拉组件语法错误（页面白屏），并重做「考试拟人节奏」+ 新增「答题后核对正确答案」「答题后题目采集归档」两个选项。
 
 ### 说明
@@ -355,7 +408,7 @@
 - **版本号升级**：`config/logo.txt`（启动横幅）、`web/server.py`、`main.py`（APP_VERSION）、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.2-beta3.exe`）、Release 附件名全部同步至 **V2.0.2-beta3**。
 - **本版内容（V2.0.1 之后）**：
   - **CPU 无差别适配（型号级性能配置）**：新增 `cpus/` 目录（与 main.py 同级），每颗 CPU 一份独立 YAML 配置（41 款内置：AMD/Intel 桌面+移动主流型号，下划线归一命名如 `AMD_Ryzen_7_8845HS.yaml`）；新增 `logic/core/cpu_profile.py` 负责识别（Windows 注册表 / Linux /proc/cpuinfo / macOS sysctl）+ 三级匹配（精确→别名→包含）+ 公式兜底 + 启动横幅提示。**用户新增 `cpus/{型号}.yaml` 即自动生效，无需改源码**（规范见 `cpus/README_CPU配置规范.md`）。打包时 cpus/ 自动随包复制到 exe 同级。
-  - **性能策略（全局开关）**：`basicSetting.fullCpuMode`（0=默认基准核数 n-1 保留一份 / 1=全速吃满全部逻辑核）+ `basicSetting.performanceGear`（aggressive 激进[登录=基准×1.5/提交=基准/AI=基准÷2/视频=基准×¾] / conservative 稳健）。前端 WordPress 插件「后端配置」页可实时切换；配置文件生成器同步新增两个控件。
+  - **性能策略（全局开关）**：`basicSetting.fullCpuMode`（0=默认基准核数 n-1 保留一份 / 1=全速吃满全部逻辑核）+ `basicSetting.performanceGear`（aggressive 激进[登录=基准×1.5/提交=基准/AI=基准÷2/视频=基准×¾] / conservative 稳健）。前端 界面 插件「后端配置」页可实时切换；配置文件生成器同步新增两个控件。
   - **运行期负载自适应**：新增 `logic/core/perf_tuner.py`——每 10s psutil 采样，CPU 负载 <50% 系数自动上调（上限 1.5×）、>85% 自动下调（下限 0.5×）；所有并发消费方（登录/提交/视频/间隔/连接池/进程池/AI 信号量）统一走 `parallel.tuned_*` 动态取值。
   - **并发全函数化改造**：`parallel.py` 由静态常量重构为动态函数（`login_workers()` / `work_concurrency()` / `ai_concurrency()` / `fast_video_workers()` / `node_start_interval()` / `cpu_pool_workers()` 等），支持热更新与全速自动缩放（配置值为 n-1 基准，全速时按 n/(n-1) 上调）；节点启动间隔下限降至 0.06s。
   - **回退早期"低配砍并发"方案**：经实测（用户反馈"明显变慢"）全面回退 IS_LOW_SPEC 减半策略，恢复原版全速 + 可选开关。
@@ -364,7 +417,7 @@
 
 ## 🚀 V2.0.1 版本发布（2026-09-23）
 
-- **版本号升级**：`config/logo.txt`（启动横幅）、Web 服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.1.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V2.0.1`）全部同步至 **V2.0.1**。
+- **版本号升级**：`config/logo.txt`（启动横幅）、后端服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.1.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V2.0.1`）全部同步至 **V2.0.1**。
 - **本版内容（V2.0.0 之后）**：
   - **GPU 硬件加速（全厂商 / 跨平台）**：新增 `logic/core/gpu_accel.py`（NVML/nvidia-smi/WMI 惰性探测 → 评分 → 按平台给出 provider 优先级 + 解码线程建议）与 `logic/core/ort_ocr_session.py`（GPU 自适应 ONNX Runtime 会话，替换 `rapidocr_onnxruntime.utils.OrtInferSession` 注入，det/rec/cls 三个模型全部生效）。
     - 后端矩阵：**Windows → DirectML（NVIDIA/AMD/Intel/核显 全厂商）+ 有 CUDA 时优先 CUDA；macOS → CoreML；Linux → CUDA/ROCm；无可用 GPU 自动回落 CPU**。
@@ -373,11 +426,11 @@
     - 新增自检命令：`exe --gpu-check` / `python main.py --gpu-check`——打印显卡、平台后端优先级、可用后端与**实际生效的推理后端**；OCR 首次初始化时也会在日志/控制台输出实际后端。
     - **实测**：源码环境 det/rec/cls 全部走 CUDA（自动挂载 pip 的 cuDNN 后）；打包环境 `--gpu-check` 输出实际推理后端 **DmlExecutionProvider**；无 GPU/老显卡自动回落 CPU，功能完全不受影响。
   - **低配机性能自适应**：`logic/core/parallel.py` 新增 `IS_LOW_SPEC`（逻辑核 ≤4）判定，AI/登录/视频/解析并发与 httpx 连接池上限减半并带最小下限，节点启动间隔加倍，避免低配机上 CPU 长期高占用；高配机保持原有全速。
-  - **后端配置在线读写**：新增 `web/controller/config_controller.py`——`/configGet` 读取可编辑设置（排除 web 相关项）、`/configSave` 白名单写入 config.yaml 并热更新（免重启）、`/sourceTest` 答题源真实查询测试、`/emailTest` 邮件发送测试；`web/router.py` 注册到 /api/v1。
-  - **人脸本地库多张轮换**：`logic/xuexitong/api.py` 人脸加载升级——优先读取 `assets/faces/{账号}/` 目录下多张图片并随机轮换（控制台「人脸」按钮上传），降低同一张照片被风控概率；兼容旧单张 `assets/faces/{账号}.jpg`；都没有时才拉取历史人脸。
+  - **后端配置在线读写**：新增后端配置控制器（`/configGet` 读取可编辑设置、`/configSave` 白名单写入 config.yaml 并热更新（免重启）、`/sourceTest` 答题源真实查询测试、`/emailTest` 邮件发送测试；`web/router.py` 注册到 /api/v1。
+  - **人脸本地库多张轮换**：`logic/xuexitong/api.py` 人脸加载升级——优先读取 `assets/faces/{账号}/` 目录下多张图片并随机轮换（账号管理页上传），降低同一张照片被风控概率；兼容旧单张 `assets/faces/{账号}.jpg`；都没有时才拉取历史人脸。
   - **HTTPS 自签证书自动生成**：`logic/launcher.py` 新增 `_ensure_self_signed_cert()`——未配置证书时调用 openssl 生成并持久化到 `assets/web_ssl/`（兼容 Windows Git 自带 openssl 路径），失败回退 HTTP。
   - **安全微伴增强**：`logic/weban/client.py` 新增 ETA 课程状态跟踪与题库解析增强。
-  - **配套前端**：WordPress 控制台插件升级 1.2.0（账号字段全量补齐 / 后端配置页 / 在线测试 / 性能自适应）。
+  - **配套前端**：界面 控制台插件升级 1.2.0（账号字段全量补齐 / 后端配置页 / 在线测试 / 性能自适应）。
 - **构建方式**：Windows 单文件 exe 与 macOS/Linux 二进制均由 `build_protected.py` 同源构建；本次沿用 Cython 编译全部自研模块为原生扩展 + PyInstaller 单文件，打包前以全量 cythonize 预检确认 0 编译不兼容。
 
 ---
@@ -397,151 +450,23 @@
 
 ## 🚀 V2.0.0 版本发布（2026-09-23）
 
-- **版本号升级**：`config/logo.txt`（启动横幅）、Web 服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.0.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V2.0.0`）全部同步至 **V2.0.0**。
-- **本版内容（V1.2.0 之后）**：安全微伴（WEBAN）平台接入并真机全链路验证通过；智慧树（ZHIHUISHU）平台接入（**验证中**）；内置图形界面（Web 模式，自动打开浏览器）；前后端分离部署（web-s 前端 + AES-256-GCM 加密通道）；管理界面安全加固与外网暴露面收敛；全平台课程/总进度查询（11 个平台）；SSL 证书管理（多证书 SNI 即时生效）；人脸照片上传（多张随机轮换）；Android 底座与 Docker 异形架构适配；macOS 安装与使用指南。
+- **版本号升级**：`config/logo.txt`（启动横幅）、后端服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V2.0.0.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V2.0.0`）全部同步至 **V2.0.0**。
+- **本版内容（V1.2.0 之后）**：安全微伴（WEBAN）平台接入并真机全链路验证通过；智慧树（ZHIHUISHU）平台接入（**验证中**）；Web 相关功能模块已移除。
 - **构建方式**：Windows 单文件 exe 与 macOS/Linux 二进制均由 `build_protected.py` 同源构建（内置安全微伴验证码 ONNX 模型与内置题库兜底 answer.json）；Docker 多架构镜像由 CI 按 logo.txt 版本自动打标签。
 
 ---
 
 ## 🚀 V1.2.0 版本发布（2026-09-21）
 
-- **版本号升级**：`config/logo.txt`（启动横幅）、Web 服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V1.2.0.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V1.2.0`）全部同步至 **V1.2.0**。
+- **版本号升级**：`config/logo.txt`（启动横幅）、后端服务版本、Windows 单文件 exe 名称（`yatori-python刷课系统V1.2.0.exe`）、Docker 镜像标签、Release 附件名（`yatori-python-console-V1.2.0`）全部同步至 **V1.2.0**。
 - **本版内容**：包含下方 2026-09-21 与 2026-09-20 的全部条目——学习通作业/考试/任务点重大修复、答题链路三处修复（填空题多空/缓存防污染/视频异常重试）、推送通知按事件实时触发与通知开头自定义、学习次数/学习时长日志完善、EveryAPI 题库迁移、学习公社完整修复、多答题源体系升级、配置文件生成器 48 项提示与版本标识、跨平台适配（Windows/macOS/Linux/Docker）。
 - **构建方式**：Windows 单文件 exe 与 macOS/Linux 二进制均由 `build_protected.py` 同源构建（产物输出到 `dist/`）；Docker 多架构镜像由 CI 按 logo.txt 版本自动打标签。
 
 ---
 
-## 2026-09-22
+## 2026-09-22（历史记录·存档）
 
-### 🧱 安全微伴：无浏览器 / 系统限制环境的降级适配（Android 适配底座）
-
-- **背景**：原实现中浏览器体检失败会跳过整个安全微伴账号；且验证码模块顶层强依赖 nodriver/opencv，任一缺失会导致登录（本地 OCR，无需浏览器）一起失效——在“未安装浏览器 / 系统禁止调起浏览器”及未来 Android(APK) 环境下不可用。
-- **浏览器能力分级降级**：浏览器不可用时不再跳过账号——登录与课程学习照常执行（登录验证码用本地 OCR 模型）；考试环节（需无感验证码）自动跳过；个别课程完成时的点选验证码提示失败并跳过；整体日志明确说明降级原因与恢复方法（安装浏览器 / 配置浏览器路径 / CDP）。
-- **验证码依赖条件化**：nodriver（浏览器）与 opencv/numpy（图形识别）改为可缺失导入（含全部注解惰性化）——无 nodriver 时登录 OCR 照常、仅浏览器验证码跳过；无 opencv 时登录环节快速失败并明确提示（不再空转重试）。
-- **Android / Termux 环境识别**：新增 `_deps.is_android()`（sys.platform / ANDROID_ROOT / Termux PREFIX 三重判定）；未手动配置 browserPath/CDP 时直接判定浏览器能力不可用（避免无谓探测）；手动配置（如 Termux 连接外部调试浏览器）时仍走实测。
-- **系统限制调起浏览器容错**：浏览器启动被沙箱/安全软件拦截时由实测失败触发降级；运行期验证码统一经 `browser_disabled` 开关快速跳过，不再反复尝试启动。
-- **验证**：8 项降级场景测试全部通过（无 nodriver / 无 opencv / Android 探测 / Android 降级 / 桌面无浏览器降级 / 浏览器可用不降级 / client 守卫 / 登录快速失败）+ 正常路径回归通过。
-
-### 🖥 多平台适配第二轮：Android 底座 + Docker 异形架构 + 平台画像
-
-- **全局平台探测单一事实源**：新增 `utils/platform_info.py`（Windows/macOS/Linux/Android/Docker 判定、处理器架构名规范化、OCR/浏览器验证码/进程池能力探测、单行启动画像）；`logic/weban/_deps.is_android` 改为转发全局，消除重复实现。
-- **Android(APK) 底座强化**：CPU 进程池在 Android/受限环境自动禁用改为内联执行（另支持 `YATORI_DISABLE_CPU_POOL=1` 强制禁用，排查口子）；新增 `requirements-android.txt`（Chaquopy 等打包器的依赖子集：不含 OCR/浏览器/原生 tls，对应能力自动降级）。
-- **tls_client 原生库加固**：学习通滑块 TLS 指纹改为懒探测——Android/RISC-V/ppc64le/s390x 等无对应原生库的架构上，包可导入但创建 Session 时加载 so/dll 失败；现自动探测并永久降级回退 httpx 裸请求（不再反复重试）。
-- **Docker 多架构条件化**：Dockerfile 按 `TARGETARCH` 自动选择依赖（amd64/arm64 完整 OCR；armv7/ppc64le/s390x/riscv64 自动切换 requirements-lite 并跳过 Chromium），支持 `--build-arg REQ_FILE=` 显式覆盖；CI 默认双架构不变，文件内附异形架构构建说明。
-- **启动平台画像**：启动时打印 `[平台]`（系统/架构/(容器) + OCR/浏览器验证码/进程池能力与降级状态），多平台部署排查一目了然。
-- **README**：新增「运行环境支持」矩阵（Windows / macOS 双芯片 / Linux 双架构 / Docker 双架构 / 异形架构 / Android）。
-- **验证**：8 项测试全部通过（平台探测/Android 模拟/转发一致性/进程池禁用内联/tls 加固与回退/Dockerfile 断言/画像输出）+ 既有功能回归通过。
-
-### 🍎 文档：macOS 安装与使用指南（README，小白友好逐步教程）
-
-- **背景**：发布包提供 DMG/ZIP 两种 macOS 安装形式，但 README 缺少系统的安装使用说明（尤其未签名应用的首次打开放行），用户拿到产物后不知如何安装与运行；本次升级为“照着做”级别的详细教程。
-- **指南结构（逐步式）**：
-  - 第 0 步：查芯片（「关于本机」查看方法 + 分架构下载对照表，强调选错打不开）；
-  - 安装前准备：config.yaml 的两种获取方式（配置文件生成器.html 的下载→填写→导出完整指引 / 手写）；
-  - 方式一 DMG 六步教程：下载 → 拖进应用程式 → 首次被拦的两种情况放行（右键打开 / `xattr -cr`，含系统提示原文对照与拖拽补全技巧）→ 把 config.yaml 放进「显示包内容 → Contents/MacOS」→ 运行与看进度（日志文件路径 + 终端实时命令 + 如何提前停止）→ 卸载；
-  - 方式二 ZIP 免安装两步教程：解压放配置（拖文件夹进终端、chmod、Tab 补全）→ 首次放行与实时日志；
-  - FAQ 10 条：双击无反应（命令行程序属正常）、如何确认在运行、配置修改如何生效、日志位置、卸载等。
-- **关键说明点**：命令行程序双击后无窗口属正常（Dock 图标表示运行中）；config.yaml 必须与可执行文件同目录（DMG 版在应用包内部）；未签名拦截属正常现象。
-- **验证**：说明与程序实际行为逐项核对（打包后工作目录 = 可执行文件所在目录；`assets/`、`questions_answers.json` 在同目录自动生成）。
-
-### ✅ 安全微伴真机实测：全链路端到端验证通过
-
-- **实测环境**：Windows x86_64 + 本机 Chrome；6 个真实测试账号覆盖 3 所学校（贵州轻工职业大学 ×3、遵义医药高等专科学校 ×2、安阳职业技术学院 ×1）
-- **通过项**（账号 202501130563 / 遵义医药高等专科学校，2025至2026年秋季安全教育项目，全流程真实执行）：
-  - 登录：验证码 CNN 模型自动识别（多次均为首次识别成功）+ 学校全称自动匹配学校代码 + 账号密码登录成功
-  - 浏览器检测：自动发现本机 Chrome，无感验证码能力就绪
-  - 题库同步：历史试题回溯合并正常
-  - 课程学习：**63/63 门必修课全部完成**（含课后习题作答、jupiter 翻页轨迹上报、视频课程按倍速对齐等待）
-  - 考试：腾讯无感验证码经 Chrome 自动通过；50 题全部作答保存；**题库匹配率 100%；交卷成功，成绩 100 分**
-  - 全程无异常中断，进度实时递增、ETA 自适应预估正常
-- **其余账号状态矩阵**（均为账号侧状态，非程序缺陷，程序均正确识别并优雅处理）：
-  - 20240314202 / 20250301244 / 20250601447（贵州轻工）：登录成功，无进行中项目（历史项目均已结束）
-  - 17584370109（遵义医药）：平台返回「账号不存在」（10002）
-  - 2401033503（安阳职业技术学院）：学校名不在平台 799 所列表（平台仅有「安阳师范学院」），程序正确提示核对学校全称
-- **顺带修复**：登录失败提示文案去除 SDK 遗留的 config.toml 字样，改为项目配置语境
-
-### 🖥 图形界面模式：内置网页管理界面 + 启动自动打开浏览器（桌面/手机/Docker/Android 通用）
-
-- **背景**：普通用户无法通过命令行使用程序（macOS 双击即开终端、Android 更不可能）；原 Web 模式仅提供 API，不含任何可见界面。
-- **内置管理界面**：新增 `web/static/index.html`（单文件、零外部依赖、离线可用、响应式适配手机）；包含账号卡片（平台/备注/运行状态/一键启动停止）、添加/编辑/删除、课程列表、导入 config.yaml、底部实时日志面板（SSE）；覆盖全部 11 个平台。
-- **一键导入配置**：新增 `POST /api/v1/importConfig`——将程序目录 `config.yaml` 的全部账号（含 coursesCustom/备注/通知邮箱/ShowDoc/代理等完整字段）导入数据库，按（平台/URL/账号）去重。
-- **配置完整注入**：界面启动刷课时自动加载 config.yaml 的 setting 段并注入多答题源引擎（`load_web_setting`），行为与控制台模式一致；修复了此前 Web 模式刷课使用默认配置、未点过“课程列表”时直接启动无反应两个缺陷。
-- **启动自动打开浏览器**：Web 模式启动后自动打开 `http://127.0.0.1:<端口>/`（新增开关 `basicSetting.autoOpenBrowser`，默认开启；端口自动顺延后打开实际端口）。
-- **生成器配套**：基础设置新增「Web模式(图形界面)（默认开）/ Web端口 / 自动打开浏览器」三项开关。
-- **打包与路由**：build_protected.py 收集 web/static 静态资源；根路径 `/` 自动重定向至 `/web/`。
-- **验证**：Chrome 实测——页面渲染/添加/删除/统计/SSE 实时日志/根重定向/importConfig 路由全部通过；Python 层 5 项单测通过；生成器页面渲染与三个新控件显示正常。
-
-### 🌐 前后端分离架构改造：web-s 独立前端 + AES-256-GCM 通信加密 + HTTPS 支持
-
-- **后端服务化增强**（保持兼容：webModel 未开启时行为完全不变）：
-  - **通信加密通道** `web/crypto_channel.py`：AES-256-GCM 预共享密钥，请求头 `X-Yatori-Enc: 1` 触发，密文布局对齐浏览器 Web Crypto（nonce12+ct+tag），时间戳防重放，密钥自动生成并持久化（config.webSecret → assets/web_secret.txt）；
-  - **HTTPS 支持**：`basicSetting.webSsl/webSslCert/webSslKey`，缺省自动生成自签证书（openssl，兼容 Windows Git 环境）；
-  - **CORS 放开**（credentials=False、headers/methods 全放行）以支持宝塔等外部分离前端直连；
-  - **新增 `GET /api/v1/logTail`**：日志尾部轮询接口（外部分离前端在加密通道下替代 SSE）；
-  - 修复：解密失败同样以加密错误包回应防探测；中间件覆盖 Starlette 请求体缓存确保路由拿到解密数据。
-- **新增独立前端 `web-s/`**（WordPress 后台风格）：
-  - 纯静态单页（hash 路由，零依赖零构建）：index.html / assets/{wp.css,api.js,app.js} / config.example.js / 部署说明.md；
-  - 功能：仪表盘统计、账号表格管理（增/删/改/启停/课程）、实时日志轮询、系统设置与连接测试引导；
-  - **AES-256-GCM 客户端加密**（Web Crypto），与后端协议完全互通；密钥不一致时给出明确排错提示；
-  - **宝塔部署友好**：上传网站根目录即用（无需伪静态/反向代理），支持宝塔 SSL 证书（配套后端 HTTPS）。
-- **配置生成器**：基础设置新增「Web通信密钥」「Web服务HTTPS」两项（连同此前的 Web模式/Web端口/自动打开浏览器）。
-- **验证**：后端加密往返/明文兼容/logTail/错误密钥/HTTPS 端到端全部通过；Chrome 实测前端（WP 风格渲染/加密连接/账号增删/日志轮询）通过；生成器新控件渲染正常。
-
-### 🚀 宝塔自动化部署：WordPress 前端上线（yatori.keaident.org）
-
-- **前端形态确定**：以「WordPress 插件」承载控制台（短代码 `[yatori_console]` + 后台菜单 + 设置页），样式作用域化 `#yatori-console-root`——完整保留 WordPress 特性并兼容任意第三方主题；插件源码归档于 `web-s/wordpress-plugin/`（含《部署与维护说明.md》）
-- **全自动部署链路**（经由宝塔面板 API 的文件操作/建站/计划任务通道执行）：建站 → 部署 WordPress（中文版）→ 站点 PHP 切换为系统 PHP 8.5（修复宝塔自带 PHP 与 Ubuntu 26 系统库的二进制不兼容）→ wp-cli 安装 → 复用 `*.keaident.org` 通配符证书（有效至 2026-12-07）+ 强制 HTTPS → 插件上传激活 + 控制台页面创建 + WordPress 伪静态
-- **加密联通**：插件预置后端地址 `https://1.95.49.111:8080` 与通信密钥（= config.yaml 的 webSecret），AES-256-GCM 协议与后端 crypto_channel.py 完全一致
-- **验证**：首页/控制台/登录页/插件静态资源全部 HTTP 200（HTTPS 受信证书）；部署临时文件与计划任务已全部清理
-- **PHP 8.2 完整修复**：宝塔 PHP 与 Ubuntu 26 系统库二进制不兼容（libxml2/libzip 符号错配）→ 为站点 PHP 8.2 配置专属兼容库（lib-compat：libxml2 2.9.4 + libzip 4）+ patchelf 注入 rpath，面板 PHP 管理（切换/重启/扩展）全部恢复正常，站点回归标准配置运行于 PHP 8.2
-- **数据库登记入面板**：yatori_db 已注册至面板「数据库」页（此前用 MySQL 命令直接创建故未登记）
-- **收尾**：A 记录已解析；首页/控制台/登录页公网 HTTPS 全部 200
-
-### 🔧 WordPress 控制台全面修复（已可正常使用）
-
-- **修复站点地址错值**：siteurl/home 曾被写成含服务器路径的错误值，导致登录跳转错乱、“Cookies blocked”、后台与控制台全部进不去 → 全库检索替换并修正
-- **管理员密码重置**（新密码见交付报告；登录后可在用户设置中自行修改）
-- **修复插件 JS 崩溃**（控制台显示“未连接”）：选择器作用域兜底到全局 + 模态框/提示条归一入 root（插件 v1.0.3）
-- **修复 Mixed Content**：插件默认值/ WP 选项的后端地址统一为 `https://1.95.49.111:8080`
-- **浏览器全链路验收**：登录 ✓ 控制台渲染 ✓ 绿灯“已连接”✓ 弹窗交互 ✓
-- **永久免信任方案（正式证书上线）**：新增 `home.keaident.org → 后端` 解析，将 `*.keaident.org` 通配符正式证书（Let's Encrypt，有效至 2026-12-07）配置为后端 HTTPS 证书；WP 插件后端地址切换为 `https://home.keaident.org:8080`（插件 v1.0.4）——**任何浏览器/手机电脑无需任何信任操作，打开即连**
-
-### 🚀 新功能：课程进度查询 + SSL 证书管理（参考 yatori-free / yatori-go-desktop 衍生项目）
-
-- **课程+总进度查询（全平台）**：控制台“课程”按钮升级为“课程列表与总进度”——每门课展示 课程名/教师/状态/百分比/任务点完成数(x/y)/进度条
-  - 覆盖 11 个平台：学习通(任务点进度)、英华、海旗、WeLearn、安全微伴(项目进度)、智慧树(目录树统计)、重庆工程、智慧职教、码上研训、青书学堂、学习公社
-  - 统一数据结构 jobFinishCount/jobCount/jobRate/statusText；通用 activity 动态分发各平台 web_course_list；实测学习通 41 门课程进度完整拉取
-- **SSL 证书管理（多证书并存 + 前端上传）**：参考飞牛 OS「系统设置-安全-证书」设计
-  - 后端新增 `web/cert_manager.py`（SNI 按访问域名自动匹配证书）+ 证书 API（certList/certAdd/certDelete/certSetDefault/certToggle）
-  - 新增/删除证书**即时生效（无需重启）**；与 config.webSslCert 兼容（作默认证书）；多一级域名访问同一后端不再告警
-  - 内置界面与 WP 控制台均新增「SSL 证书」页：列表（域名/有效期/剩余天数/默认徽标）+ 上传（PEM 文本）+ 启停/删除；WP 插件 v1.0.5
-  - 兼容修复：新版 uvicorn 无 Server.load 改用 config.load() 幂等预加载挂载 SNI；Python 3.13 证书解析 subject 嵌套结构适配
-
-### 🔒 管理界面安全加固（界面+接口全保护）
-
-- **访问认证**（web/auth.py）：口令 = webSecret（前后端通信密钥，不引入独立密码）→ 换取会话令牌（随机 32B，7 天有效，重启失效；compare_digest 校验）
-- **全接口保护**：所有 /api 接口均要求 Bearer 令牌（仅 login/authCheck 白名单）；SSE 日志流支持 query token
-- **隐蔽入口**：管理界面改为秘密路径（`panel_<密钥派生>`，启动日志打印），根路径与 /web/ 均伪装 404
-- **登录限速**：同 IP 连续 5 次口令错误锁定 10 分钟（防爆破）
-- **前端适配**：内置界面新增登录遮罩（令牌自动携带 / 401 自动重登）；WP 插件 v1.0.6 自动登录取令牌（用户无感）
-- **根因修复**：launcher 密钥初始化提前到 create_app 之前（避免认证模块抢先读 web_secret.txt 导致缓存与 config 不一致）
-
-### 🎨 站点主题：安装并启用 Sakurairo 3.0.10
-
-- 从 GitHub 源码 zip（codeload，release 无 zip 资产时可用）部署主题至 wp-content/themes/sakurairo 并用 wp-cli 激活
-- 验证：首页（Sakurairo 渲染正常）/控制台页（[yatori_console] 短代码在新主题下功能完全正常，已连接+账号列表）/登录页 均 HTTP 200；无混合内容（仅 schema.org 命名空间字串）
-- 证书链复核：*.keaident.org 通配符证书（Let's Encrypt YR2）受信、TLSv1.3、有效期至 2026-12-07，服务端无异常
-
-### 🧑 人脸上传功能 + Sakurairo 封面配置
-
-- **人脸上传（前端嵌套）**：控制台（内置界面+WP插件 v1.0.7）账号卡片新增「人脸」按钮——可上传/预览/删除该账号的人脸照片（多张，刷课触发人脸识别时随机轮换使用）；后端新增 faceList/faceUpload/faceDelete API，存储于 assets/faces/{账号}/；_face_load_image 支持多张轮换（降低风控）
-- **Sakurairo 封面配置**：外置随机图 API（经同源 PHP 代理 randbg-pc.php/randbg-mobile.php 转发，规避浏览器跨域）、多终端分离、文字LOGO“Yatori 学习工具”、两行副标题；关键：前台 iro_opt 读独立 option `iro_options`（非 theme_mods）；用户原 API(random.moejue.cn) 对服务器调用只返回教程图，当前代理指向 mwm.moe 随机图源（可随时更换）
-
-### 🔒 后端暴露面阉割（外网彻底 404，仅保留加密 API）
-
-- **管理界面仅限本机**：秘密入口与所有界面路径从外网访问一律 404 伪装（`_is_local` 判定 127.0.0.1/::1）；本机浏览器访问 `https://127.0.0.1:8080/panel_xxx/` 保留应急通道
-- **API 强制加密+令牌**：外网请求必须携带 X-Yatori-Enc AES 加密头（明文一律 401，不泄露信息），本机豁免（内置界面便捷性）；配合原有会话令牌校验
-- **暴露面体检（宝塔服务器真实外网反向）全部通过**：entry/root/web/admin 扫描全 404、明文登录/无令牌 API 全 401；WP 控制台加密正路径正常（已连接+2账号）
+- 该时期的 Web 相关功能模块（服务端 / 前端页面 / 证书 / 人脸等）已全部移除，相关代码与部署文档不再随本仓库提供；本仓库仅保留桌面与控制台能力。
 
 ---
 

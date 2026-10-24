@@ -257,3 +257,15 @@ body {
     padding: 22px;
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25);
 }
+/* [V3.0.11] 全球化: RTL(阿拉伯语等)基础适配 + 全语言字体回退 */
+html[dir="rtl"] body { direction: rtl; }
+html[dir="rtl"] .yform-scroll, html[dir="rtl"] .ycard { text-align: right; }
+html[dir="rtl"] input[type="text"], html[dir="rtl"] input[type="password"],
+html[dir="rtl"] input[type="number"], html[dir="rtl"] textarea, html[dir="rtl"] select {
+  direction: rtl; text-align: right;
+}
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans",
+    "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR",
+    "Noto Sans Arabic", "Microsoft YaHei", "PingFang SC", "Meiryo", "Malgun Gothic", sans-serif;
+}

@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom'
 import App from './App'
 import './theme.css'
 import { applyTheme, useUI, applyRandomBgApi } from './store'
+import { I18nProvider } from './i18n'
 
 const _st = useUI.getState()
 applyTheme(_st.theme, _st.bgUrl)
@@ -14,8 +15,10 @@ if (_st.bgMode === 'api' && _st.bgApi) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <HashRouter>
-      <App />
-    </HashRouter>
+    <I18nProvider>
+      <HashRouter>
+        <App />
+      </HashRouter>
+    </I18nProvider>
   </React.StrictMode>,
 )

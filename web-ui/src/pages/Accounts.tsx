@@ -112,12 +112,27 @@ export default function Accounts() {
     const [picker, setPicker] = useState<any>(null)
 
     const openCoursePicker = async (kind: 'includeCourses' | 'excludeCourses') => {
-        if (!modal?.uid) {
-            return showToast('请先保存账号后再查课（新账号需先保存一次）', 'err')
+        // [2026-10-24] 新账号未保存时: 自动先保存再查课(用户确认方案)
+        let uid: string = modal?.uid ? String(modal.uid) : ''
+        if (!uid) {
+            if (!modal?.account || !modal?.password) {
+                return showToast('请先填写账号和密码', 'err')
+            }
+            try {
+                // api() 已统一解包 data: 成功返回 user 对象(顶层含 uid), 失败直接抛错
+                const r: any = await UI.addAccount(modal)
+                uid = String(r?.uid || '')
+                if (!uid) return showToast('自动保存未返回 uid，请手动保存后再查课', 'err')
+                setModal((m: any) => ({ ...m, uid }))
+                load()
+                showToast('账号已自动保存，开始查课…')
+            } catch (e: any) {
+                return showToast('自动保存失败: ' + (e?.message || e), 'err')
+            }
         }
         setPicker({ kind, list: [], loading: true, checked: new Set<string>() })
         try {
-            const d: any = await UI.courses(String(modal.uid))
+            const d: any = await UI.courses(uid)
             const names = (d?.courseList || []).map((c: any) => String(c.courseName || '')).filter(Boolean)
             setPicker({ kind, list: names, loading: false, checked: new Set<string>() })
             if (!names.length) showToast('未获取到课程（可能登录失效或无课程）', 'err')
@@ -125,6 +140,26 @@ export default function Accounts() {
             setPicker(null)
             showToast('查课失败: ' + (e?.message || e), 'err')
         }
+    }
+
+    // [2026-10-24] 启动/停止刷课(GUI缺失按钮修复)
+    const startBrush = async (a: any) => {
+        const uid = String(a.uid || '')
+        try {
+            const r: any = await UI.start(uid)
+            if (r?.code && r.code !== 200) return showToast(r.message || '启动失败', 'err')
+            showToast('已启动刷课')
+            setTimeout(load, 800)
+        } catch (e: any) { showToast('启动失败: ' + (e?.message || e), 'err') }
+    }
+    const stopBrush = async (a: any) => {
+        const uid = String(a.uid || '')
+        try {
+            const r: any = await UI.stop(uid)
+            if (r?.code && r.code !== 200) return showToast(r.message || '停止失败', 'err')
+            showToast('已停止刷课')
+            setTimeout(load, 800)
+        } catch (e: any) { showToast('停止失败: ' + (e?.message || e), 'err') }
     }
 
     const applyPicker = () => {
@@ -222,6 +257,17 @@ export default function Accounts() {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                    {a.running ? (
+                                        <button className="ybtn ybtn-danger py-1.5 px-3 text-xs"
+                                            onClick={() => stopBrush(a)}>
+                                            停止刷课
+                                        </button>
+                                    ) : (
+                                        <button className="ybtn ybtn-primary py-1.5 px-3 text-xs"
+                                            onClick={() => startBrush(a)}>
+                                            启动刷课
+                                        </button>
+                                    )}
                                     <button className="ybtn py-1.5 px-3 text-xs"
                                         onClick={() => loginCheck(a)} disabled={checking === uid}>
                                         <LogIn size={13} /> {checking === uid ? '检查中' : '登录检查'}

@@ -62,7 +62,7 @@ def _ensure_stdio():
 
 
 # 程序版本号(与 web/server.py APP_VERSION 保持一致)
-APP_VERSION = "3.0.7"
+APP_VERSION = "3.0.8"
 
 # 路径解析：兼容 PyInstaller 打包(冻结)环境与源码开发环境
 if getattr(sys, "frozen", False):

@@ -36,6 +36,7 @@ DATAS = []
 _d = os.path.join
 for src, dst in (
     (_d("config", "logo.txt"), "config"),
+    (_d("assets", "i18n"), "assets/i18n"),  # V3.0.11 多语言语言包
     (_d("web", "static"), "web/static"),
     (_d("assets", "app_icon.png"), "assets"),
     (_d("assets", "app_icon.ico"), "assets"),

@@ -287,6 +287,10 @@ APP_NAME = %r
 
 # ---- 内置数据 ----
 datas = [(os.path.join("config", "logo.txt"), "config")]
+# [V3.0.11] 多语言语言包随包分发
+_assets_i18n = os.path.join("assets", "i18n")
+if os.path.isdir(_assets_i18n):
+    datas.append((_assets_i18n, os.path.join("assets", "i18n")))
 
 # 内置 Web 管理界面静态文件(图形界面模式)
 _web_static = os.path.join("web", "static")

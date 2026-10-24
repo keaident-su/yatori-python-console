@@ -146,7 +146,7 @@ def create_app() -> FastAPI:
                     enc_ok = (request.headers.get("x-yatori-enc") == "1")
                     if not enc_ok and not _is_local(request):
                         return JSONResponse(
-                            {"code": 401, "message": "未登录或登录已过期"},
+                            {"code": 401, "message": __import__("utils.i18n", fromlist=["srv_msg"]).srv_msg("未登录或登录已过期")},
                             status_code=401)
                     # 登录/校验接口白名单(不返回敏感数据)
                     if path in ("/api/v1/login", "/api/v1/authCheck"):
@@ -157,7 +157,7 @@ def create_app() -> FastAPI:
                         token = request.query_params.get("token", "")
                     if not web_auth.verify(token):
                         return JSONResponse(
-                            {"code": 401, "message": "未登录或登录已过期"},
+                            {"code": 401, "message": __import__("utils.i18n", fromlist=["srv_msg"]).srv_msg("未登录或登录已过期")},
                             status_code=401)
                 return await call_next(request)
 

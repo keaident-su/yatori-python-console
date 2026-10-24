@@ -1624,6 +1624,73 @@ summary tabindex target title type usemap value width wmode wrap`, _j = `onCopy 
   }, false);
 })();
 </script>
+
+<script>
+/* __yatori_gen_i18n__ 运行时多语言层(纯文本替换, 不影响原有逻辑) */
+(function(){
+  var DICT = {
+    "导出":"Export","导入":"Import","新增用户":"Add user","生成配置文件":"Generate config",
+    "打开配置文件":"Open config","选择文件":"Choose file","基础设置":"Basic settings",
+    "邮箱通知配置":"Email notify","AI大模型自动答题":"AI auto answer","API外挂题库设置":"API question bank",
+    "答题源设置(多源顺序调用·失败自动回退)":"Answer sources (multi-source fallback)",
+    "ShowDoc推送配置":"ShowDoc push","用户设置":"Users","用户":"User",
+    "学习通":"XUEXITONG","智慧树":"Zhihuishu","英华":"YingHua","青书":"QingShu",
+    "学习":"Study","考试":"Exam","作业":"Homework","通知":"Notify",
+    "保存":"Save","取消":"Cancel","删除":"Delete","添加":"Add","确定":"OK","关闭":"Close","开启":"On","不使用":"No",
+    "登录":"Login","账号":"Account","密码":"Password","备注名":"Remark","导出后直接覆盖原来的config配置文件即可":"Overwrite your config.yaml with the exported file",
+    "请上传 YAML 文件(.yml 或 .yaml)":"Please upload a YAML file (.yml/.yaml)"
+  };
+  var LSK = "yc_gen_lang";
+  function lang(){ return localStorage.getItem(LSK) || "zh"; }
+  function tr(txt){ var k=txt.trim(); var v=DICT[k]; return v ? txt.replace(k, v) : txt; }
+  var obs=null;
+  function walk(node){
+    if(node.nodeType===3){
+      var t=node.nodeValue;
+      if(t && /[\u4e00-\u9fa5]/.test(t)){
+        var pieces=t.split(/(\s+)/).map(function(x){return x;});
+        var nv=t.replace(/[\u4e00-\u9fa5][^]*?(?=$|\n)/g,function(m){return m;});
+        // 精确整段匹配优先
+        var k=t.trim(); if(DICT[k]) node.nodeValue=t.replace(k,DICT[k]);
+      }
+      return;
+    }
+    if(node.nodeType!==1) return;
+    if(node.tagName==="SCRIPT"||node.tagName==="STYLE") return;
+    for(var i=0;i<node.childNodes.length;i++) walk(node.childNodes[i]);
+  }
+  function apply(){
+    if(lang()==="en"){
+      walk(document.body);
+      if(!obs){
+        obs=new MutationObserver(function(muts){
+          if(lang()!=="en") return;
+          muts.forEach(function(m){
+            m.addedNodes && m.addedNodes.forEach(function(n){ walk(n); });
+            if(m.type==="characterData" && m.target){ walk(m.target); }
+          });
+        });
+        obs.observe(document.body,{childList:true,subtree:true,characterData:true});
+      }
+    } else if(obs){ obs.disconnect(); obs=null; }
+  }
+  // 切换按钮
+  var btn=document.createElement("button");
+  btn.textContent="中/EN";
+  btn.title="Switch language";
+  btn.style.cssText="position:fixed;left:16px;bottom:16px;z-index:9999;padding:6px 10px;border-radius:8px;border:1px solid #888;background:#fff;color:#333;font-size:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.15)";
+  btn.onclick=function(){
+    localStorage.setItem(LSK, lang()==="en"?"zh":"en");
+    if(lang()==="zh"){ location.reload(); } else { apply(); }
+  };
+  function boot(){
+    document.body.appendChild(btn);
+    apply();
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();
+</script>
 </body>
 
 </html>

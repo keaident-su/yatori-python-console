@@ -12,6 +12,7 @@ import uuid
 import threading
 from typing import Generator
 
+from utils.i18n import srv_msg
 from config.config import User, CoursesCustom, _apply_yaml_mapping
 from dao.database import get_session
 from dao import user_mapper
@@ -34,12 +35,12 @@ def _zhihuishu_session_service(body: dict) -> dict:
 
     uid = str(body.get("uid", "")).strip()
     if not uid:
-        return Response(code=400, message="UID 不能为空").to_dict()
+        return Response(code=400, message=srv_msg("UID 不能为空")).to_dict()
     db = get_session()
     try:
         user = user_mapper.query_user(db, uid=uid)
         if not user:
-            return Response(code=400, message="该账号不存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
         if user.account_type != "ZHIHUISHU":
             return Response(code=400, message="该接口仅支持智慧树账号").to_dict()
         raw_cookies = body.get("cookies", body.get("cookie", ""))
@@ -70,12 +71,12 @@ def _clear_zhihuishu_session_service(body: dict) -> dict:
     from logic.zhihuishu.auth_state import delete_session, session_key
     uid = str(body.get("uid", "")).strip()
     if not uid:
-        return Response(code=400, message="UID 不能为空").to_dict()
+        return Response(code=400, message=srv_msg("UID 不能为空")).to_dict()
     db = get_session()
     try:
         user = user_mapper.query_user(db, uid=uid)
         if not user:
-            return Response(code=400, message="该账号不存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
         if user.account_type != "ZHIHUISHU":
             return Response(code=400, message="该接口仅支持智慧树账号").to_dict()
         delete_session(session_key(user.account))
@@ -124,7 +125,7 @@ def user_list_service() -> dict:
 
         return Response(
             code=200,
-            message="拉取账号成功",
+            message=srv_msg("拉取账号成功"),
             data={"users": res_user_list, "total": total}
         ).to_dict()
     finally:
@@ -145,7 +146,7 @@ def add_user_service(body: dict) -> dict:
             session, account_type=account_type, url=url, account=account
         )
         if existing:
-            return Response(code=400, message="该账号已存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号已存在")).to_dict()
 
         uid = str(uuid.uuid4())
         user_config = {
@@ -183,7 +184,7 @@ def add_user_service(body: dict) -> dict:
 
         return Response(
             code=200,
-            message="添加账号成功",
+            message=srv_msg("添加账号成功"),
             data=struct_to_map(user_po)
         ).to_dict()
     finally:
@@ -245,7 +246,7 @@ def delete_user_service(body: dict) -> dict:
         # [2026-10-24] 删除账号后回写 config.yaml(双向同步)
         _after_user_change()
 
-        return Response(code=200, message="删除成功").to_dict()
+        return Response(code=200, message=srv_msg("删除成功")).to_dict()
     finally:
         session.close()
 
@@ -264,14 +265,14 @@ def update_user_service(body: dict) -> dict:
     """更新账号信息"""
     uid = body.get("uid", "")
     if not uid:
-        return Response(code=400, message="UID 不能为空").to_dict()
+        return Response(code=400, message=srv_msg("UID 不能为空")).to_dict()
 
     # 运行中拦截: 运行中的账号修改配置不会影响本次刷课,
     # 必须停止后再修改，避免"改了不生效"的困惑
     if _is_account_running(uid):
         return Response(
             code=400,
-            message="账号正在刷课中，无法修改配置信息，请先停止刷课").to_dict()
+            message=srv_msg("账号正在刷课中，无法修改配置信息，请先停止刷课")).to_dict()
 
     update_map = {}
     if body.get("accountType"):
@@ -301,7 +302,7 @@ def update_user_service(body: dict) -> dict:
             _s0.close()
 
     if not update_map:
-        return Response(code=400, message="没有可更新的字段").to_dict()
+        return Response(code=400, message=srv_msg("没有可更新的字段")).to_dict()
 
     session = get_session()
     try:
@@ -319,7 +320,7 @@ def update_user_service(body: dict) -> dict:
         # [2026-10-24] 更新账号后回写 config.yaml(双向同步)
         _after_user_change()
 
-        return Response(code=200, message="更新成功").to_dict()
+        return Response(code=200, message=srv_msg("更新成功")).to_dict()
     finally:
         session.close()
 
@@ -332,11 +333,11 @@ def account_login_check_service(body: dict) -> dict:
         try:
             user = user_mapper.query_user(session, uid=uid)
             if not user:
-                return Response(code=400, message="该账号不存在").to_dict()
+                return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
         finally:
             session.close()
 
-    return Response(code=200, message="账号登录正常").to_dict()
+    return Response(code=200, message=srv_msg("账号登录正常")).to_dict()
 
 
 def get_account_inform_service(uid: str) -> dict:
@@ -345,10 +346,10 @@ def get_account_inform_service(uid: str) -> dict:
     try:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
-            return Response(code=400, message="该账号不存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
         return Response(
             code=200,
-            message="拉取信息成功",
+            message=srv_msg("拉取信息成功"),
             data={"user": struct_to_map(user)}
         ).to_dict()
     finally:
@@ -394,7 +395,7 @@ def _account_course_list_service_impl(uid: str) -> dict:
     try:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
-            return Response(code=400, message="该账号不存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
 
         activity = global_var.get_user_activity(user.uid)
         if activity is None:
@@ -437,7 +438,7 @@ def _account_course_list_service_impl(uid: str) -> dict:
             _acct = str(getattr(user, "account", "") or "")
             return Response(
                 code=200,
-                message="拉取信息成功",
+                message=srv_msg("拉取信息成功"),
                 data={"courseList": course_list,
                       "includeCourses": _inc,
                       "excludeCourses": _exc,
@@ -445,7 +446,7 @@ def _account_course_list_service_impl(uid: str) -> dict:
                       "account": _acct}
             ).to_dict()
 
-        return Response(code=200, message="拉取信息成功",
+        return Response(code=200, message=srv_msg("拉取信息成功"),
                         data={"courseList": []}).to_dict()
     finally:
         session.close()
@@ -457,7 +458,7 @@ def course_detail_stat_service(uid: str, course_id: str) -> dict:
     try:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
-            return Response(code=400, message="该账号不存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
         activity = global_var.get_user_activity(user.uid)
         if activity is None:
             from web.activity.base_activity import UserActivityBase
@@ -488,7 +489,7 @@ def runtime_status_service(uid: str) -> dict:
     try:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
-            return Response(code=400, message="该账号不存在").to_dict()
+            return Response(code=400, message=srv_msg("该账号不存在")).to_dict()
         account = str(user.account)
     finally:
         session.close()
@@ -511,7 +512,7 @@ def start_brush_service(uid: str) -> dict:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
             log_print(INFO, "[Web]", Red, f"启动失败: 用户不存在 uid={_u8}..")
-            return Response(code=400, message="用户不存在").to_dict()
+            return Response(code=400, message=srv_msg("用户不存在")).to_dict()
         account = user.account
         # 账号日志上下文用: 备注名(可能为空)
         try:
@@ -532,7 +533,7 @@ def start_brush_service(uid: str) -> dict:
         if activity is None:
             log_print(INFO, "[Web]", Red,
                       f"启动失败: {account} 该平台暂不支持Web模式")
-            return Response(code=400, message="该平台暂不支持Web模式").to_dict()
+            return Response(code=400, message=srv_msg("该平台暂不支持Web模式")).to_dict()
         global_var.put_user_activity(uid, activity)
         log_print(INFO, "[Web]", f"账号 {account} 活动对象已构建")
 
@@ -542,7 +543,7 @@ def start_brush_service(uid: str) -> dict:
                   f"启动被忽略: {account} 刷课已在运行中(如需重启请先停止)")
         return Response(
             code=400,
-            message="该账号刷课已在运行中，请先停止再启动").to_dict()
+            message=srv_msg("该账号刷课已在运行中，请先停止再启动")).to_dict()
 
     # 账号日志上下文(2026-09-30): 刷课线程内日志自动带 [账号|备注] 前缀,
     # 并同时写入独立文件 assets/logs/accounts/{账号}_{备注}/{日期}.log
@@ -564,7 +565,7 @@ def start_brush_service(uid: str) -> dict:
 
     log_print(INFO, "[Web]", Green,
               f"已下发启动指令: {account} (后台线程执行登录与刷课)")
-    return Response(code=200, message="启动成功").to_dict()
+    return Response(code=200, message=srv_msg("启动成功")).to_dict()
 
 
 def stop_brush_service(uid: str) -> dict:
@@ -573,7 +574,7 @@ def stop_brush_service(uid: str) -> dict:
     try:
         user = user_mapper.query_user(session, uid=uid)
         if not user:
-            return Response(code=400, message="用户不存在").to_dict()
+            return Response(code=400, message=srv_msg("用户不存在")).to_dict()
     finally:
         session.close()
 
@@ -581,7 +582,7 @@ def stop_brush_service(uid: str) -> dict:
     if activity:
         activity.stop()
 
-    return Response(code=200, message="停止成功").to_dict()
+    return Response(code=200, message=srv_msg("停止成功")).to_dict()
 
 
 def stream_log_generator(log_id: str) -> Generator[str, None, None]:
@@ -830,7 +831,7 @@ def log_tail_service(lines: int = 200, date: str = "", account: str = "",
         # 目录穿越防护: 账号名仅允许单层目录
         safe = str(account).replace("\\", "/").strip("/")
         if "/" in safe or ".." in safe:
-            return Response(code=400, message="非法账号名").to_dict()
+            return Response(code=400, message=srv_msg("非法账号名")).to_dict()
         log_path = f"./assets/logs/accounts/{safe}/{log_id}.log"
         # [V3.0.10] 兼容解析: 前端可能传 uid/账号/备注, 而目录名为"账号_备注"
         # 先精确匹配, 再按 uid 映射为账号, 最后目录前缀匹配(取最新修改)

@@ -88,7 +88,7 @@ def user_list_service() -> dict:
     """拉取账号列表"""
     session = get_session()
     try:
-        users, total = user_mapper.query_users(session, page=1, page_size=50)
+        users, total = user_mapper.query_users(session, page=1, page_size=500)  # [2026-10-24] 50->500: 防账号超50被截断导致新账号不显示
         res_user_list = []
         for user in users:
             user_dict = struct_to_map(user)

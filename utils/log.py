@@ -200,7 +200,8 @@ class _AccountFileHandler(logging.Handler):
         self._log_dir = log_dir
         self._max_bytes = max_bytes
         self._backup_count = backup_count
-        self._streams = {}   # (account, remark) -> {date, path, stream, written}
+        # (account, remark) -> {date, path, stream, written}
+        self._streams = {}
 
     @staticmethod
     def _safe(name: str) -> str:
@@ -324,14 +325,20 @@ def log_init(level: str = "INFO", log_file_sw: bool = True,
         # 2026-09-30: 自研跨天切换 handler 替代 RotatingFileHandler,
         # 修复"系统时间过0点后仍写旧日志文件"的bug; 单日100MB轮转保留
         handler = _DailyRotatingHandler(log_dir)
-        handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+        handler.setFormatter(StandardFormatter())
         _file_logger.addHandler(handler)
 
         # 账号独立日志 handler: {log_dir}/accounts/{账号}_{备注}/{日期}.log
         # (仅在刷课线程绑定了账号上下文时生效)
         acc_handler = _AccountFileHandler(log_dir)
-        acc_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+        acc_handler.setFormatter(StandardFormatter())
         _file_logger.addHandler(acc_handler)
+
+        # [V3.0.10] 历史日志一次性原位转换为标准格式(后台线程, 不阻塞启动)
+        try:
+            start_legacy_migration_async(log_dir)
+        except Exception:
+            pass
 
 
 def string_to_log_level(s: str) -> str:
@@ -353,6 +360,93 @@ def _strip_ansi(text: str) -> str:
     return re.sub(r'\033\[[0-9;]*m', '', str(text))
 
 
+# ============ [2026-10-24 V3.0.10] 标准日志格式(用户规范) ============
+# 格式: [ISO8601毫秒+时区] [LEVEL] [模块] [线程] [账号] 消息
+# 多行(堆栈/详情)每行缩进4空格; \t 转义为 \\t; 文件纯文本, 终端可选彩色。
+def _iso_ts(created: float = None) -> str:
+    """ISO 8601 带毫秒带时区"""
+    try:
+        dt = (datetime.fromtimestamp(created) if created is not None
+              else datetime.now()).astimezone()
+        return dt.isoformat(timespec="milliseconds")
+    except Exception:
+        return datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000")
+
+
+def _thread_name() -> str:
+    try:
+        import threading as _th
+        return _th.current_thread().name or "main"
+    except Exception:
+        return "main"
+
+
+def _module_name() -> str:
+    """[自动推导] 调用者模块路径(跳过 utils.log 与 logging 内部帧)"""
+    try:
+        import inspect as _ins
+        f = _ins.currentframe()
+        while f is not None:
+            name = f.f_globals.get("__name__", "")
+            if (name and name != __name__
+                    and not name.startswith("logging")
+                    and not name.startswith("importlib")
+                    and not name.startswith("concurrent")):
+                return name
+            f = f.f_back
+    except Exception:
+        pass
+    return "system"
+
+
+def _esc_tab(s) -> str:
+    return str(s).replace("\t", "\\t")
+
+
+def build_standard_lines(ts, level, module, tid, account, text) -> str:
+    """单行主条目 + 多行附属(每行4空格缩进); 级别统一 WARN 写法"""
+    lvl = str(level).upper()
+    if lvl == "WARNING":
+        lvl = "WARN"
+    body = "" if text is None else str(text)
+    lines = body.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    head = (f"[{ts}] [{lvl}] [{module or 'system'}] "
+            f"[{tid or 'main'}] [{account or '-'}] {_esc_tab(lines[0])}")
+    if len(lines) == 1:
+        return head
+    tail = "\n".join("    " + _esc_tab(ln) for ln in lines[1:])
+    return head + "\n" + tail
+
+
+class StandardFormatter(logging.Formatter):
+    """[V3.0.10] 四通道统一标准格式(纯文本, 无 ANSI)"""
+
+    def format(self, record):
+        try:
+            ts = _iso_ts(record.created)
+        except Exception:
+            ts = _iso_ts()
+        module = getattr(record, "ymodule", None) or record.name or "system"
+        if module == "yatori_file_logger":
+            module = "system"
+        tid = getattr(record, "ythread", None) or record.threadName or "main"
+        try:
+            acc, _ = _get_log_account_raw()
+        except Exception:
+            acc = ""
+        try:
+            text = record.getMessage()
+        except Exception:
+            text = f"{record.msg} {record.args or ''}"
+        if record.exc_info:
+            try:
+                text = text + "\n" + self.formatException(record.exc_info)
+            except Exception:
+                pass
+        return build_standard_lines(ts, record.levelname, module, tid,
+                                    acc, text)
+
+
 def log_print(level: str, *args: Any):
     """
     打印日志 - 对应 Go 的 lg.Print()
@@ -369,21 +463,33 @@ def log_print(level: str, *args: Any):
 
     raw_text = "".join(parts)
 
-    # 账号上下文前缀(刷课线程内自动带 [账号|备注] )
-    prefix = _account_prefix()
-
-    # 构建带时间戳的控制台输出
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    level_tag = f"[{level}]"
-
-    if _color_enabled:
-        if prefix:
-            console_text = (f"{DarkGray}{timestamp}{Reset} {level_tag} "
-                            f"{Cyan}{prefix}{Reset}{raw_text}")
-        else:
-            console_text = f"{DarkGray}{timestamp}{Reset} {level_tag} {raw_text}"
-    else:
-        console_text = f"{timestamp} {level_tag} {prefix}{_strip_ansi(raw_text)}"
+    # [V3.0.10] 标准格式: [ISO时间] [LEVEL] [模块] [线程] [账号] 消息
+    module = _module_name()
+    tid = _thread_name()
+    try:
+        acc, _rem = _get_log_account_raw()
+    except Exception:
+        acc = ""
+    ts = _iso_ts()
+    level_up = str(level).upper()
+    if level_up == "WARNING":
+        level_up = "WARN"
+    base_prefix = (f"[{ts}] [{level_up}] [{module}] [{tid}] "
+                   f"[{acc or '-'}] ")
+    body_lines = raw_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    console_text = "\n".join(
+        [base_prefix + _esc_tab(body_lines[0])]
+        + ["    " + _esc_tab(x) for x in body_lines[1:]])
+    # 终端彩色(仅 isatty; 重定向/文件/无终端自动无色 -> 跨设备可读)
+    try:
+        _isatty = bool(getattr(sys.stdout, "isatty", lambda: False)())
+    except Exception:
+        _isatty = False
+    if _color_enabled and _isatty:
+        if level_up in ("ERROR", "FATAL", "BOLD_RED"):
+            console_text = f"{Red}{console_text}{Reset}"
+        elif level_up in ("WARN", "WARNING"):
+            console_text = f"{Yellow}{console_text}{Reset}"
 
     try:
         print(console_text, flush=True)
@@ -396,11 +502,22 @@ def log_print(level: str, *args: Any):
         except Exception:
             pass
 
-    # 写入文件日志（去除ANSI）
-    # 全局文件带前缀; 账号独立文件由 _AccountFileHandler 按账号上下文自动分流
+    # 写入文件日志(去除ANSI; StandardFormatter 统一加时间/级别/模块/线程/账号,
+    # 账号独立文件由 _AccountFileHandler 按账号上下文分流)
     if _log_file_sw and _file_logger:
-        plain_text = f"{level_tag} {prefix}{_strip_ansi(raw_text)}"
-        _file_logger.info(plain_text)
+        try:
+            if level_up in ("ERROR", "FATAL", "BOLD_RED"):
+                _lv = logging.ERROR
+            elif level_up in ("WARN", "WARNING"):
+                _lv = logging.WARNING
+            elif level_up == "DEBUG":
+                _lv = logging.DEBUG
+            else:
+                _lv = logging.INFO
+            _file_logger.log(_lv, _strip_ansi(raw_text),
+                             extra={"ymodule": module, "ythread": tid})
+        except Exception:
+            pass
 
 
 def model_print(is_sw: bool, level: str, *args: Any):
@@ -455,14 +572,10 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
                 "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
                 "use_colors": None,
             },
-            "file_plain": {"format": "%(asctime)s %(message)s"},
-            # [2026-10-24] uvicorn.access 专用文件格式: AccessFormatter会把 record.args
-            # 改写为3元组, 若与普通file handler共用标准Formatter会报
-            # "not enough arguments for format string" 刷屏
+            "file_plain": {"()": "utils.log.StandardFormatter"},
+            # [V3.0.10] uvicorn 文件通道也用统一标准格式(纯文本)
             "access_file": {
-                "()": "uvicorn.logging.AccessFormatter",
-                "fmt": '%(asctime)s %(client_addr)s - "%(request_line)s" %(status_code)s',
-                "use_colors": False,
+                "()": "utils.log.StandardFormatter",
             },
         },
         "filters": {
@@ -500,3 +613,113 @@ def build_uvicorn_log_config(log_dir: str = "./assets/logs") -> dict:
                                "filters": ["ui_poll"]},
         },
     }
+
+# ============ [V3.0.10] 历史日志格式转换(原位, 一次性) ============
+import glob as _glob_log
+import re as _re_log
+
+# 旧格式行: "2026-10-24 21:05:02 [INFO] 正文"
+_LEGACY_LINE_RE = _re_log.compile(
+    r"^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:[,.](\d{1,3}))?\s+\[([A-Za-z_]+)\]\s?(.*)$")
+# 旧正文开头的账号前缀 "[19885639522|备注]" 或 "[19885639522]"(账号>=6位数字)
+_ACC_PREFIX_RE = _re_log.compile(r"^\[(\d{6,20})(?:\|([^\]]*))?\]\s*(.*)$")
+# 已是新格式的行(幂等跳过)
+_NEW_LINE_RE = _re_log.compile(
+    r"^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[^\]]*\]\s+\[[A-Z_]+\]")
+
+
+def _convert_legacy_text(old_line: str) -> str:
+    """旧行 -> 标准格式行; 非主条目行 -> 4空格缩进附属行"""
+    m = _LEGACY_LINE_RE.match(old_line)
+    if not m:
+        return "    " + old_line.replace("\t", "\\t")
+    y, mo, d, hh, mm, ss, ms, lvl, rest = m.groups()
+    ms3 = (ms or "000").ljust(3, "0")[:3]
+    iso = f"{y}-{mo}-{d}T{hh}:{mm}:{ss}.{ms3}+08:00"
+    lvl_norm = lvl.upper()
+    if lvl_norm in ("WARNING",):
+        lvl_norm = "WARN"
+    acc = ""
+    am = _ACC_PREFIX_RE.match(rest)
+    if am:
+        acc = am.group(1)
+        rest = am.group(3)
+    return (f"[{iso}] [{lvl_norm}] [legacy] [-] [{acc or '-'}] "
+            f"{rest.replace(chr(9), chr(92) + 't')}")
+
+
+def _migrate_one_file(path: str) -> bool:
+    """单文件原位转换(tmp -> os.replace, 中断不破坏原文件)"""
+    tmp = path + ".fmttmp"
+    try:
+        if not os.path.isfile(path) or os.path.getsize(path) <= 0:
+            return False
+        changed = False
+        with open(path, "r", encoding="utf-8", errors="replace") as fr, \
+                open(tmp, "w", encoding="utf-8", errors="replace") as fw:
+            for ln in fr:
+                line = ln.rstrip("\r\n")
+                if not line:
+                    fw.write("\n")
+                    continue
+                if _NEW_LINE_RE.match(line) or line.startswith("    "):
+                    fw.write(line + "\n")
+                else:
+                    fw.write(_convert_legacy_text(line) + "\n")
+                    changed = True
+        if changed:
+            os.replace(tmp, path)
+        else:
+            try:
+                os.remove(tmp)
+            except Exception:
+                pass
+        return changed
+    except Exception:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+        return False
+
+
+def migrate_legacy_logs(log_dir: str = "./assets/logs") -> dict:
+    """[V3.0.10] 一次性把旧格式日志原位转换为标准格式(标记文件防重跑)"""
+    stats = {"files": 0, "ok": 0}
+    marker = os.path.join(log_dir, ".logfmt_v10.done")
+    try:
+        if os.path.exists(marker):
+            return stats
+        open(marker, "w", encoding="utf-8").write(_iso_ts())
+    except Exception:
+        return stats
+    pats = [os.path.join(log_dir, "*.log"),
+            os.path.join(log_dir, "*.log.[1-9]"),
+            os.path.join(log_dir, "access", "*.log"),
+            os.path.join(log_dir, "accounts", "*", "*.log")]
+    for pat in pats:
+        for p in _glob_log.glob(pat):
+            stats["files"] += 1
+            if _migrate_one_file(p):
+                stats["ok"] += 1
+    return stats
+
+
+def start_legacy_migration_async(log_dir: str = "./assets/logs") -> None:
+    """后台线程执行历史日志转换(不阻塞启动)"""
+    try:
+        import threading as _th2
+
+        def _run():
+            try:
+                r = migrate_legacy_logs(log_dir)
+                if r.get("ok"):
+                    print(f"[logfmt] 历史日志已转换为标准格式: "
+                          f"{r['ok']}/{r['files']} 个文件")
+            except Exception:
+                pass
+
+        _th2.Thread(target=_run, name="logfmt-migrate", daemon=True).start()
+    except Exception:
+        pass

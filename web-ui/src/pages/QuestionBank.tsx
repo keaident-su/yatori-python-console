@@ -121,7 +121,7 @@ export default function QuestionBank() {
               color: 'var(--subtext)'
             }}>{t("AI类型")}</div>
                                 <select className="yselect mt-1" value={s.aiType || 'DEEPSEEK'} onChange={e => upd(i, 'aiType', e.target.value)}>
-                                    {AI_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                    {AI_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
                                 </select>
                             </div>
                             <div>

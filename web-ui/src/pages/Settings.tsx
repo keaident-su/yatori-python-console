@@ -244,7 +244,7 @@ export default function SettingsPage() {
           ...ai,
           aiType: e.target.value
         })}>
-                        {['DEEPSEEK', 'TONGYI', 'CHATGLM', 'XINGHUO', 'DOUBAO', 'OPENAI', 'SILICON', 'METAAI', 'OTHER'].map(t => <option key={t} value={t}>{t}</option>)}
+                        {['DEEPSEEK', 'TONGYI', 'CHATGLM', 'XINGHUO', 'DOUBAO', 'OPENAI', 'SILICON', 'METAAI', 'OTHER'].map(v => <option key={t} value={t}>{t}</option>)}
                     </select>
                 </Row>
                 <Row label={t("模型名称")}>

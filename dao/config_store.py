@@ -65,19 +65,71 @@ class ConfigStore:
             if dirty:
                 self._save_locked()
 
-    def _save_locked(self):
-        """调用方需已持锁；原子写: tmp -> replace"""
+    def _warn(self, msg: str):
+        """保存失败告警: 优先走标准日志(log_print), 否则 print 兜底"""
         try:
-            tmp = self.path + ".tmp"
-            with open(tmp, "w", encoding="utf-8") as f:
-                yaml.dump(self.data, f, allow_unicode=True,
-                          default_flow_style=False, sort_keys=False)
-            os.replace(tmp, self.path)
-        except Exception as e:
+            from utils.log import log_print, WARNING
+            log_print(WARNING, f"[ConfigStore] {msg}")
+        except Exception:
             try:
-                print(f"[ConfigStore] 保存 config.yaml 失败: {e}")
+                print(f"[ConfigStore] {msg}")
             except Exception:
                 pass
+
+    def _save_locked(self):
+        """[V3.0.10 加固] 调用方需已持锁。
+        策略: ①tmp+fsync+原子替换(重试3次) ②仍失败降级直接覆盖写(重试3次)
+        ③失败则告警(不破坏旧文件)。修复家机 WinError 5 拒绝访问导致丢改动。"""
+        import time as _t
+        try:
+            payload = yaml.dump(self.data, allow_unicode=True,
+                                default_flow_style=False, sort_keys=False)
+        except Exception as e:
+            self._warn(f"序列化异常: {e}")
+            return False
+        self._last_save_ok = False
+        tmp = self.path + ".tmp"
+        last_err = None
+        # ① 原子替换(重试3次, 每次间隔200ms)
+        for _i in range(3):
+            try:
+                with open(tmp, "w", encoding="utf-8") as f:
+                    f.write(payload)
+                    f.flush()
+                    try:
+                        os.fsync(f.fileno())
+                    except Exception:
+                        pass
+                os.replace(tmp, self.path)
+                self._last_save_ok = True
+                return True
+            except Exception as e:
+                last_err = e
+                _t.sleep(0.2)
+        # ② 降级: 直接覆盖写(无原子性, 但保证落盘)
+        for _i in range(3):
+            try:
+                with open(self.path, "w", encoding="utf-8") as f:
+                    f.write(payload)
+                    f.flush()
+                self._last_save_ok = True
+                try:
+                    if os.path.exists(tmp):
+                        os.remove(tmp)
+                except Exception:
+                    pass
+                return True
+            except Exception as e:
+                last_err = e
+                _t.sleep(0.2)
+        # ③ 全部失败: 清理临时文件并告警(旧文件内容保留)
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except Exception:
+            pass
+        self._warn(f"保存 config.yaml 失败(已重试并降级): {last_err}")
+        return False
 
     def save(self):
         with _LOCK:

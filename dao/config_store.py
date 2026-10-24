@@ -149,7 +149,7 @@ class ConfigStore:
         with _LOCK:
             cur = self.data.setdefault("setting", {})
             for sec in ("basicSetting", "aiSetting", "emailInform",
-                        "showdocInform", "answerSetting", "restSetting"):
+                        "showdocInform", "answerSetting", "restSetting", "i18n"):
                 if isinstance(patch.get(sec), dict):
                     tgt = cur.setdefault(sec, {})
                     if isinstance(tgt, dict):

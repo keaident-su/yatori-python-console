@@ -1,0 +1,792 @@
+# -*- coding: utf-8 -*-
+"""
+英华学堂平台逻辑 - 对应 Go 项目的 logic/yinghua/YinghuaPart.go
+完整实现：登录、刷课、视频（普通/暴力/去红）、作业、考试
+"""
+import re
+import threading
+import time
+# 2026-10-15: 修复Cython编译 undeclared name not builtin: uniform
+from random import uniform
+from typing import List, Any
+
+from config.config import course_allowed  # [V3.1.3]
+from config.config import User, Setting, JSONDataForConfig, cmp_course
+from logic.yinghua.models import YingHuaUserCache, YingHuaCourse, YingHuaNode
+from logic.yinghua import aggregation as yinghua
+from logic.platform_common import generic_filter_account, generic_user_block
+from logic.core.ai_client import ai_check, ai_problem_message, AIClient
+from logic.core.external_que import check_api_que_request, search_api_que
+from utils.log import (
+    log_print, model_print, with_log_account, INFO, DEBUG,
+    Green, Yellow, Red, Blue, Purple, Default, BoldRed, BoldGreen, DarkGray
+)
+from global_state.global_var import ACCOUNT_TYPE_STR
+from utils.ip_proxy import rand_proxy_str
+
+PLATFORM_TYPE = "YINGHUA"
+_sound_lock = threading.Lock()
+
+
+# ============ 过滤账号 ============
+
+def filter_account(config_data: JSONDataForConfig) -> List[User]:
+    """过滤英华学堂账号"""
+    return generic_filter_account(config_data, PLATFORM_TYPE)
+
+
+# ============ 代理 IP ============
+
+def _ip_proxy_loop(user: User, cache: YingHuaUserCache):
+    """后台线程定时变换代理地址"""
+    while True:
+        if user.is_proxy == 1:
+            cache.ip_proxy_sw = True
+            cache.proxy_ip = rand_proxy_str()
+        time.sleep(10)
+
+
+# ============ 用户登录模块 ============
+
+def user_login_operation(users: List[User]) -> List[YingHuaUserCache]:
+    """用户登录模块 - 对应 UserLoginOperation"""
+    user_caches: List[YingHuaUserCache] = []
+    for user in users:
+        if user.account_type != PLATFORM_TYPE:
+            continue
+        cache = YingHuaUserCache(
+            pre_url=user.url,
+            account=user.account,
+            password=user.password,
+        )
+        # 启动代理 IP 后台线程
+        proxy_thread = threading.Thread(
+            target=_ip_proxy_loop, args=(user, cache), daemon=True)
+        proxy_thread.start()
+
+        # 登录
+        err = yinghua.ying_hua_login_action(cache)
+        if err:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, user.account, Default, "] ",
+                      Red, str(err))
+            raise SystemExit(str(err))
+
+        # 启动保活线程
+        keep_alive_thread = threading.Thread(
+            target=_keep_alive_login, args=(cache,), daemon=True)
+        keep_alive_thread.start()
+
+        user_caches.append(cache)
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, user.account, Default, "] ",
+                  Green, "登录成功")
+    return user_caches
+
+
+# ============ 保活 ============
+
+def _keep_alive_login(cache: YingHuaUserCache):
+    """登录心跳保活 - 对应 keepAliveLogin，每5分钟执行一次"""
+    while True:
+        time.sleep(5 * 60)
+        try:
+            result = yinghua_api_keep_alive(cache)
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR['YINGHUA']}]",
+                      "[", Green, cache.account, Default, "] ",
+                      DarkGray, f"登录心跳保活状态：{result}")
+        except Exception as e:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR['YINGHUA']}]",
+                      "[", Green, cache.account, Default, "] ",
+                      Red, f"保活失败: {e}")
+
+
+def yinghua_api_keep_alive(cache: YingHuaUserCache) -> str:
+    """保活 API 调用"""
+    from logic.yinghua import api
+    return api.keep_alive_api(cache, retry=8)
+
+
+# ============ 开始刷课模块 ============
+
+def run_brush_operation(setting: Setting, users: List[User],
+                        user_caches: List[Any]):
+    """开始刷课模块 - 对应 RunBrushOperation"""
+    threads = []
+    for i, cache in enumerate(user_caches):
+        if i >= len(users):
+            break
+        t = threading.Thread(
+            target=with_log_account(
+                users[i].account, users[i].remark_name)(_user_block),
+            args=(setting, users[i], cache),
+            daemon=True,
+        )
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+
+
+# ============ 用户刷课块 ============
+
+def _user_block(setting: Setting, user: User, cache: YingHuaUserCache):
+    """用户刷课基本块 - 对应 userBlock"""
+    course_list, err = yinghua.course_list_action(cache)
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
+    if err:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, cache.account, Default, "] ",
+                  Red, f"拉取课程列表失败: {err}")
+        return
+
+    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+              "[", Green, cache.account, Default, "] ",
+              Purple, "正在定位上次学习位置...")
+
+    node_threads = []
+    for course in course_list:
+        # 夜间休息检查(2026-10-10 修复: 课程级——刷课中途到点即停,恢复后继续)
+        try:
+            from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+            _pub_rest_wait(user.account, user.courses_custom,
+                           ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+        except Exception:
+            pass
+        t = threading.Thread(
+            target=_node_list_study_wrapper,
+            args=(setting, user, cache, course),
+            daemon=True,
+        )
+        node_threads.append(t)
+        t.start()
+
+    for t in node_threads:
+        t.join()
+
+    log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+              "[", Green, cache.account, Default, "] ",
+              Purple, "所有待学习课程学习完毕")
+
+    # 邮件通知
+    generic_user_block(
+        setting, user, ACCOUNT_TYPE_STR[PLATFORM_TYPE], brush_func=None)
+
+
+def _node_list_study_wrapper(setting, user, cache, course):
+    """线程包装器，暴力模式结束后自动执行去红模式"""
+    _node_list_study(setting, user, cache, course)
+    if user.courses_custom.video_model == 2:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, user.account, Default, "] ",
+                  Yellow, "暴力模式执行完毕，正在自动执行去红模式...")
+        # 创建临时用户副本，设为去红模式
+        import copy
+        res_user = copy.deepcopy(user)
+        res_user.courses_custom.video_model = 3
+        _node_list_study(setting, res_user, cache, course)
+
+
+# ============ 节点学习 ============
+
+def _node_list_study(setting: Setting, user: User,
+                     cache: YingHuaUserCache, course: YingHuaCourse):
+    """章节节点学习 - 对应 nodeListStudy"""
+    # 课程过滤
+    cc = user.courses_custom
+    if not course_allowed(cc, course.name):  # [V3.1.3] 统一四语义过滤
+        return
+
+    model_print(setting.basic_setting.log_model == 1,
+                INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                "[", Green, cache.account, Default, "] ",
+                f"正在学习课程：", Yellow, f" 【{course.name}】 ")
+
+    # 课程时间检查
+    if course.start_date and course.start_date > __import__('datetime').datetime.now():
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f" 【{course.name}】 >>> ", Red, "该课程还未开始已自动跳过")
+        return
+
+    # 拉取视频列表
+    node_list, err = yinghua.videos_list_action(cache, course)
+    if err:
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f" 【{course.name}】 >>> ", Red, f"拉取视频列表失败 {err}")
+
+    video_model = cc.video_model
+    red_ans = 0  # 标红记录统计
+    video_threads = []
+
+    for node in node_list:
+        if video_model == 1:
+            _video_action(setting, user, cache, course, node)
+        elif video_model == 2:
+            t = threading.Thread(
+                target=_video_violence_action,
+                args=(setting, user, cache, course, node),
+                daemon=True,
+            )
+            video_threads.append(t)
+            t.start()
+        elif video_model == 3:
+            if node.error_message == "检测到可能使用并行播放刷课":
+                red_ans += 1
+            _video_bad_red_action(setting, user, cache, course, node)
+
+        # 作业处理
+        _work_action(setting, user, cache, course, node)
+        # 考试处理
+        _exam_action(setting, user, cache, course, node)
+
+        # 进度显示
+        if setting.basic_setting.log_model == 1:
+            action, err = yinghua.course_detail_action(cache, course.id)
+            if action and not err:
+                model_print(True,
+                            INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                            "[", Green, cache.account, Default, "] ",
+                            f" 【{course.name}】 ",
+                            f"视频学习进度：{action.video_learned}/{action.video_count} ",
+                            f"课程总学习进度：{action.progress * 100:.2f}%")
+
+    for t in video_threads:
+        t.join()
+
+    # 去红模式递归
+    if video_model == 3 and red_ans != 0:
+        _node_list_study(setting, user, cache, course)
+        return
+
+    model_print(setting.basic_setting.log_model == 1,
+                INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                "[", Green, cache.account, Default, "] ",
+                Green, f"课程 【{course.name}】 学习完毕")
+
+
+# ============ 视频刷课逻辑 ============
+
+def _video_action(setting: Setting, user: User, cache: YingHuaUserCache,
+                  course: YingHuaCourse, node: YingHuaNode):
+    """普通模式刷视频 - 对应 videoAction"""
+    if not node.tab_video:
+        return
+    if int(node.progress) == 100:
+        return
+
+    model_print(setting.basic_setting.log_model == 0,
+                INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                "[", Green, cache.account, Default, "] ",
+                Yellow, "正在学习视频：", Default,
+                f"【{course.name}】【{node.name}】")
+
+    current_time = node.viewed_duration
+    study_id = "0"
+
+    while True:
+        current_time += 5
+        if node.progress >= 100:
+            model_print(setting.basic_setting.log_model == 0,
+                        INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                        "[", Green, cache.account, Default, "] ",
+                        f"【{course.name}】【{node.name}】 ",
+                        Blue, "学习完毕")
+            break
+
+        sub, err = yinghua.submit_study_time_action(
+            cache, node.id, study_id, current_time)
+        if err:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      f"[{cache.account}] ", BoldRed,
+                      f"提交学时接口访问异常：{err}")
+
+        yinghua.login_timeout_afresh_action(cache, sub)
+        log_print(DEBUG, f"---{node.id} {sub}")
+
+        # 解析返回
+        import json
+        try:
+            sub_data = json.loads(sub)
+        except (json.JSONDecodeError, TypeError):
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】",
+                      Red, f"提交状态异常，返回: {sub}")
+            time.sleep(10)
+            continue
+
+        msg = sub_data.get("msg", "")
+        if not msg:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】",
+                      Red, "提交状态异常，msg 字段为空")
+            time.sleep(10)
+            continue
+
+        if msg != "提交学时成功!":
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】 >>> ",
+                      "提交状态：", Red, sub)
+            # 课程解锁时间检查
+            if re.search(r'该课程解锁时间【[^【]*】未到!', msg):
+                model_print(setting.basic_setting.log_model == 0,
+                            INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                            "[", Green, cache.account, Default, "] ",
+                            f"【{course.name}】【{node.name}】 >>> ",
+                            Red, "该课程未到解锁时间已自动跳过")
+                break
+            time.sleep(10)
+            continue
+
+        # 提取 studyId
+        sid = __import__('logic.core.models', fromlist=['json_get']).json_get(
+            sub_data, "result", "data", "studyId", default=None)
+        if sid is not None:
+            study_id = str(int(sid))
+
+        progress_pct = (current_time / node.video_duration *
+                        100) if node.video_duration > 0 else 0
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f"【{course.name}】【{node.name}】 >>> ",
+                    "提交状态：", Green, msg, Default, " ",
+                    f"观看时间：{current_time}/{node.video_duration} ",
+                    f"观看进度：{progress_pct:.2f}%")
+        time.sleep(5)
+
+        if current_time >= node.video_duration:
+            break
+
+
+def _video_violence_action(setting: Setting, user: User, cache: YingHuaUserCache,
+                           course: YingHuaCourse, node: YingHuaNode):
+    """暴力模式刷视频 - 对应 videoVioLenceAction（逻辑同普通模式）"""
+    _video_action(setting, user, cache, course, node)
+
+
+def _video_bad_red_action(setting: Setting, user: User, cache: YingHuaUserCache,
+                          course: YingHuaCourse, node: YingHuaNode):
+    """去红模式 - 对应 videoBadRedAction"""
+    if not node.tab_video:
+        return
+    if node.error_message != "检测到可能使用并行播放刷课":
+        return
+
+    model_print(setting.basic_setting.log_model == 0,
+                INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                "[", Green, cache.account, Default, "] ",
+                Yellow, "正在消红视频：", Default,
+                f"【{course.name}】【{node.name}】")
+
+    current_time = node.viewed_duration
+    study_id = "0"
+
+    sub, err = yinghua.submit_study_time_action(
+        cache, node.id, study_id, current_time)
+    if err:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  f"[{cache.account}] ", BoldRed,
+                  f"提交学时接口访问异常：{err}")
+
+    yinghua.login_timeout_afresh_action(cache, sub)
+
+    import json
+    try:
+        sub_data = json.loads(sub)
+    except (json.JSONDecodeError, TypeError):
+        time.sleep(8)
+        return
+
+    msg = sub_data.get("msg", "")
+    if msg == "提交学时成功!":
+        sid = __import__('logic.core.models', fromlist=['json_get']).json_get(
+            sub_data, "result", "data", "studyId", default=None)
+        if sid is not None:
+            study_id = str(int(sid))
+        progress_pct = (current_time / node.video_duration *
+                        100) if node.video_duration > 0 else 0
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f"【{course.name}】【{node.name}】 >>> ",
+                    Red, " 去红模式 ", Default,
+                    f"提交状态：{Green}{msg}{Default} ",
+                    f"观看时间：{current_time}/{node.video_duration} ",
+                    f"观看进度：{progress_pct:.2f}%")
+    time.sleep(8)
+
+
+# ============ 作业处理 ============
+
+def _work_action(setting: Setting, user: User, cache: YingHuaUserCache,
+                 course: YingHuaCourse, node: YingHuaNode):
+    """作业处理逻辑 - 对应 workAction"""
+    cc = user.courses_custom
+    if cc.auto_exam == 0:
+        return
+    if not node.tab_work:
+        return
+
+    # 检查 AI / 外置题库可用性
+    if cc.auto_exam == 1:
+        err = ai_check(setting.ai_setting.ai_url, setting.ai_setting.model,
+                       setting.ai_setting.api_key, setting.ai_setting.ai_type)
+        if err:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      BoldRed, f"<{setting.ai_setting.ai_type}>",
+                      f"AI不可用：{err}")
+            return
+
+    if cc.auto_exam == 2:
+        err = check_api_que_request(setting.api_que_setting.url, retry=3)
+        if err:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      BoldRed, f"外置题库不可用：{err}")
+            return
+
+    # 获取作业详情
+    work_list, _ = yinghua.work_detail_action(cache, node.id)
+    if not work_list:
+        return
+
+    if cc.auto_exam == 1:
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f"<{setting.ai_setting.ai_type}>",
+                    f"【{course.name}】【{node.name}】 ",
+                    Yellow, "正在AI自动写章节作业...")
+    elif cc.auto_exam == 2:
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f"【{course.name}】【{node.name}】 ",
+                    Yellow, "正在外置题库自动写章节作业...")
+
+    # 作业答题流程(2026-10-15 移植Go StartWorkAction + 多源答题桥)
+    from logic.yinghua import api as yinghua_api
+    from logic.yinghua.exam_turn import turn_exam_topic, turn_ai_answer
+    from logic.core.answer_bridge import bridge_answer_one, bridge_cache_results
+    from types import SimpleNamespace
+    _YH_QTYPE = {"单选": "single_choice", "多选": "multiple_choice",
+                 "判断": "judge", "填空": "fill", "简答": "short"}
+    # 2026-10-16: 拟人节奏(0关/1标准/2谨慎)
+    _yh_pace = int(getattr(cc, "yh_exam_pace", 1) or 0)
+    for work in work_list:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, cache.account, Default, "] ",
+                  f"【{course.name}】【{node.name}】 ",
+                  Yellow, f"作业 [{work.title}] 开始答题...")
+        try:
+            # ① 开始作业
+            yinghua_api.start_work_api(
+                cache, work.course_id or course.id, work.node_id, work.work_id)
+            # ② 拿题
+            w_html, _ = yinghua_api.get_work_api(
+                cache, work.node_id, work.work_id)
+            topics = turn_exam_topic(w_html or "")
+            if not topics:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          Yellow, f"作业 [{work.title}] 无题目, 跳过")
+                continue
+            # ③ 逐题: 多源答题 -> 提交
+            _results = []
+            _last = None
+            for tp in topics:
+                _qt = _YH_QTYPE.get(tp.get("type", ""), "")
+                _ans_text, _src = bridge_answer_one(
+                    tp.get("content", ""), options=tp.get("options"), q_type=_qt)
+                _answers = turn_ai_answer(_ans_text, tp)
+                _qobj = SimpleNamespace(answers=_answers)
+                yinghua_api.submit_work_api(
+                    cache, work.work_id, tp.get("answer_id", ""), _qobj, "0")
+                _results.append({"q_text": tp.get("content", ""),
+                                 "answer": _ans_text, "src": _src, "q_type": _qt})
+                _last = (tp, _qobj)
+                if _yh_pace >= 2:
+                    time.sleep(uniform(1.5, 3.0))
+                elif _yh_pace >= 1:
+                    time.sleep(uniform(1.0, 2.0))
+                else:
+                    time.sleep(0.3)
+            # ④ 交卷(用最后一题, 移植Go finish="1")
+            if cc.exam_auto_submit == 1 and _last:
+                yinghua_api.submit_work_api(
+                    cache, work.work_id, _last[0].get("answer_id", ""),
+                    _last[1], "1")
+            # ⑤ 提交成功后写题库缓存
+            _n = bridge_cache_results(_results)
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】",
+                      Green, f"作业 [{work.title}] 答题完毕({len(topics)}题, 缓存{_n}条)")
+        except Exception as e:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      BoldRed, f"作业 [{work.title}] 答题异常: {str(e)[:100]}")
+
+        if cc.exam_auto_submit == 1:
+            score, err = yinghua.worked_finally_score_action(cache, work)
+            if err:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          BoldRed, f"获取作业分数失败: {err}")
+            else:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          f"【{course.name}】【{node.name}】",
+                          Green, f"作业答题完毕，最高分：{score}分",
+                          f" 试卷总分：{work.score:.2f}分")
+
+
+# ============ 考试处理 ============
+
+def _exam_action(setting: Setting, user: User, cache: YingHuaUserCache,
+                 course: YingHuaCourse, node: YingHuaNode):
+    """考试处理逻辑 - 对应 examAction"""
+    cc = user.courses_custom
+    if cc.auto_exam == 0:
+        return
+    if not node.tab_exam:
+        return
+
+    # 检查 AI / 外置题库可用性
+    if cc.auto_exam == 1:
+        err = ai_check(setting.ai_setting.ai_url, setting.ai_setting.model,
+                       setting.ai_setting.api_key, setting.ai_setting.ai_type)
+        if err:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      BoldRed, f"<{setting.ai_setting.ai_type}>",
+                      f"AI不可用：{err}")
+            return
+
+    if cc.auto_exam == 2:
+        err = check_api_que_request(setting.api_que_setting.url, retry=3)
+        if err:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      BoldRed, f"外置题库不可用：{err}")
+            return
+
+    # 获取考试详情
+    exam_list, _ = yinghua.exam_detail_action(cache, node.id)
+    if not exam_list:
+        return
+
+    if cc.auto_exam == 1:
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f"<{setting.ai_setting.ai_type}>",
+                    f"【{course.name}】【{node.name}】 ",
+                    Yellow, "正在AI自动考试...")
+    elif cc.auto_exam == 2:
+        model_print(setting.basic_setting.log_model == 0,
+                    INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                    "[", Green, cache.account, Default, "] ",
+                    f"【{course.name}】【{node.name}】 ",
+                    Yellow, "正在外置题库自动考试...")
+
+    # 考试答题流程(2026-10-15 移植Go StartExamAction + 多源答题桥)
+    from logic.yinghua import api as yinghua_api
+    from logic.yinghua.exam_turn import turn_exam_topic, turn_ai_answer
+    from logic.core.answer_bridge import bridge_answer_one, bridge_cache_results
+    from types import SimpleNamespace
+    _YH_QTYPE = {"单选": "single_choice", "多选": "multiple_choice",
+                 "判断": "judge", "填空": "fill", "简答": "short"}
+    # 2026-10-16: 拟人节奏(0关/1标准/2谨慎)
+    _yh_pace = int(getattr(cc, "yh_exam_pace", 1) or 0)
+    for exam in exam_list:
+        log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                  "[", Green, cache.account, Default, "] ",
+                  f"【{course.name}】【{node.name}】 ",
+                  Yellow, f"考试 [{exam.title}] 开始答题...")
+        try:
+            # ① 开始考试
+            s_body, _ = yinghua_api.start_exam_api(
+                cache, exam.course_id or course.id, exam.node_id, exam.exam_id)
+            # ② 拿题
+            t_html, _ = yinghua_api.get_exam_topic_api(
+                cache, exam.node_id, exam.exam_id)
+            topics = turn_exam_topic(t_html or "")
+            if not topics:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          Yellow, f"考试 [{exam.title}] 无题目, 跳过")
+                continue
+            # ③ 逐题: 多源答题 -> 提交
+            _results = []
+            _last = None
+            for tp in topics:
+                _qt = _YH_QTYPE.get(tp.get("type", ""), "")
+                _ans_text, _src = bridge_answer_one(
+                    tp.get("content", ""), options=tp.get("options"), q_type=_qt)
+                _answers = turn_ai_answer(_ans_text, tp)
+                _qobj = SimpleNamespace(answers=_answers)
+                yinghua_api.submit_exam_api(
+                    cache, exam.exam_id, tp.get("answer_id", ""), _qobj, "0")
+                _results.append({"q_text": tp.get("content", ""),
+                                 "answer": _ans_text, "src": _src, "q_type": _qt})
+                _last = (tp, _qobj)
+                if _yh_pace >= 2:
+                    time.sleep(uniform(1.5, 3.0))
+                elif _yh_pace >= 1:
+                    time.sleep(uniform(1.0, 2.0))
+                else:
+                    time.sleep(0.3)
+            # ④ 交卷(用最后一题, 移植Go finish="1")
+            if cc.exam_auto_submit == 1 and _last:
+                yinghua_api.submit_exam_api(
+                    cache, exam.exam_id, _last[0].get("answer_id", ""),
+                    _last[1], "1")
+            # ⑤ 提交成功后写题库缓存
+            _n = bridge_cache_results(_results)
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      f"【{course.name}】【{node.name}】",
+                      Green, f"考试 [{exam.title}] 答题完毕({len(topics)}题, 缓存{_n}条)")
+        except Exception as e:
+            log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                      "[", Green, cache.account, Default, "] ",
+                      BoldRed, f"考试 [{exam.title}] 答题异常: {str(e)[:100]}")
+
+        if cc.exam_auto_submit == 1:
+            score, err = yinghua.exam_finally_score_action(cache, exam)
+            if err:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          BoldRed, f"获取考试分数失败: {err}")
+            else:
+                log_print(INFO, f"[{ACCOUNT_TYPE_STR[PLATFORM_TYPE]}]",
+                          "[", Green, cache.account, Default, "] ",
+                          f"【{course.name}】【{node.name}】",
+                          Green, f"AI考试完毕,最终分：{score}分",
+                          f" 试卷总分：{exam.score:.2f}分")
+
+
+# ============ Web端课程列表(2026-10-15 补, 对齐统一结构) ============
+
+def web_course_list(cache: YingHuaUserCache, user: User) -> List[dict]:
+    """Web端课程列表+总进度(courseId/courseName/jobCount/jobFinishCount/jobRate)"""
+    try:
+        courses, _ = yinghua.course_list_action(cache)
+    except Exception:
+        return []
+    result = []
+    for course in courses or []:
+        fin = total = 0
+        has = False
+        try:
+            nodes, _ = yinghua.videos_list_action(cache, course)
+            for nd in (nodes or []):
+                total += 1
+                has = True
+                try:
+                    _vd = float(getattr(nd, "viewed_duration", 0) or 0)
+                    _td = float(getattr(nd, "total_duration", 0) or 0)
+                    if _td > 0 and _vd >= _td:
+                        fin += 1
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        if total:
+            rate = round(fin / total * 100, 1)
+        else:
+            rate = round(float(getattr(course, "progress", 0) or 0) * 100, 1)
+        result.append({
+            "courseId": str(course.id),
+            "courseName": course.name,
+            "teacher": "",
+            "jobFinishCount": fin,
+            "jobCount": total,
+            "jobRate": rate,
+            "hasProgress": has or rate > 0,
+            "statusText": ("已完成" if rate >= 100
+                           else ("进行中" if rate > 0 else "")),
+        })
+    return result
+
+# ============ Web端课程详情统计(作业/考试清单, 2026-10-17) ============
+
+
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """英华: 遍历节点 tab_work/tab_exam 拉取作业/考试清单"""
+    try:
+        courses, _ = yinghua.course_list_action(cache)
+    except Exception:
+        return {"supported": False}
+    course = None
+    for c in (courses or []):
+        if str(c.id) == str(course_id):
+            course = c
+            break
+    if course is None:
+        return {"supported": True, "workFinish": None, "workCount": None,
+                "examFinish": None, "examCount": None,
+                "workList": [], "examList": [],
+                "workOngoing": 0, "examOngoing": 0}
+    work_items, exam_items = [], []
+    try:
+        nodes, _ = yinghua.videos_list_action(cache, course)
+    except Exception:
+        nodes = []
+    for nd in (nodes or []):
+        try:
+            if getattr(nd, "tab_work", False):
+                wl, _ = yinghua.work_detail_action(cache, nd.id)
+                for w in (wl or []):
+                    _et = getattr(w, "end_time", None)
+                    _dl = str(_et)[:16] if _et else ""
+                    _st = getattr(w, "state", None)
+                    work_items.append({
+                        "name": str(getattr(w, "title", "") or "作业")[:80],
+                        "status": "已完成" if _st == 2 else "未完成",
+                        "deadline": _dl,
+                        "ongoing": (_st != 2),
+                        "score": getattr(w, "score", None)})
+        except Exception:
+            pass
+        try:
+            if getattr(nd, "tab_exam", False):
+                el, _ = yinghua.exam_detail_action(cache, nd.id)
+                for em in (el or []):
+                    _et = getattr(em, "end_time", None)
+                    _dl = str(_et)[:16] if _et else ""
+                    _st = getattr(em, "state", None)
+                    exam_items.append({
+                        "name": str(getattr(em, "title", "") or "考试")[:80],
+                        "status": "已完成" if _st == 2 else "未参加",
+                        "deadline": _dl,
+                        "ongoing": (_st != 2),
+                        "score": getattr(em, "score", None)})
+        except Exception:
+            pass
+    return {"supported": True,
+            "workFinish": sum(1 for w in work_items if not w["ongoing"]), "workCount": len(work_items),
+            "examFinish": sum(1 for e in exam_items if not e["ongoing"]), "examCount": len(exam_items),
+            "workList": work_items, "examList": exam_items,
+            "workOngoing": sum(1 for w in work_items if w["ongoing"]),
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}
+
+
+
+# [V3.2.3] 可重做项巡检接入(全平台统一框架; 本平台暂无可重做/重考接口 -> 占位发现层)
+try:
+    from logic.core.retake_scanner import register_placeholder as _rs_ph
+    _rs_ph("YINGHUA", "英华学堂")
+except Exception:
+    pass

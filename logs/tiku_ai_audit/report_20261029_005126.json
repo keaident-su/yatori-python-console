@@ -1,0 +1,7731 @@
+{
+  "meta": {
+    "started_at": "2026-10-29 00:51:26",
+    "finished_at": "2026-10-29 01:57:40",
+    "elapsed_sec": 3973,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "judge"
+    ],
+    "limit": 500,
+    "start": 1000,
+    "end": 130413,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_judge_6ead120c_1000-130413.json"
+  },
+  "summary": {
+    "candidates": 500,
+    "audited": 500,
+    "changed": 84,
+    "same": 404,
+    "report_only": 0,
+    "skipped_invalid": 0,
+    "uncertain": 12,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-29 00:51:26",
+      "question": "节气门积碳,会造成节气门的开度产生误差,导致发动机出现怠速不稳、动力下降。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:51:32",
+      "question": "判断线路的导通状态时，使用测量在正常电流流过电路时的压降的方法来判断导线及触点的状况更为合理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:51:38",
+      "question": "独立悬架的特点是两侧车轮安装于整体式车桥上，车轮连同车桥一起通过弹性元件悬挂在车架或车身上。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:51:44",
+      "question": "故障范围就是故障原因",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:51:50",
+      "question": "CAN-×US数据总线是用来传输数据的双绞数据线，分为CAN-high（高位）和CAN-low（低位）数据线。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:51:57",
+      "question": "汽车电控系统电子信号都应该具有幅值、频率、形状、阵列等4个可以度量的参数指标。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:52:15",
+      "question": "电路原理图中所标出的开关及用电器状态均处于不工作（未控制激活前）的状态。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:52:22",
+      "question": "发动机在安装了电子油门控制系统后,才能真正实现排放控制,定速巡航控制,牵引力控制,电子稳定系统,最佳扭矩控制,最佳怠速控制等控制功能。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:52:29",
+      "question": "对于采用电热式闪光器的车辆，当一侧转向灯有一只转向灯泡损坏时，则该侧转向灯接通时，只亮不闪。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:52:43",
+      "question": "辛普森行星齿轮变速机构工作性能稳定，传递扭矩大。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:52:49",
+      "question": "前轮前束的作用是消除车轮外倾帯来的这种不良后果。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:52:54",
+      "question": "在现代发动机控制系统中,ECU不仅用于控制燃油喷射系统,同时还可进行点火提前角的控制、进气控制、增压控制、自诊断、失效保护和备用控制系统等多项控制功能。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:00",
+      "question": "前照灯检测不合格有两种情况：一是前照灯发光强度偏低，二是前照灯照射位置偏斜。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:07",
+      "question": "领导机关和领导干部带头冲在前、干在先，是我们党走向成功的关键。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:13",
+      "question": "‎给第一台计算机编程的第一代程序员是6位女士。",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "T",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:19",
+      "question": "Python语言的赋值语句很好地对应了冯·诺依曼计算机结构中“运算”与“输出”的步骤。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:26",
+      "question": "地方重塑并不是公共艺术的核心。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:32",
+      "question": "当前创新创业主要集中在互联网+、智能制造等对技术要求较高的领域。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:39",
+      "question": "创新技术和核心技术不能一蹴而就，因此我们应放慢速度，耐心等待。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:45",
+      "question": "创新需要积累，也需要很好的知识基础。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:53:52",
+      "question": "从某种程度来讲,高铁是改革开放以来中国发展出的几个能改变整个21世纪国内国际政治经济基本格局的战略产业之一。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:54:05",
+      "question": "专利不只是对知识产权的保护,在当今国际环境下更是一种战略。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:54:12",
+      "question": "物质财富不是幸福的主要构成要素之一。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:54:27",
+      "question": "吊桥实验是斯坎特设计实施的。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:54:41",
+      "question": "当焦虑引发的行动解决不了问题的时候就会出现抑郁。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:54:48",
+      "question": "习得无助是指个体努力要改变现状但没有能力改变。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:54:54",
+      "question": "别人的成功对自己的成功与否没有太大影响。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:00",
+      "question": "情绪及其交流功能对全人类都有基础作用。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:55:16",
+      "question": "急性应激更容易造成免疫系统的破坏,使人生病。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:25",
+      "question": "相对来说意识反应系统是可以调整的。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:31",
+      "question": "驳斥不合理的悲观信念是对抗抑郁的有效方法。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:38",
+      "question": "聆听对方的陈述后不需要总结对方的观点。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:44",
+      "question": "尴尬是一种混合情绪,它具有交流功能,它具有自我意识。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:51",
+      "question": "社会性情绪具有交流功能,而基本情绪没有交流功能。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:55:56",
+      "question": "人们的负面情绪体验背后往往隐含了我们的不合理信念。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:56:02",
+      "question": "情绪传达信息的功能等同于交流功能。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:56:18",
+      "question": "“冲动是魔鬼”这句话只说对了一半,因为冲动的行为是魔鬼,但冲动的意念本身是好的。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:56:31",
+      "question": "多数情况下,情绪的反应是自动的。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:56:39",
+      "question": "所有以情绪为中心的压力应对策略都是有效的。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:56:45",
+      "question": "1892年，美国制造了第一个农用牵引机的内燃发动机，出现了拖拉机，加速了农业高效率、大规模的发展。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:56:51",
+      "question": "根据新结构经济学视角，想要实现中国式现代化，需要在有效市场和有为政府的共同作用之下，根据不同发展阶段的比较优势发展经济。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:56:57",
+      "question": "乡村治理现代化总体目标是，到2035年，乡村基本公共服务、公共管理、公共安全保障水平显著提高，基层党组织领导的自治、法治、德治相结合的乡村治理体系更加完善，乡村社会治理有效、和谐有序、充满活力，乡村治理体系和治理能力基本实现现代化。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:03",
+      "question": "实现中国式现代化，可以为其他发展中国家现代化道路提供新的选择方案。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:08",
+      "question": "因竞争力下降带来的食物自给率下降，是新阶段中国农业面临的真正挑战。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:14",
+      "question": "我国的东北、西北地区最适合借鉴美国的农业模式。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:20",
+      "question": "农村电商在注意品牌问题时，要考虑区域公共品牌和企业市场品牌间的关系。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:27",
+      "question": "电子商务的发展趋势将会影响到农村电商的发展，比如说移动化、社交化等。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:34",
+      "question": "农村电商可以成为一个有效的连接器，帮助拓展农业产业链价值链。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:57:40",
+      "question": "在专业调色软件中,影视后期包装中使用得最多的、已经成为事实上的行业标准是达芬奇(DavinciReslove)。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:57:56",
+      "question": "影视后期剪辑是在电影产生之初就有的加工环节。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:01",
+      "question": "适于表现人物之间感情交流的景别是近景。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:08",
+      "question": "表现蒙太奇是影视作品中最基本、最常用的一种叙事方法。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:14",
+      "question": "语言是构成特定节目类型的主要元素,如新闻、访谈、脱口秀、相声、评书等。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:20",
+      "question": "自然主义风格布光在布光时以剧本内容为依托。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:58:34",
+      "question": "被摄主体处于大面积明亮或暗淡的背景前时,光圈应该采用自动光圈进行调整。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:41",
+      "question": "微电影对故事的时间跨度没有限制。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:46",
+      "question": "所有影片都会将主题安排在高潮部分展现。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:58:54",
+      "question": "一幅画面中只能有一条轴线。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:59:08",
+      "question": "影视的内涵变化始终与技术发展密不可分。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:59:15",
+      "question": "雷登82是用来降低色温的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:59:20",
+      "question": "近景主要用来描绘人物的内心活动。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 00:59:33",
+      "question": "主体动作编辑点主要以“形体动作”为基础。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:59:40",
+      "question": "电影摄影机是数字摄影机。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:59:46",
+      "question": "FinalCutPro可支持任何系统。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:59:51",
+      "question": "在影视后期包装中,使用调色工具不仅可以调色彩,还可以调影调。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 00:59:57",
+      "question": "教学影片的总结性文字属于片中字幕。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:04",
+      "question": "近场监听音箱一般成对使用,分别连接左右声道。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:10",
+      "question": "欧洲炼金术认为汞是一切可燃物所共有的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:15",
+      "question": "灌钢技术最早记录于南北朝时期。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:22",
+      "question": "陶弘景发现可溶性铜盐能与铁发生置换。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:27",
+      "question": "古代新疆比中原内地的炼铁技术早。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:33",
+      "question": "对发动机来说,机油的品质越好,对发动机越有利。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:38",
+      "question": "普通汽车液压制动系统对制动液牌号要求不太严格。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:45",
+      "question": "底盘工程设计的主要内容就是对底盘的3大系统进行详细的设计,包括传动系统,行驶系统以及制动系统的设计。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:52",
+      "question": "空气阻力计算的式子,CD为空气阻力系数,ρ为空气密度,A为汽车迎风面积,V为汽车与空气的相对运动速度。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:00:58",
+      "question": "心理成瘾是吸毒者戒毒后复吸的主要原因。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:04",
+      "question": "如何选择测得准、覆盖毒品种类多、灵敏度高的有效检测手段，对现场疑似毒品、疑似吸毒人员进行快速、准确判断，从而支撑公安禁毒执法一线实战，是摆在各地公安禁毒部门面前的一个突出难题。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:12",
+      "question": "毒品会使吸食者的大脑长期处于高度兴奋的状态,没有食欲,从而导致吸毒者有不同程度的营养不良。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:19",
+      "question": "质荷比是指带电粒子相对质量数与电荷数之比。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:26",
+      "question": "毒品对免疫系统会造成直接的伤害,削弱机体的免疫功能,使机体感染疾病的几率大大提高。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:31",
+      "question": "色谱法基本原理是，利用不同物质在不同相态的选择性分配，以流动相对固定相中的混合物进行洗脱，混合物中不同的物质会以不同的速度沿固定相移动，最终达到分离和检测的效果。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:38",
+      "question": "抑制剂，对人的中枢神经系统产生抑制、具有成瘾性。K粉就是一种常见的抑制剂。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:01:51",
+      "question": "“厉行禁毒”，对毒品“零容忍”，是党和政府的一贯立场和坚决主张。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:01:58",
+      "question": "停止吸毒,吸毒者会表现出焦虑不安、暴躁、易发脾气等情绪障碍,有的则表现出自卑、自暴自弃的情绪,甚至出现自杀、轻生、反社会等心理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:05",
+      "question": "虎门销烟使用的毒品销毁办法,今天不再使用了。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:11",
+      "question": "毒品戒断,一种是自愿,一种是强制。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:17",
+      "question": "长期吸毒会导致吸毒者的心理变态、精神不振和道德沦丧。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:22",
+      "question": "戒除毒瘾后,保障戒毒者能够顺利回归社会,可以大大降低复吸率。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:27",
+      "question": "露天焚烧法销毁毒品,会产生有害气体。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:34",
+      "question": "色谱法是一种集分离和分析为一体的方法。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:41",
+      "question": "三唑仑俗称迷药、蒙汗药、迷魂药。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:02:46",
+      "question": "创业企业在创立初期,由于企业的规模小;信用水平低;经营中的不确定性较多,对于债务资本的吸引力较小,风险资本便成为创业企业的主要融资渠道。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:03:02",
+      "question": "投资人在对一个需要融资的公司进行分析时,应该首先进行财务分析,再进行经济环境和战略分析。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:09",
+      "question": "1、创业公司无法分散商业活动的高风险。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:16",
+      "question": "2、企业家需要对经济环境做出创造性反应。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:23",
+      "question": "3、创业者拥有高的创造性和创新性,但缺少常规的、职业化的管理知识与技能。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:31",
+      "question": "4、马云曾经成立翻译社。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:37",
+      "question": "5、跟企业型比较接近的人,也可能进入成功的创业大军。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:42",
+      "question": "6、风险,在创业过程中是完全可以想办法规避掉的。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:50",
+      "question": "7、实践中的创业者，一般具有强烈的责任感和使命感。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:03:56",
+      "question": "8、创业任务复杂、需要多元个体合作完成是创业需要团队的一个理由。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:03",
+      "question": "9、处于发展阶段的创业团队适合是德者在上、能者在前、智者在侧、劳者在后的结构。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:11",
+      "question": "10、你对什么充满热情可以帮助你确定你的创业愿景和追求。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:16",
+      "question": "一个没有“做老板”欲望的人是无法创业的（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:04:30",
+      "question": "创业者在作出创业决策时，不需要考虑新企业的产品或服务是否符合当地政府的要求。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:36",
+      "question": "寻找市场空白是最直接有效的发掘有利市场机会的方法。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:43",
+      "question": "创业者若掌握了独立创业的独特资源，创业成功的概率自然大大提高。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:47",
+      "question": "企业租房时，如果营业额和盈利可观，但租金贵，就不要租用了。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:04:53",
+      "question": "创业选址时，只要地段好，停车位是否充足、地铁公交是否便捷不重要（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:05:00",
+      "question": "因学生成绩和注册时间推迟而未取得毕业证的学生档案由招生就业处统一保管,不与人事托管。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:05:10",
+      "question": "各类材料必须使用A4幅面无酸纸,且用蓝色水性笔书写,复印件需加盖公章。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:05:16",
+      "question": "考取专升本的毕业生,本人可凭录取通知书到招生就业处领取档案自行带往录取院校。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:05:21",
+      "question": "任何单位或个人无权截留或扣发按国家计划就业的毕业生档案。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:05:28",
+      "question": "因毕业生本人造成档案丢失的,可以补办。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:05:42",
+      "question": "大学生征兵入伍不算就业",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:05:48",
+      "question": "专升本升入到本科学就读也算就业",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:06:04",
+      "question": "长沙南方职业学院云就业云平台学生可随时查看用人单位的招聘信息。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:11",
+      "question": "长沙南方职业学院云就业云平台具备查阅毕业生档案功能。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:16",
+      "question": "进入学院就业网网址是http://nfdx.bysjy.com.cn/index/。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:21",
+      "question": "通过档案查询,可以查询到毕业生档案存放地。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:26",
+      "question": "创业成功了不算就业;",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:32",
+      "question": "“一提三查”是指学生在云就业平台提交的相关就业资料,必须要通过学校、湖南省教育厅、国家教育部三部门对就业材料的审查。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:38",
+      "question": "学生拿到大学毕业证后,大学档案可以不管不问。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:44",
+      "question": "思维创新是一切创新的前提。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:50",
+      "question": "爱因斯坦提出的相对论理论、亚当·斯密的国富论、凯恩斯的有效需求不足理论等等，都属于理论创新。（  ）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:06:55",
+      "question": "创业计划书是指经营一个项目和成立一个公司时针对未来发展提出的一些想法和思路的文件。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:07:00",
+      "question": "一份好的创业计划书是找投资人的敲门砖。( )",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:07:06",
+      "question": "创业模式的创新就是对于九大要素的变革与创新。( )",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:07:20",
+      "question": "世界知识产权日是4月26日",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:07:25",
+      "question": "侵犯知识产权的诉讼实效为2年,自权利人或者利害关系人知道或者应到知道侵权行为之日起计算。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:07:41",
+      "question": "一件发明或者实用新型专利申请应当限于二项发明或者实用新型。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:07:47",
+      "question": "模仿复制就是不用去思考，原本不动的照搬别人的东西。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:07:52",
+      "question": "创新的过程是创新性思维指导下进行创造性实践的过程。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:07:58",
+      "question": "商业模式创新与技术创新融合未必能提升创新效果",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:08:04",
+      "question": "现代的产品,在很大程度上是多元技术知识的融合。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:08:10",
+      "question": "绝大多数人都不能成为创业者。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:08:26",
+      "question": "研究表明,高绩效的团队一般有5—11个人。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:08:32",
+      "question": "实践中的创业活动绝大多数都是个人完成的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:08:38",
+      "question": "根据调查,70%创业成功的企业都有多名创始人。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:08:46",
+      "question": "创业团队中,股份分配也是一个重要的问题。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:08:52",
+      "question": "企业的市场定位，是通过突出企业及产品在市场上的新颖性、显著性和差异性，从而使其在用户心目中建立起与竞争对手有所不同的形象。（  ）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:00",
+      "question": "产品策略是企业在其产品营销战略确定后，在实施中所采取的一系列有关产品的具体营销策略。（  ）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:07",
+      "question": "差异定位法和产品使用者定位法都属于市场定位的主要方法。（  ）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:14",
+      "question": "基本效用或利益属于成品的核心产品。（  ）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:21",
+      "question": "相对于其他消费品来说，人们对农产品的消费基本是逐年累增，并达到无限的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:27",
+      "question": "工业化之前，农民收入的增加只能靠人力的大量投入。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:32",
+      "question": "中国的城镇化水平，目前还远低于世界平均水平。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:39",
+      "question": "劳动的迭代同时也体现了劳动者为适应新的劳动形态而产生的变化。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:45",
+      "question": "“基建狂魔”这个称号是所有中国劳动者，日复一日年复一年挥洒汗水的结果。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:09:52",
+      "question": "劳动是光荣的，劳动从来都是受到尊重的，劳动者也都享有应有的尊严。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:10:08",
+      "question": "“按照美的规律塑造物体”正在成为一切劳动的共同特征。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:10:24",
+      "question": "中国是全球唯一拥有全部工业门类的国家。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:10:40",
+      "question": "全国各类企业都必须建立工会组织，并交纳会费，并以界别身份参政议政。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:10:47",
+      "question": "子女对老人按月给付生活费用属于伦理孝。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:10:53",
+      "question": "合理分担家务劳动是夫妻平等的另一层面的体现，因此家务劳动的分担必须绝对平均。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:11:00",
+      "question": "唐代的孟郊认为自食其力的人其品质堪比尧农。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:11:16",
+      "question": "人们的闲暇时间不断增加，是由于劳动生产率大大提高，劳动时间大幅减少，因此闲暇时间也大幅提升。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:11:23",
+      "question": "动物在获得原有需求的满足以后不会产生新的需求，因此不会催生新劳动。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:11:30",
+      "question": "“我是一名普通的人民教师，只要还有一口气，我就要站在讲台上，倾尽全力、奉献所有，九死亦无悔。”这句话出自“七一”勋章获得者张桂梅。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:11:44",
+      "question": "勤工俭学既可以及时将所学用于实践，加深知识掌握，熟练技能使用，还可以提前适应工作环境，积累职场经验，开始职业生涯的起飞。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:11:51",
+      "question": "奴隶社会劳动者的劳动只会带来压迫，劳动越多压迫就越深。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:11:57",
+      "question": "绿色有机的蔬菜、水果和肉禽蛋，不是自然长成的，少不了人类栽培。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:12:12",
+      "question": "在中国工业化前期，劳动力较为缺乏，而资本较为丰沛，两者之间存在严重的不匹配。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:12:18",
+      "question": "一个人乐于让人知道自己所从事的劳动或所在的单位，凡有谈及，都倍感“有面”，则可以断定这种劳动是体面的、光荣的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:12:35",
+      "question": "劳动从一开始就以满足人类需要为目的，需要决定了劳动的方向、过程和结果。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:12:41",
+      "question": "知识在生产劳动中的重要性日显突出，“科技是第一生产力”，因此科学技术在劳动生产中具有基础地位。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:12:47",
+      "question": "孔祥瑞的技术创新填补了我国港口系统设备接卸煤炭的技术空白。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:12:53",
+      "question": "直播带货其实也是劳动创造。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:13:07",
+      "question": "劳动创造历史的直观表现在于劳动改变了人与社会的关系。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:13:19",
+      "question": "数字时代的劳动过程更加注重单打独斗。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:13:26",
+      "question": "恩格斯认为：人类劳动与动物活动的最大区别是在于人类劳动是有计划的行动。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:13:32",
+      "question": "机器动作所体现的原理，能够使看不见，摸不着的脑力劳动之美可视化。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:13:49",
+      "question": "“劳动者之美，美在自豪”强调的是“要克服自然障碍，先要克服自身的惰性”()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:13:54",
+      "question": "生产劳动既是人类劳动的重要组成部分，也是家庭生活的重要内在构成。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:14:10",
+      "question": "人类劳动创造社会文化，社会文化推动劳动发展。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:14:15",
+      "question": "党的十八大以来，中国形成了世界上人口最多的中等收入群体。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:14:30",
+      "question": "中华民族伟大复兴的“中国梦”是在无数普通人貌似平常的劳动中一步步成为现实。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:14:38",
+      "question": "认知复杂性指一个人在做判断时不同考虑层面的相对数目。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:14:51",
+      "question": "职业决策会让我们的风险控制的更小一点,机会变的更大一点。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:14:58",
+      "question": "行动+思考是我们提升求职能力的最重要的手段。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:05",
+      "question": "求职中的礼仪主要就是传统贵族式的气息。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:10",
+      "question": "如果想要了解某一职业可以与从事相关职业的师兄师姐多多交流。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:16",
+      "question": "当选择变多的时候,会感到比较后悔选择。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:22",
+      "question": "在人的发展过程中,如果想避免风险,只能不行动。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:28",
+      "question": "HR一般通过行为面试法来判断面试者的能力和性格。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:33",
+      "question": "我们在发求职邮件的时候不能群发。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:39",
+      "question": "强关系里面的机会比弱关系里面的机会多。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:15:46",
+      "question": "我们自身拥有的沟通能力、协调能力都属于“硬实力”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:16:00",
+      "question": "我们最好直接向别人索取名片。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:16:05",
+      "question": "职业决策就是让你找到目标的过程。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:16:20",
+      "question": "在坐下放包的过程中,最好不与面试官有眼神接触。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:16:35",
+      "question": "在高阶互动中要把优点集中讲。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:16:42",
+      "question": "互联网时代,外包思维指的就是遇到难题不自己思考而借助于网络。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:16:58",
+      "question": "人们习惯于做求证的事情。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:17:13",
+      "question": "简历中附加照片的话可能会让求职者与招聘者之间的关系更亲近一点。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:17:31",
+      "question": "“资源诅咒”这个理论认为多数自然资源丰富的国家比资源稀缺国家增长要缓慢。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:17:46",
+      "question": "脸部的修饰最基本的是应保持皮肤的清洁干爽。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:17:52",
+      "question": "工装夹克搭配时要注意避免同色同料套装搭配。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:17:58",
+      "question": "商务夹克一般有立领和翻领两种款式。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:04",
+      "question": "搭配服装时应遵循上深下浅或上浅下深的颜色搭配原则。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:09",
+      "question": "冬季的服装颜色应该偏浅一点，使人心理上感到暖和。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:15",
+      "question": "偏胖的身材不适合穿着马甲。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:22",
+      "question": "时尚夹克的特点之一是背后印有logo、涂鸦和字母短语。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:27",
+      "question": "裤子的宽度影响形象，裤子的长度塑造性格。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:33",
+      "question": "肩宽男生可选择垫肩款式大衣，显肩背挺拔。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:40",
+      "question": "藏青色西装适用于普通商务场合。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:18:46",
+      "question": "衬衫敞开穿，内搭T恤时要选择较为休闲宽松的衬衫款式。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:19:02",
+      "question": "穿正装衬衫必须保持正常的人体线条，里面不能有影响体型的衣着。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:19:10",
+      "question": "衣物不宜使用过多的洗涤用品长时间浸泡。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:19:17",
+      "question": "美版西装的轮廓是倒梯形。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:19:23",
+      "question": "着装的技巧之关键，在于要有章可循，要学会穿法，遵守穿法。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:19:28",
+      "question": "西装裤多为长裤设计。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:19:42",
+      "question": "短款风衣是最不挑身材的风衣款式。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:19:48",
+      "question": "皮肤偏黄适合选择灰色调风衣。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:19:54",
+      "question": "衬衫内搭的T恤不宜过长，要与衬衫平行或短于衬衫。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:20:01",
+      "question": "工装裤是指裤管宽松、在裤子大腿外侧和髋关节处有较多口袋的裤子。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:20:07",
+      "question": "注重形象需要注重身材的管理。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:20:22",
+      "question": "头发表现了一个人的生活状态和情绪。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:20:28",
+      "question": "传统意义来说，特别隆重的商务场合，穿成套型西装只能配皮鞋。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:20:43",
+      "question": "欧版西装是英版西装的变种。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:20:48",
+      "question": "“女为悦己者容”这句话对于男士也同样适用。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:21:02",
+      "question": "西装内搭的衬衫可以为短袖衬衫。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:08",
+      "question": "传统观念认为，无褶的西裤才是正式的西裤。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:14",
+      "question": "根据款式，衬衫可分为正装衬衫和休闲衬衫。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:20",
+      "question": "下肢的长度是指胯部到脚底间的距离。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:26",
+      "question": "西装不属于安全款。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:31",
+      "question": "衬衫条纹越细越密越易被接受。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:21:45",
+      "question": "格纹衬衫选择黑白格纹、蓝黑格纹、红黑格纹，搭配难度较低。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:51",
+      "question": "买混纺面料的衬衫，宜选含棉量在40%以上的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:21:57",
+      "question": "短裤选择在小腿中间的位置最为合适。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:22:02",
+      "question": "粗犷的皮夹克个性过于鲜明，不属于经典款。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:22:08",
+      "question": "长度为大腿中部的大衣最显腿长。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:22:23",
+      "question": "我们要使自己的仪容达到让人看得顺眼的要求，最关键的是要从“头”做起。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:22:30",
+      "question": "偏瘦的男生适合穿宽大的衣服，显得不那么瘦。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:22:35",
+      "question": "高领针织衫内搭T恤比内搭衬衫更为合适。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:22:48",
+      "question": "白衬衫的保养秘诀是：穿一次洗一次。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:23:05",
+      "question": "化纤、丝质、棉质衣物可放樟脑丸防虫防蛀。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:23:12",
+      "question": "能力永远走在形象前面。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:23:19",
+      "question": "职场穿搭第一步是了解面试单位的着装要求。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:23:25",
+      "question": "遇到校园霸凌一定不能保持沉默，你的沉默往往成为施暴者的动力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:23:31",
+      "question": "根据美国医学家弗里德曼和罗森曼的实验，A型人格的人他们的冠心病发病率要明显高于B型人格的人。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:23:38",
+      "question": "一个健康的生物体可以通过不断适应和改变环境来维持生理的稳态。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:23:52",
+      "question": "减肥最重要的两项原则是减少能量摄入和增加能量消耗。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:23:58",
+      "question": "根据研究，戴口罩对预防PM2.5影响血压很有效。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:24:04",
+      "question": "笑气虽然还未被正式纳入毒品范围，但其危害也非常严重。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:24:19",
+      "question": "世界卫生组织关于健康的定义是没有疾病和衰弱的状态既是健康。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:24:26",
+      "question": "当前导致过早死亡的健康风险因素，比如高血压、吸烟、户外空气污染等，全部都与个人行为和生活行为方式有关。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:24:33",
+      "question": "爱情关系里的很多冲突，其实是认识自己、了解自己非常重要的过程。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:24:41",
+      "question": "制定并保持一个非常复杂的健身计划有利于让运动成为生活的一部分。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:24:47",
+      "question": "当人体血液的酒精浓度达到0.1%的时候，人就会失去意识，增加死亡的风险。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:24:54",
+      "question": "磁共振下的研究说明，只有在睡眠状态下，大脑神经元才会有节律地同时“开”或“关”。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:25:09",
+      "question": "心理学研究发现，生理上的温暖和心理上的温暖是一致的，生理上的温暖有助于心理上的温暖。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:25:25",
+      "question": "婚姻是个人达到幸福目标的途径之一。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:25:40",
+      "question": "现代女性的自我发展是传统角色的加强版。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:25:45",
+      "question": "当前我国在动物饲养过程中，滥用抗生素类药物的现象十分常见。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:25:53",
+      "question": "为更好地进行健康管理，我们应该参加为提高心肺功能和维持肌肉力量设计的有规律的身体活动。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:25:59",
+      "question": "进入楼梯间后，确定下层未着火时，可以向下逃生，而决不往上跑。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:26:14",
+      "question": "“小鱼大池塘”现象可能导致大学生出现自卑的心理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:26:19",
+      "question": "无症状或亚临床型生殖器疱疹感染者通常无需药物治疗。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:26:37",
+      "question": "现场急救时，应确保患者周围空气流通，使患者能呼吸到足够新鲜的空气。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:26:51",
+      "question": "附睾的的作用是促进精子发育和成熟，以及贮藏和运输精子。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:27:06",
+      "question": "据研究，白天睡觉太久是导致夜间无法规律睡眠的原因之一。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:27:19",
+      "question": "误服强酸强碱性化学液体的患者，禁止催吐和洗胃，以免造成穿孔。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:27:35",
+      "question": "曲酒是酒曲的发酵物,酒曲是曲酒发酵谷物后的产物()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:27:42",
+      "question": "古代“炼丹术”曾经在中国古代平民阶层中盛行()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:27:48",
+      "question": "古代都江堰设有专职的管理机构和官员()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:27:56",
+      "question": "中国古代只有技术发明,没有科学存在",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:28:02",
+      "question": "《梦溪笔谈》从历史角度描述了温州雁荡山()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:28:17",
+      "question": "都江堰的鱼嘴分水堤是按三七比例自动排沙()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:28:32",
+      "question": "古代都江堰水利工程是中国古代技术以水治水的典型案例()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:28:39",
+      "question": "中国古代“炼丹术”有“内丹术”和“外丹术”()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:28:44",
+      "question": "学习中国古代技术是为了进一步研究古代“四大发明”()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:28:50",
+      "question": "建筑学家梁思成先生在《中国建筑史》说到:“中国古代建筑有两个明显特征:斗拱,屋顶”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:28:57",
+      "question": "青铜通常不能铸造长尺寸的剑",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "T",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:29:03",
+      "question": "元代斗拱结构比较简化()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:29:09",
+      "question": "红点设计大奖是由美国设计协会举办的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:29:18",
+      "question": "小众化的市场细分可能会产生质的改变。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:29:25",
+      "question": "2002年,诺基亚推出的彩屏手机标志着彩屏时代的到来。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:29:31",
+      "question": "理查德·罗杰森是一位把现代设计作为一种艺术和文化的设计师。",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "T",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:29:37",
+      "question": "设计师最重要的是要有敏锐的观察能力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:29:53",
+      "question": "天鹅椅标志着在家具设计的历史上,20世纪最著名的椅子的诞生。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:30:09",
+      "question": "现代指的是我们现在生活的工业时代,所以现代被认为等同于工业。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:30:22",
+      "question": "意大利威尼斯的Murano岛因玻璃制品而闻名。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:30:28",
+      "question": "北欧家具的设计非常尊重人机学的因素,而不是单纯追求形式上的创新。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:30:34",
+      "question": "设计的专业性强,综合性不强。",
+      "type": "judge",
+      "old_answer": "F",
+      "new_answer": "F",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:30:39",
+      "question": "大家非常熟悉的“按揭”这一方式最出现在通用公司。",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "F",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:30:54",
+      "question": "创意只有变成创新产品在才能发挥它的价值。",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "F",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:31:09",
+      "question": "红点概念奖的评价标准中,可实现性是重要的一环。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:31:26",
+      "question": "亨利·福特设计研发出的T型车的市场拥有率曾高达56%。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:31:37",
+      "question": "设计不仅仅是语言上创意表述,更需要视觉化的表达。",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "T",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:31:43",
+      "question": "设计获奖的诀窍是要做到小处着眼,大处着手。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:31:48",
+      "question": "设计意味着打破旧秩序建立新秩序。",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "T",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:31:54",
+      "question": "安东尼·高迪,西班牙建筑师,塑性建筑流派的代表人物,属于现代主义建筑风格。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:01",
+      "question": "《情感化设计》这本书的作者是唐纳德·诺曼。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:07",
+      "question": "市场经济是一种“for”的经济。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:14",
+      "question": "世界上第一次世博会结束后场馆便被拆除。",
+      "type": "judge",
+      "old_answer": "F",
+      "new_answer": "F",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:21",
+      "question": "与自然美相比，社会美在内容和形式的关系上更偏重于内容。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:32:36",
+      "question": "挖掘人类潜力的同时，也会对社会秩序产生冲击，带来伦理困境等问题。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:43",
+      "question": "近年流行的人工智能玩具，虽然安全性很低，但对儿童隐私并不构成威胁。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:49",
+      "question": "鹿茸的生长机理跟鹿科动物体内激素的变化没有关系。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:32:56",
+      "question": "鲜地黄加工成生地黄后,它的表面黄色不再明显,变成灰黑色或灰棕色。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:02",
+      "question": "因为源于自然,来源以植物性药材居多,使用也最为普遍,所以,在古代,中药又有本草之称。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:09",
+      "question": "郁金、莪术、姜黄、片姜黄这四味药一个共同的使用注意,就是孕妇及月经过多者慎用或忌用,莪术是禁用,姜黄、片姜黄和郁金等是慎用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:17",
+      "question": "《抱朴子》中解释了菟丝子名称的由来:菟丝子初生的根形状像兔子,而之后生出的茎如丝,所以名为“菟丝”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:27",
+      "question": "莪术行气和活血力广而强，善于治疗瘀血重症，现代医学认为其具有良好的抗肿瘤作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:34",
+      "question": "《中华人民共和国药典》规定海马来源于为海龙科动物大海马、线纹海马、刺海马、三斑海马和小海马的干燥体。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:41",
+      "question": "鹿茸滋补作用非常强,可大量服用强身健体。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:46",
+      "question": "木通是一味利尿通淋药,可以治疗湿热淋证和湿热水肿。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:33:54",
+      "question": "现在有将鲜天麻洗净切片蘸白糖吃、或凉拌吃的,也有蒸煮及蜜煎蜜渍服用的,尤其是“蜜煎”天麻,开了天麻糖制的先河。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:01",
+      "question": "中医认为药物炒炭后,因炭性收敛,具有凉血的功效。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:09",
+      "question": "通常来说,鹿茸分枝越多,骨化越严重，质量越好。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:16",
+      "question": "中国人陈克恢首次阐明了麻黄碱具有舒张支气管平滑肌作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:23",
+      "question": "菟丝子可制造养分,所以,可以不依赖寄主提供营养物质生存。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:29",
+      "question": "人参之所以能吸引鼠、鸟类等小型动物采食,是因为它花朵的颜色很鲜艳。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:35",
+      "question": "四大怀药是怀山药、怀地黄、怀牛膝、怀麦冬。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:40",
+      "question": "肉苁蓉不含叶绿素,不能进行光合作用,故只能靠寄生在梭梭草、红柳、柽柳等植物的根上生活。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:34:47",
+      "question": "临床使用朱砂时要充分强调内服不能大量,也不能持续,避免它的积蓄性中毒。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:35:02",
+      "question": "半夏发酵则成了半夏曲,具有助消化的功效。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:35:10",
+      "question": "通草来源于通脱木的茎髓,功效和木通非常相似,但是作用比木通更猛烈。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:35:17",
+      "question": "土鳖虫主要有2个方面的应用,一个方面是疗伤,二个方面是通经。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:35:24",
+      "question": "大黄性寒味苦,擅长治疗热结便秘,服用几个小时后,就会发生泻下作用,就会出现腹泻。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:35:30",
+      "question": "生地黄有清热凉血止血、养阴生津的作用。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:35:44",
+      "question": "在互动模式中，可以看到系统元素的相互作用，每个人都是关系中的一环，但是每个人都是自由的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:36:00",
+      "question": "在人际交往过程中，千万不能去麻烦别人来给自己帮忙。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:36:08",
+      "question": "刻板效应是指我们对某个社会群体形成了一种概括而固定的看法。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:36:14",
+      "question": "从历史发展维度看，人的独立性是后于合作性发展起来的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:36:30",
+      "question": "坎农指出，压力反应是身心体系的一部分。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:36:37",
+      "question": "青年人应该投身到建设祖国的实践中，结合“小我”和“大我”，去追寻生命的价值和意义。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:36:55",
+      "question": "双相障碍如果不加治疗或者治疗不当，复发率相当高。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:37:01",
+      "question": "积极的人生就是有所反思的投身于世。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:37:20",
+      "question": "短期目标定得越高越好，可以充分激发自身潜力。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:37:26",
+      "question": "心理学的适应是指有机体不断变化，与环境取得平衡的过程。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:37:43",
+      "question": "从儒家“修身，齐家，治国，平天下”的观点来看，大学生的人生意义在于好好学习，为报效国家做好准备。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:37:49",
+      "question": "正确处理“大我”与“小我”的关系有助于提升个体的心理健康质量。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:37:56",
+      "question": "人生意义是一个宏大话题，但可供参考的经验和素材却很有限。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:38:12",
+      "question": "在新生适应过程中，我们需要承受一些摩擦和压力，慢慢探索出彼此之间的最佳人际距离。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:38:26",
+      "question": "对待精神分裂症病人不要污名化，要像待正常人一样对待他们。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:38:32",
+      "question": "爱情脱胎于幼年时的亲密关系。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:38:40",
+      "question": "化解冲突的能力非常重要，我必须要把自己的冲突解决能力修炼提升到专家的水准。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:38:46",
+      "question": "长期目标可以让人感受到现实与自己理想的差距，产生实现目标的动力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:38:52",
+      "question": "抑郁就是郁闷的情绪。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:38:58",
+      "question": "行为成瘾的特征是患者不能知觉自己的行为有害且无法自控。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:03",
+      "question": "父母跟孩子、尤其是母亲跟孩子的关系，制造了一个人最核心的人格。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:10",
+      "question": "中国特色的健康人格强调，我们的“大我”，在时间维度上，是与中国传统连接，并面向未来的。在空间维度上，既立足于每个家庭，又面向人类命运共同体。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:16",
+      "question": "引发焦虑情绪的常常是当下环境中存在的威胁。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:23",
+      "question": "面对重要的事情和紧急的事情，我们应该优先把紧急但不重要的事情完成。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:28",
+      "question": "性格外向的人精力消耗得更快。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:34",
+      "question": "适度的焦虑有利于增进表现。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:39",
+      "question": "我们感受到的压力就是因为我们心理素质差、钻牛角尖、想不开。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:45",
+      "question": "人生意义需要我们每个人迅速、即刻找到答案。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:39:51",
+      "question": "我们应该认识到所有同学都并非在同一个起跑线上，也无所谓一个统一的终点。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:40:08",
+      "question": "抑郁症不可治愈，只能缓解。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:40:15",
+      "question": "一般来说，精神疾病与个体自杀之间有着密切关系。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:40:30",
+      "question": "根据2020年中国大学生健康调查报告，睡眠不足是大学生首要的睡眠问题。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:40:35",
+      "question": "门当户对的说法表明两个出生背景、性感、态度等相似的个体更容易产生相互的吸引。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:40:42",
+      "question": "大学的新生活，有人适应快一些，有人适应慢一些，这很正常。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:40:55",
+      "question": "只有接纳自我，我们才能站在一个新的起点，准备迎接各种困难和挑战。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:41:11",
+      "question": "反思是寻找自我的重要方式。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:41:27",
+      "question": "沟通能力等于说话能力。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:41:35",
+      "question": "冲突应该被100%的避免。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:41:41",
+      "question": "“发展自我”就是要否定现在的自己，追求更优秀的自我。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:41:47",
+      "question": "愤怒的情绪是一种糟糕的情绪。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:41:56",
+      "question": "为了协调“本我”的欲望和“超我”的约束之间的冲突，人格中发展出了一个理性的部分，就是“自我”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:42:02",
+      "question": "抑郁障碍是可以被治愈的，抑郁障碍只能通过药物治疗。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:42:09",
+      "question": "青春期是“社会自我”发展的重要时期。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:42:25",
+      "question": "每个人对“大我”的理解有所不同，所以可能会产生观念冲突。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:42:32",
+      "question": "学术界给拖延的定义是人们自愿推迟开始或完成某一计划好的任务。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:42:44",
+      "question": "鹿茸可以补肾阳，补精血，但不具备强筋骨功效,不能用来治疗筋骨萎软。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:42:50",
+      "question": "给附子灌胆巴是为了防治其腐烂。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:42:57",
+      "question": "沉香在燃烧之前几乎没有香味,只有在燃烧时,才会产生香气。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:43:11",
+      "question": "梅花鹿一岁公鹿所长出的第一对茸角称为头茬茸。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:43:17",
+      "question": "赤芍长于养血调经,敛阴止汗,平抑肝阳；白芍长于清热凉血,活血散瘀,清泄肝火。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:43:23",
+      "question": "朱砂水飞的目的有两个,一是除去可溶性汞盐,起到减毒目的。二是为了洁净药物,便于制剂和服用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:43:29",
+      "question": "关木通具有清热利湿功用,但含有马兜铃酸,对肾脏有较强的毒性,可以损害肾小管功能,导致肾功能衰竭。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:43:34",
+      "question": "海马作为一味中药,味咸、甘,性温,入肝、肾经,具有补肾壮阳的作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:43:40",
+      "question": "菟丝子滋补作用非常强,可以久服使用。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:43:46",
+      "question": "槲寄生有叶片的构造,能依靠自身含有的叶绿素进行光合作用,制造养料,但是需要从寄主植物中吸收水分和无机盐。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:43:58",
+      "question": "肉苁蓉种子在自然环境里要经过两个冬季完成后成熟过程。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:44:13",
+      "question": "茯苓药用时，不要先煎,也不要打碎，以防治有效成分散失。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:19",
+      "question": "锁阳的种子非常小,千粒重仅为2克左右,如此细小的种子会随着植株内部水份倒流,进入寄主根部,然后继续流动到合适的寄生部位。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:26",
+      "question": "佩戴朱砂饰品会对人体有伤害。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:32",
+      "question": "野山参的鉴别,老药工总结有:芦长碗密枣核艼,紧皮细纹珍珠须。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:38",
+      "question": "天麻的无性和有性繁殖技术的研究成功改写了天麻只能野生不能家种的历史。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:43",
+      "question": "关于菟丝子的功效,《本草汇言》有:“补肾养肝,温脾助胃之药也”之言。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:50",
+      "question": "本草中不存在不同药物来源于同一种植物同一个药用部位的现象。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:44:55",
+      "question": "肉苁蓉可以用铁器加工,可进行机械化种植。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:45:01",
+      "question": "汉代的时候,中国的香文化就已经发展成以沉香为主,并且刮起了一股用沉香建筑楼台亭阁的奢靡之风。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:45:06",
+      "question": "生地黄经过九蒸九晒之后,由凉血药变成了一味补血药。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:45:13",
+      "question": "丝绸之路实际上是东西和南北交汇在一起的道路网。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:45:28",
+      "question": "中欧班列中通道经过蒙古国,与俄罗斯西伯利亚铁路相连,可通达欧洲各国。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:45:47",
+      "question": "大流士一世修筑了覆盖全帝国的驿道网,其中最著名的是帝国西部的“王家大道”。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:45:52",
+      "question": "月氏西迁是对丝绸之路是否开通的一个有力验证。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:45:58",
+      "question": "裕固族维护着丝绸之路河西段与南北道的畅通。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:03",
+      "question": "月氏分大月氏和小月氏。( )",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:08",
+      "question": "回鹘以外蒙古鄂尔浑河为核心,逐渐进入天山地区和中亚。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:13",
+      "question": "支持吐谷浑说的学者认为,土族主要是鲜卑支系吐谷浑人的后裔。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:20",
+      "question": "中国之名与中国各族群起源中间地带向四周发展有关。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:25",
+      "question": "慕容部建立的五个政权中,最后一个为前燕。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:30",
+      "question": "1954年,循化县改称为循化撒拉族自治县。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:37",
+      "question": "欧洲对中国的认识始于丝绸,古希腊人和古罗马人将丝绸称为“西尔克”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:42",
+      "question": "9世纪开始,吐蕃陷入了长期的分裂割据状态。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:46:48",
+      "question": "戎指的是某类生活在溪谷中间的人。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:47:01",
+      "question": "贵霜帝国的建立,使得丝绸之路中段在一强大帝国的管理下畅通。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:07",
+      "question": "在我国,乌兹别克族既是跨国民族,也是人口较少的民族之一。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:14",
+      "question": "唐朝安史之乱后,逐渐放弃了对西域的统治。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:20",
+      "question": "蒙古沿丝绸之路进行了三次西征。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:26",
+      "question": "在同一时间地点,信息传递同时进行是面对面交流的特征之一。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:32",
+      "question": "交谈时要格外关注说话者的自我陈述。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:38",
+      "question": "提出个人建议时,应注意保留双方颜面。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:44",
+      "question": "语言信息和非语言信息是同时发出的,通常二者互相强化或者互相支持。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:50",
+      "question": "倾听的秘诀在于：由浅及深，由表及里，抓住事物的关键。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:47:58",
+      "question": "批评是指出对方不足,一定程度上会让对方有挫败感,所以一定要谨慎。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:05",
+      "question": "在线交流展现希望别人知道的东西且易于掩饰。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:10",
+      "question": "在有限的生命里，拖延症非常阻碍成长的进程。（）",
+      "type": "judge",
+      "old_answer": "T",
+      "new_answer": "T",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:17",
+      "question": "萍水相逢的人看似不重要,但往往这些人会提供给我们事业的机会。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:22",
+      "question": "注视的时间、方向、性质出现不同,传达的信息也不同。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:29",
+      "question": "不但要当面赞美,也应该学会在背后赞美。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:35",
+      "question": "倾听有五个互不重叠的独立步骤,只有一步一步分析才能了解对方的意思。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:40",
+      "question": "社会是个人彼此发生的联系和关系的总和。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:46",
+      "question": "面对面交流的一个特征是沟通双方在同一时间和地点,信息传递同时进行。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:53",
+      "question": "直接兴趣对活动本身兴趣一般,更关注活动的结果。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:48:59",
+      "question": "沟通，不仅仅是一个人单方面的说，或者另一个人单方面的听，有效的沟通是建立在双向沟通的基础上的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:05",
+      "question": "真正地认识自我意味着一个人能够对自身给出正确的、实事求是的评价 ,这能够使人既不在别人的溢美之辞中忘乎所以也不因别人的否认而自暴自弃。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:11",
+      "question": "英国人不是比较讲究社会地位和等级差异的，他们不是很重视繁冗缛节。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:15",
+      "question": "我们通常所说的“同理心”要求我们真诚的去感受他人的需求，了解一个人的所思所想，不断章取义，不随意揣测。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:20",
+      "question": "在任何一场说服开始之前，都要据理力争，不给对方任何质疑的机会，这样说服的几率就会大大增加。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:26",
+      "question": "链式沟通，也叫环式沟通。链式沟通网络是一个平行网络，其中居于两端的人只能与在内侧的一个成员联系，而在链式沟通网络之中的人则可分别与两侧的人进行信息沟通。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:32",
+      "question": "“自我沟通”，也称内向沟通，即信息发出者和信息接收者为同一个行为主体，自行发出信息，自行传递，自我接收和理解。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:37",
+      "question": "日本人具有强烈的个体意识。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:44",
+      "question": "组织中群体决策的科学方法:头脑风暴法、数据分析法、个人决策法、名义群体法。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:51",
+      "question": "掌握不同文化背景的差异不但能帮助我们很好地规避不同文化背景下的忌讳问题，还可以让我们在跨文化背景下更深入地进行交流。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:49:58",
+      "question": "所谓“什么场合说什么话”就是要注意说话所处的社会环境、自然环境和具体场景 。而这具体场景又涉及说话的时间、空间及周围环境。这些要素看似不起眼，却在言语交际中起到不可低估的作用，所以要尽量少说话，避免出现差错。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:04",
+      "question": "完善的危机处理系统的建立能使我们尽早捕捉企业出现危机前的征兆性信息，并及时对信息进行整理、分析与评估，进而决定是否发出危机沟通警报，以便企业采取必要的防范措施。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:10",
+      "question": "公关团队的工作主要是负责做好公司形象的新闻宣传、创建名牌、建立企业文化等。使组织与其利益相关者之间形成双向交流，促进外界对组织的认识与理解。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:16",
+      "question": "自我沟通过程中的反馈，表现为思想上的自我本来定位与现实要求之间的冲突发生和解决过程。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:22",
+      "question": "在说服别人的过程中，要想有力地说服他人，就必须提供权威的证据。如果向他人提供可靠的资料而不是个人的看法，就会增强你的说服力。因此。证据的来源要真实可信，要具有权威性。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:28",
+      "question": "每一个企业只有在正确了解危机、遵循危机管理的原则，才能在危机中站稳脚跟。 危机管理是每个领导的必修课，也是每个企业必须面对的管理。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:34",
+      "question": "谈判是建立在需求的基础上，在谈判时，要坚信自己的谈判目的，不需要清楚对方的需求。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:40",
+      "question": "演讲稿是一种介乎于口语和书面语言之间的语言，它主要是在大会上或者其他公开场合发表个人观点、见解和主张的文稿。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:45",
+      "question": "所有演讲的结构都是由开头语、主体和结语三部分构成。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:50:50",
+      "question": "责任心是企业认为当代大学生求职者最需提升的能力。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:51:04",
+      "question": "拥有丰富的经验和高超的技艺就能成为一名优秀工匠。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:10",
+      "question": "在培育工匠精神的过程中高校可以依托的环境有教室、实训室和校园公共场所等。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:17",
+      "question": "匠人在制作作品的过程中可随意对待自己的作品,随意创新。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:23",
+      "question": "学校是人生价值的展示平台,人的技能强弱,水平高低都是在学校学习中得以体现。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:29",
+      "question": "为人师者,应当性格豁达、心胸宽广,倾己所有传授给徒弟。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:35",
+      "question": "师徒之间也是应当互敬互爱,正所谓“师徒如父子”“一日为师,终身为父”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:41",
+      "question": "“世上最好学的是技巧,而最难做到的是具备专注的定力”,这种说法是不正确的。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:47",
+      "question": "通过多途径社会实践活动可以提升责任感,提高分析和解决问题的能力,增强奉献意识",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:51:52",
+      "question": "平庸与卓越的差距在于是否拥有追求完美的毅力。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:08",
+      "question": "匠人常见的情绪有焦虑紧张情绪、无聊情绪、抱怨情绪、自责情绪等。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:14",
+      "question": "2018年,江西省教育厅也发布了《关于加强职业院校工匠精神培育的实施意见》。在各类学校里加强工匠精神教育,培养准工匠人才“精益求精”的工匠精神。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:21",
+      "question": "“人生不如意事十之八九”体现的是挫折的普遍性。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:26",
+      "question": "美国工匠精神的沿革和它的建国历史是密不可分的。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:32",
+      "question": "从价值层面来看,工匠精神追求的是“德、艺、器”的统一。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:38",
+      "question": "在思维过程中盲目迷信权威,缺乏独立思考能力,是典型的权威型思维定式。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:44",
+      "question": "在中国传统伦常中,“一日为师,终身为父”,师徒关系是最重要的非血缘关系之一。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:50",
+      "question": "现代社会的师徒关系只对企业都有着重要作用。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:52:56",
+      "question": "新工匠,注重“互联网+”、用户体验、绿色环保,就可以不用传承工匠精神了。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:01",
+      "question": "相对于科技而言,意大利产品更加注重纯手工制作的工艺。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:08",
+      "question": "大学生在课程学习、实践训练和顶岗实习中努力培养工匠精神,就是在提高自身职业能力和培养职业道德。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:13",
+      "question": "2018年,国务院发布《关于推行终身职业技能培训制度的意见》文件,提出“强化工匠精神和职业素质培育”。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:20",
+      "question": "雕琢作品先雕琢人品,培养一流的工匠,先培养一流的品德。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:26",
+      "question": "匠人把作品当成是真正有灵性的生命体,这体现了职业之敬。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:53:40",
+      "question": "要做到有效利用时间,我们必须学会对事情排序,按事情的重要性进行优先排序来做事。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:47",
+      "question": "庖丁为文惠君解牛时,通过掌握牛的生理特征的规律知识来辅助解牛的技术,结果宰牛十九年而刀像新的一样。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:53:54",
+      "question": "在古代社会青年人要学得一技之长,不一定需要“拜师”这个程序。()",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:00",
+      "question": "“要成为最棒的铆工” 是“中国焊接机壳拼装第一人”的职业理想。()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:07",
+      "question": "“新竹高于旧竹枝,全凭老干为扶持”。体现的是师徒关系中师傅对徒弟的帮助。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:13",
+      "question": "在日本,尊重职人和匠人的社会传统没有受到宗教的影响。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:19",
+      "question": "“8”字型指向性传声器适合拾取0角度和180°角度的声音信号。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:24",
+      "question": "信噪比越高,图像质量越差。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:30",
+      "question": "故事先行的选题方式主要用于一些影视创作类比赛的参赛作品。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:54:44",
+      "question": "全景是刻画人物性格最有力的景别。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:54:50",
+      "question": "从导演(也是观众)的视角出发来叙述的镜头称为主观镜头。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 01:55:04",
+      "question": "严格来讲,非线性编辑系统不属于数字图形工作站。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:10",
+      "question": "运动轴线只能是直线。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:17",
+      "question": "电影的光比高于电视。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:23",
+      "question": "在室外多云天空下拍摄,滤色片旋钮应设置为1/16ND。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:29",
+      "question": "在高调画面中,不能安排深色调和暗的景物。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:34",
+      "question": "微电影要从事件的中段开始讲故事,不要从最开始说。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 01:55:48",
+      "question": "一般而言,商业电影更多地集中于较低层次的需求,艺术电影偏向于较高层次的需求。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:53",
+      "question": "专业录音室一般都是密闭的空间。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:55:59",
+      "question": "批判性思维的主要目标是质疑一切，而不寻求解决方案。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:04",
+      "question": "创造性思维和批判性思维是互相独立的，无法结合。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:11",
+      "question": "在大数据时代，样本分析法已经被完全淘汰。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:17",
+      "question": "创造性思维要求个体完全放弃原有知识体系，从零开始思考。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:22",
+      "question": "头脑风暴是一种有效的培养创造性思维的方法。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:27",
+      "question": "创造性思维只存在于艺术领域，其他行业不需要创造性思维。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:32",
+      "question": "长短期记忆网络（LSTM）是循环神经网络（RNN）的变体，能够有效解决长序列训练中的梯度消失问题。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:38",
+      "question": "强化学习是监督学习的一种特殊形式，两者都依赖标注数据进行学习。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:43",
+      "question": "因为大数据关注全体样本，所以数据的精确性越来越重要。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:49",
+      "question": "传统的抽样方法仍然能够有效应对所有数据分析需求。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:56:55",
+      "question": "荣格集体无意识来源于个体后天学习经验。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:57:02",
+      "question": "创新思维只是指技术层面的新发明。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:57:08",
+      "question": "垂直思维允许在解决问题时跳过不必要的步骤，直接得出结论。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:57:15",
+      "question": "反馈循环只有强化型一种类型。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:57:20",
+      "question": "大数据时代强调因果关系，而不是相关关系。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:57:26",
+      "question": "ZestFinance通过分析更多不显著的事件，取得了优于行业平均的贷款违约率表现。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 01:57:35",
+      "question": "标签系统是一种灵活的数据分类机制，可以适应不断变化的需求。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    }
+  ]
+}

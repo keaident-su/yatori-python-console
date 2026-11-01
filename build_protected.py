@@ -1,0 +1,578 @@
+# -*- coding: utf-8 -*-
+"""
+打包流水线 —— yatori-python刷课系统 V3.2.3
+
+流程:
+  1. 复制源码到隔离的 build_stage 目录(不动原始源码树)
+  2. 用 Cython 将全部模块(config/logic/utils/dao/entity/global_state/web)
+     编译为原生扩展
+  3. 清理已编译模块的 .py/.c 中间文件
+  4. 在 stage 内逐个 import 全量校验(确保扩展可正常加载)
+  5. 对全部自研原生扩展计算 SHA-256 清单, 生成 _integrity_data.py
+     (运行时由 utils/integrity.py 比对, 防篡改)
+  6. 用 PyInstaller 打包单文件(内置 logo / tls 原生库 / OCR 模型)
+  7. 产物输出到 dist/yatori-python刷课系统V3.2.3.exe
+
+用法: python build_protected.py
+"""
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+# 构建临时目录(可迁移): 目标盘空间不足时用环境变量 YATORI_BUILD_STAGE
+# 指向其他盘, 如 $env:YATORI_BUILD_STAGE="C:\yatori_build_stage" (输出仍回 ROOT/dist)
+STAGE = Path(os.environ.get("YATORI_BUILD_STAGE", str(ROOT / "build_stage")))
+APP_NAME = "yatori-python刷课系统V3.2.8"
+PACKAGES = ["config", "logic", "utils", "dao", "entity", "global_state", "web"]
+ENTRY = "main.py"
+
+# 本地调试/一次性脚本(不打包): 相对 ROOT 的 posix 路径
+# (此类脚本常写死本机路径或劫持 stdout, 混入打包会导致导入校验崩溃)
+EXCLUDE_FILES = {
+    "logic/zhihuishu/video_brush.py",
+}
+
+# __init__.py 是否保持源码(打包兼容回退开关)。False=一并编译
+KEEP_INIT_SOURCE = os.environ.get("YATORI_KEEP_INIT_SOURCE", "0") == "1"
+
+
+def log(msg: str):
+    print(f"[protect-build] {msg}", flush=True)
+
+
+def run(cmd, cwd: Path) -> int:
+    log("run: " + " ".join(str(c) for c in cmd))
+    proc = subprocess.run(cmd, cwd=str(cwd))
+    return proc.returncode
+
+
+# ---------------- 1. 准备 stage ----------------
+
+def clean_stage():
+    if STAGE.exists():
+        shutil.rmtree(STAGE, ignore_errors=True)
+    STAGE.mkdir(parents=True, exist_ok=True)
+
+
+def copy_sources() -> list:
+    """复制入口与自研包到 stage, 返回待编译的 .py 相对路径列表"""
+    shutil.copy2(ROOT / ENTRY, STAGE / ENTRY)
+    modules = []
+    for pkg in PACKAGES:
+        src_pkg = ROOT / pkg
+        for dirpath, dirnames, filenames in os.walk(src_pkg):
+            dirnames[:] = [d for d in dirnames
+                           if d not in ("__pycache__", "build")]
+            for fn in filenames:
+                src = Path(dirpath) / fn
+                rel = src.relative_to(ROOT)
+                # 排除本地调试脚本(写死本机路径/劫持 stdout, 混入会导致构建校验崩溃)
+                if rel.as_posix() in EXCLUDE_FILES:
+                    continue
+                dst = STAGE / rel
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                # 只复制 .py 与必要数据文件(如 config/logo.txt), 跳过编译产物
+                # 2026-10-15: 加 .onnx(安全微伴登录验证码模型 captcha_model.onnx 必须随包)
+                if fn.endswith((".py", ".txt", ".yaml", ".yml", ".json",
+                                ".html", ".css", ".js", ".onnx")):
+                    shutil.copy2(src, dst)
+                if fn.endswith(".py"):
+                    if KEEP_INIT_SOURCE and fn == "__init__.py":
+                        continue
+                    modules.append(rel.as_posix())
+    log(f"copied {len(modules)} modules to stage")
+    return modules
+
+
+# ---------------- 2. Cython 编译 ----------------
+
+def write_setup(modules: list):
+    (STAGE / "setup_cython.py").write_text(
+        _setup_code(modules), encoding="utf-8")
+
+
+def _setup_code(modules: list) -> str:
+    # 注意: setup() 必须放在 __main__ 保护内。
+    # cythonize(nthreads>1) 内部用进程池, Windows spawn 子进程会重新执行本脚本,
+    # 若无 __main__ 保护会直接报 "start a new process before bootstrap"。
+    return '''# -*- coding: utf-8 -*-
+"""自动生成: Cython 编译配置"""
+import os
+from setuptools import setup
+from Cython.Build import cythonize
+
+MODULES = %r
+
+
+def main():
+    setup(
+        name="yatori-protected",
+        version="3.2.8",
+        ext_modules=cythonize(
+            MODULES,
+            language_level=3,
+            nthreads=max(1, (os.cpu_count() or 4)),
+            quiet=True,
+            annotate=False,
+            compiler_directives={
+                "language_level": 3,
+                "binding": True,            # 保留函数签名(FastAPI 依赖注入/反射需要)
+                "embedsignature": False,    # 不嵌入源码签名
+                "emit_code_comments": False,
+                "always_allow_keywords": True,
+            },
+        ),
+    )
+
+
+if __name__ == "__main__":
+    main()
+''' % (modules,)
+
+
+def module_has_pyd(rel_py: str) -> bool:
+    """判断某 .py 是否已成功产出原生扩展(.pyd/.so)"""
+    pyd_stem = (STAGE / rel_py).with_suffix("")
+    parent = pyd_stem.parent
+    if not parent.exists():
+        return False
+    return any(f.name.startswith(pyd_stem.name + ".")
+               and f.suffix in (".pyd", ".so") for f in parent.iterdir())
+
+
+def build_ext(modules: list) -> list:
+    """编译全部模块; 整体失败则逐模块补齐, 返回成功编译的模块列表"""
+    parallel = str(max(1, min(4, (os.cpu_count() or 4))))
+    run([sys.executable, "setup_cython.py", "build_ext",
+         "--inplace", "--parallel", parallel], STAGE)
+    compiled = [m for m in modules if module_has_pyd(m)]
+    failed = [m for m in modules if m not in compiled]
+    if failed:
+        log(f"bulk build left {len(failed)} modules, retry one by one")
+        one_setup = STAGE / "setup_cython_one.py"
+        for m in failed:
+            one_setup.write_text(_setup_code([m]), encoding="utf-8")
+            run([sys.executable, one_setup.name, "build_ext",
+                 "--inplace", "--parallel", "2"], STAGE)
+            if module_has_pyd(m):
+                compiled.append(m)
+            else:
+                log(f"  compile failed (kept as source): {m}")
+        one_setup.unlink(missing_ok=True)
+    log(f"compiled {len(compiled)}/{len(modules)} modules")
+    return compiled
+
+
+def prune_sources(compiled: list):
+    """清理已编译模块的 .py/.c 中间文件"""
+    removed = 0
+    for rel in compiled:
+        py = STAGE / rel
+        if py.exists():
+            py.unlink()
+            removed += 1
+        c = py.with_suffix(".c")
+        if c.exists():
+            c.unlink()
+    # 兼容 KEEP_INIT_SOURCE: __init__ 被编译时其 .py 也需删除, 由 compiled 列表覆盖
+    shutil.rmtree(STAGE / "build", ignore_errors=True)
+    for c in STAGE.rglob("*.c"):
+        c.unlink()
+    log(f"pruned {removed} source files (no first-party .py left except entry)")
+
+
+# ---------------- 3. 导入校验 ----------------
+
+def dotted(rel_py: str) -> str:
+    name = rel_py[:-3].replace("/", ".")
+    if name.endswith(".__init__"):
+        name = name[: -len(".__init__")]
+    return name
+
+
+def verify_imports(modules: list) -> bool:
+    names = sorted({dotted(m) for m in modules})
+    # 逐模块打印进度 + 每轮恢复 stdout/stderr
+    # (防御: 个别模块顶层劫持 stdout 会导致后续输出丢失、无法定位问题)
+    code = (
+        "import sys, importlib, traceback\n"
+        "sys.path.insert(0, '.')\n"
+        "_real_out, _real_err = sys.stdout, sys.stderr\n"
+        "names = %r\n"
+        "bad = []\n"
+        "for n in names:\n"
+        "    sys.stdout, sys.stderr = _real_out, _real_err\n"
+        "    print('IMPORT', n, flush=True)\n"
+        "    try:\n"
+        "        importlib.import_module(n)\n"
+        "    except Exception as e:\n"
+        "        bad.append((n, repr(e)))\n"
+        "        traceback.print_exc()\n"
+        "sys.stdout, sys.stderr = _real_out, _real_err\n"
+        "print('IMPORT-FAILED:', len(bad), flush=True)\n"
+        "for n, e in bad:\n"
+        "    print('  -', n, '->', e, flush=True)\n"
+        "sys.exit(1 if bad else 0)\n"
+    ) % (names,)
+    log("verifying imports in stage ...")
+    proc = subprocess.run([sys.executable, "-c", code], cwd=str(STAGE),
+                          capture_output=True, text=True, encoding="utf-8",
+                          errors="replace")
+    out = (proc.stdout or "").strip().splitlines()
+    err = (proc.stderr or "").strip().splitlines()
+    # 展示输出尾部(含 stderr), 崩溃/失败时可定位最后导入的模块
+    for line in out[-40:]:
+        log("  " + line)
+    for line in err[-20:]:
+        log("  [stderr] " + line)
+    if proc.returncode != 0:
+        log(f"IMPORT VERIFY FAILED (rc={proc.returncode})")
+        return False
+    log(f"import verify OK ({len(names)} modules)")
+    return True
+
+
+# ---------------- 3.5 完整性清单(运行时防篡改校验用) ----------------
+
+def write_integrity_manifest():
+    """对 stage 内全部自研原生扩展计算 SHA-256 清单 -> _integrity_data.py
+    运行时由 utils/integrity.py 在 frozen 环境比对 _MEIPASS 内实际文件。
+    """
+    import hashlib
+    hashes = {}
+    for d in ["config", "logic", "utils", "dao", "entity",
+              "global_state", "web"]:
+        root = STAGE / d
+        if not root.is_dir():
+            continue
+        for dirpath, _dirs, files in os.walk(root):
+            for fn in files:
+                if not (fn.endswith(".pyd") or fn.endswith(".so")):
+                    continue
+                full = Path(dirpath) / fn
+                rel = full.relative_to(STAGE).as_posix()
+                h = hashlib.sha256()
+                with open(full, "rb") as f:
+                    for chunk in iter(lambda: f.read(1 << 20), b""):
+                        h.update(chunk)
+                hashes[rel] = h.hexdigest()
+    code = (
+        "# -*- coding: utf-8 -*-\n"
+        '"""自动生成: 自研原生扩展完整性清单(build_protected.py)"""\n\n'
+        "MANIFEST = %r\n" % (hashes,)
+    )
+    (STAGE / "_integrity_data.py").write_text(code, encoding="utf-8")
+    log(f"integrity manifest written: {len(hashes)} native modules")
+
+
+# ---------------- 4. 生成 spec 并打包 ----------------
+
+SPEC = STAGE / "yatori_build_protected.spec"
+
+SPEC_TEMPLATE = '''# -*- mode: python ; coding: utf-8 -*-
+"""打包配置(由 build_protected.py 自动生成使用)"""
+import glob
+import os
+import sys
+
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+sys.path.insert(0, os.path.abspath("."))
+
+APP_NAME = %r
+
+# ---- 内置数据 ----
+datas = [(os.path.join("config", "logo.txt"), "config")]
+# [V3.0.11] 多语言语言包随包分发
+_assets_i18n = os.path.join("assets", "i18n")
+if os.path.isdir(_assets_i18n):
+    datas.append((_assets_i18n, os.path.join("assets", "i18n")))
+
+# 内置 Web 管理界面静态文件(图形界面模式)
+_web_static = os.path.join("web", "static")
+if os.path.isdir(_web_static):
+    datas.append((_web_static, "web/static"))
+
+# [赞助/赞赏] 微信赞赏码内置进 exe(_MEIPASS/assets), 使图形界面开屏横幅可显示赞赏码
+_sponsor_qr = os.path.join("assets", "微信赞赏码.png")
+if os.path.isfile(_sponsor_qr):
+    datas.append((_sponsor_qr, "assets"))
+
+# 安全微伴登录验证码 CNN ONNX 模型
+# (captcha.py 冻结环境从 sys._MEIPASS 根目录加载, 缺失时验证码识别降级)
+_weban_captcha = os.path.join("logic", "weban", "captcha_model.onnx")
+if os.path.isfile(_weban_captcha):
+    datas.append((_weban_captcha, "."))
+
+# 2026-10-15: 易盾 JS 引擎(智慧树登录滑块) + 安全微伴内置答案库 必须随包
+_yidun_ms = os.path.join("logic", "zhihuishu", "yidun", "yidun_ms.js")
+if os.path.isfile(_yidun_ms):
+    datas.append((_yidun_ms, "logic/zhihuishu/yidun"))
+_weban_answer = os.path.join("logic", "weban", "answer", "answer.json")
+if os.path.isfile(_weban_answer):
+    datas.append((_weban_answer, "answer"))
+
+# 2026-10-16: mini-racer(PyPI正式包名; 旧名 py-mini-racer 仅到0.6.0无arm64轮子)
+# V8 引擎原生库必须随包, 且必须按平台过滤(同 tls_client 教训:
+# macOS 上 PyInstaller 会把 Linux 的 ELF .so 当 Mach-O 解析而报错):
+#   Windows=mini_racer.dll / macOS=libmini_racer.dylib / Linux=libmini_racer.so + icudtl.dat
+try:
+    import py_mini_racer as _pmr  # noqa
+    _pmr_dir = os.path.dirname(os.path.abspath(_pmr.__file__))
+    if sys.platform == "win32":
+        _pmr_libs = ("mini_racer.dll",)
+    elif sys.platform == "darwin":
+        _pmr_libs = ("libmini_racer.dylib",)
+    else:
+        _pmr_libs = ("libmini_racer.so",)
+    for _pf in _pmr_libs + ("icudtl.dat",):
+        _pfp = os.path.join(_pmr_dir, _pf)
+        if os.path.isfile(_pfp):
+            datas.append((_pfp, "py_mini_racer"))
+except Exception:
+    pass
+
+# tls_client 原生库(运行时按 dirname(__file__)/dependencies 加载)
+# 必须按平台过滤: Win=.dll / Linux=.so / macOS=.dylib
+# (不能全收: macOS 上 PyInstaller 会把 Linux 的 ELF .so 当 Mach-O 解析而报错)
+# 守卫: 未安装 tls_client 时跳过(仅影响超星滑块风控伪装, 程序运行不受影响)
+try:
+    import tls_client  # noqa: E402
+    _tls_dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+    if sys.platform == "win32":
+        _tls_ext = (".dll",)
+    elif sys.platform == "darwin":
+        _tls_ext = (".dylib",)
+    else:
+        _tls_ext = (".so",)
+    for _f in glob.glob(os.path.join(_tls_dep, "*")):
+        if _f.lower().endswith(_tls_ext):
+            datas.append((_f, "tls_client/dependencies"))
+except Exception:
+    pass
+
+# playwright 浏览器驱动(2026-10-19: 学习通讨论功能依赖浏览器态)
+# channel="chrome" 使用系统安装的Chrome, 无需打包浏览器二进制, 仅需driver(node+协议层)
+try:
+    import playwright as _pw_pkg
+    _pw_dir = os.path.dirname(os.path.abspath(_pw_pkg.__file__))
+    _pw_driver = os.path.join(_pw_dir, "driver")
+    if os.path.isdir(_pw_driver):
+        datas.append((_pw_driver, "playwright/driver"))
+except Exception:
+    pass
+
+# 本地 OCR 模型与配置(rapidocr_onnxruntime wheel 内置)
+# 守卫: 异形架构/轻量依赖环境可能未安装 OCR 包, 缺失时跳过(程序内已优雅降级)
+try:
+    datas += collect_data_files("rapidocr_onnxruntime")
+except Exception:
+    pass
+
+# ---- 隐藏导入 ----
+# 模块已全部编译为原生扩展, PyInstaller 无法静态分析其 import,
+# 因此第三方依赖必须显式收集; 项目模块由文件扫描得出。
+THIRD_PARTY = [
+    "fastapi", "starlette", "uvicorn", "pydantic", "pydantic_core", "anyio",
+    "httpx", "httpcore", "h11", "h2", "certifi", "idna", "sniffio",
+    "yaml", "sqlalchemy", "aiosqlite",
+    "Crypto", "bs4", "soupsieve",
+    "PIL", "requests", "urllib3", "charset_normalizer",
+    "tls_client", "cffi",
+    "rapidocr_onnxruntime", "onnxruntime", "numpy", "cv2",
+    "shapely", "pyclipper", "six",
+    "pyaes", "nodriver", "websockets",
+    "py_mini_racer",  # 2026-10-16: 易盾JS(yidun_js)/TCaptcha(tcaptcha_solver) V8引擎
+    "jmespath", "multipart",
+    "playwright",  # 2026-10-19: 学习通讨论(extend_bbs浏览器态)依赖; channel=chrome用系统Chrome
+]
+hiddenimports = []
+# 桌面GUI(2026-10-23): pywebview 隐式导入(WebView2窗口)
+hiddenimports.append("webview")
+for _p in THIRD_PARTY:
+    try:
+        if _p == "tls_client":
+            # 排除 dependencies 子包: 该目录包含各平台原生库(含 Linux ELF .so),
+            # macOS 上会被当作扩展模块收集并触发 Mach-O 解析错误而构建失败;
+            # tls_client 运行时用 ctypes 直接加载库文件(已由上方 datas 按平台打入),
+            # 不依赖该子包被 import。
+            hiddenimports += collect_submodules(
+                _p, on_error="ignore",
+                filter=lambda name: name != "tls_client.dependencies")
+        else:
+            hiddenimports += collect_submodules(_p, on_error="ignore")
+    except Exception:
+        pass
+
+# 扫描 stage 内自研原生扩展(.pyd/.so) -> 模块名(以 os.sep 拼接, 避免转义问题)
+for _root, _dirs, _files in os.walk("."):
+    _dirs[:] = [d for d in _dirs if d not in ("build", "dist", "pyi_work", "__pycache__")]
+    for _f in _files:
+        if not (_f.endswith(".pyd") or _f.endswith(".so")):
+            continue
+        _stem = _f.split(".")[0]          # 如 part.cp313-win_amd64.pyd / part.cpython-313-x86_64-linux-gnu.so -> part
+        if _stem == "__init__":
+            _mod = os.path.relpath(_root, ".").replace(os.sep, "/")
+        else:
+            _mod = os.path.relpath(os.path.join(_root, _stem), ".").replace(os.sep, "/")
+        _mod = _mod.replace("/", ".")
+        if _mod and _mod != "." and _mod not in hiddenimports:
+            hiddenimports.append(_mod)
+
+# uvicorn 运行时动态导入
+hiddenimports += [
+    "uvicorn.logging", "uvicorn.loops", "uvicorn.loops.auto",
+    "uvicorn.loops.asyncio", "uvicorn.protocols",
+    "uvicorn.protocols.http", "uvicorn.protocols.http.auto",
+    "uvicorn.protocols.http.h11_impl", "uvicorn.protocols.websockets",
+    "uvicorn.protocols.websockets.auto", "uvicorn.lifespan",
+    "uvicorn.lifespan.on", "uvicorn.lifespan.off",
+    "email.mime.text", "email.mime.multipart", "sqlite3",
+]
+
+# [V3.2.2 hotfix] cv2 打包加固: cv2 5.x 的 cv2.pyd(核心扩展)与 ffmpeg DLL 必须进包,
+# 否则打包后 cv2.dnn 不可用(安全微伴/滑块验证码识别失败)
+try:
+    from PyInstaller.utils.hooks import collect_all as _ca
+    _cv2_datas, _cv2_bins, _cv2_hidden = _ca("cv2")
+    binaries = list(_cv2_bins)
+    datas += list(_cv2_datas)
+    hiddenimports += [h for h in _cv2_hidden if h not in hiddenimports]
+    # 兑底: 显式加入 cv2 扩展(.pyd)与 ffmpeg 附 DLL(cv2 5.x 下 hook 可能漏收)
+    try:
+        import cv2 as _cv2mod
+        _cdir = os.path.dirname(_cv2mod.__file__)
+        _added = 0
+        for _f in os.listdir(_cdir):
+            _fp = os.path.join(_cdir, _f)
+            if not os.path.isfile(_fp):
+                continue
+            _low = _f.lower()
+            if _low.endswith(".pyd") or (_low.startswith("opencv_videoio_ffmpeg")
+                                         and _low.endswith(".dll")):
+                if (_fp, "cv2") not in binaries:
+                    binaries.append((_fp, "cv2"))
+                    _added += 1
+        print("[cv2] 补充扩展文件 " + str(_added) + " 个")
+    except Exception as _e2:
+        print("[cv2 补充警告] " + str(_e2)[:80])
+    print("[cv2] 加固收集 bins=" + str(len(binaries)) +
+          " datas=" + str(len(_cv2_datas)))
+except Exception as _cv2e:
+    print("[cv2 收集警告] " + str(_cv2e)[:120])
+    binaries = []
+
+a = Analysis(
+    ["main.py"],
+    pathex=[os.path.abspath(".")],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=["tkinter", "matplotlib", "PyQt5", "PySide2", "notebook",
+              "pandas", "scipy", "torch", "tls_client.dependencies"],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=None,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=None)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name=APP_NAME,
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+'''.replace("%r", repr(APP_NAME), 1)
+
+
+def write_spec():
+    SPEC.write_text(SPEC_TEMPLATE, encoding="utf-8")
+    log(f"spec written: {SPEC.name}")
+
+
+def run_pyinstaller() -> bool:
+    rc = run([sys.executable, "-m", "PyInstaller",
+              SPEC.name, "--noconfirm", "--clean",
+              "--distpath", str(STAGE / "dist"),
+              "--workpath", str(STAGE / "pyi_work")], STAGE)
+    return rc == 0
+
+
+def publish() -> Path:
+    exe_suffix = ".exe" if sys.platform == "win32" else ""
+    src = STAGE / "dist" / f"{APP_NAME}{exe_suffix}"
+    if not src.exists():
+        raise RuntimeError(f"binary not found: {src}")
+    out_dir = ROOT / "dist"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dst = out_dir / src.name
+    shutil.copy2(src, dst)
+    if sys.platform != "win32":
+        os.chmod(dst, 0o755)
+    # 附带 cpus/ 目录(CPU 型号性能配置): 复制到 dist 与 exe 同级, 用户可自行增删
+    # (运行时 cpu_profile.py 从 exe 所在目录查找 cpus/; 缺失时自动公式兜底)
+    try:
+        cpus_src = ROOT / "cpus"
+        if cpus_src.is_dir():
+            cpus_dst = out_dir / "cpus"
+            if cpus_dst.exists():
+                shutil.rmtree(cpus_dst, ignore_errors=True)
+            shutil.copytree(cpus_src, cpus_dst)
+            log(f"cpus bundled -> {cpus_dst}")
+    except Exception as e:
+        log(f"cpus bundle skipped: {e}")
+    return dst
+
+
+def main():
+    log(f"APP_NAME = {APP_NAME}")
+    clean_stage()
+    modules = copy_sources()
+    write_setup(modules)
+    compiled = build_ext(modules)
+    if not compiled:
+        log("FATAL: nothing compiled")
+        return 1
+    kept = [m for m in modules if m not in compiled]
+    if kept:
+        log(f"NOT compiled (kept as source): {len(kept)} -> {kept[:10]}")
+    prune_sources(compiled)
+    if not verify_imports([m for m in modules]):
+        return 1
+    write_integrity_manifest()
+    write_spec()
+    if not run_pyinstaller():
+        log("PyInstaller FAILED")
+        return 1
+    exe = publish()
+    size_mb = exe.stat().st_size / 1048576
+    log(f"OK -> {exe} ({size_mb:.1f} MB)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

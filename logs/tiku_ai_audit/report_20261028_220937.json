@@ -1,0 +1,418 @@
+{
+  "meta": {
+    "started_at": "2026-10-28 22:09:37",
+    "finished_at": "2026-10-28 22:14:23",
+    "elapsed_sec": 285,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "judge"
+    ],
+    "limit": 25,
+    "start": 0,
+    "end": 174109,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_judge_6ead120c.json"
+  },
+  "summary": {
+    "candidates": 25,
+    "audited": 25,
+    "changed": 1,
+    "same": 23,
+    "report_only": 0,
+    "skipped_invalid": 0,
+    "uncertain": 1,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-28 22:09:37",
+      "question": "单边转向不足故障主要原因只有三种,第一转向摇臂安装的位置不对,第二转向角的纤维螺钉调整不当,第三是前钢板弹簧或者是中心螺栓松动。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:09:43",
+      "question": "生产纲领和生产设备的条件必须具体地分析该零件的形状结构材料和技术要求,在对零件形状结构材料和技术要求进行分析的基础上结合生产批量。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:09:50",
+      "question": "联合爱迪生电力公司的沙井盖预测项目中，项目中必须使用全量数据，因为每个沙井盖都有风险，样本数据无法覆盖所有风险点。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 22:10:08",
+      "question": "人工智能可以完全取代人类在设计思维中的决策角色。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:15",
+      "question": "能耗问题（如数据中心高能耗）对算力的持续发展没有显著限制。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:22",
+      "question": "大数据时代，我们理解世界完全不需要任何形式的假设。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:27",
+      "question": "Google流感趋势项目是利用人们的搜索关键词来预测流感爆发的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:33",
+      "question": "数据是新的石油这个说法强调了数据在未来社会中的重要性和战略价值。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:38",
+      "question": "小数据时代强调精确性，因为数据量较小，每一个数据点都很关键。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:44",
+      "question": "在感知阶段，数据的生成是主动的，完全依赖于用户的行为。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:51",
+      "question": "横向思维的作用之一是移除已有的旧轨道，并建造适应新环境的新轨道。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:10:57",
+      "question": "数据增强技术主要用于减少训练数据的规模。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:04",
+      "question": "类脑计算芯片设计完全摒弃现有处理器设计方法论，从零开始进行创新。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:10",
+      "question": "传统数据库设计非常适合处理海量、非结构化数据。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:16",
+      "question": "要尽量避免在现场对伤者进行急救,而应及时去医院救治。",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:23",
+      "question": "对烧伤人员的急救应迅速扑灭伤员身上的火,使其尽快脱离火源。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:31",
+      "question": "中度伤用红色标识,轻微伤用黑色标识,死亡用黄色标识。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:37",
+      "question": "一般来说，现场急救应就地抢救，不轻易搬动病人，但是如果现场存在着危险因素，应将病人迅速地转移至安全的地方，再进行施救。（ ）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:43",
+      "question": "在外排序的快速排序中,分割元素的选择非常重要。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:49",
+      "question": "Dijkstra算法需要并行化。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:11:56",
+      "question": "图中的独立集是指图当中点的集合,其任意两点之间不存在边。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:12:04",
+      "question": "全0数组判定的近似算法的证据引理是:如果一次测试以大于等于p的概率获得一个证据,那么s=2/p轮测试得到证据的概率大于等于1/2。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=2), 保持原值"
+    },
+    {
+      "time": "2026-10-28 22:14:04",
+      "question": "大部分时候reducer不能用作combiner。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:14:10",
+      "question": "任务分配的拉方法是指系统采取完全的控制将制定的任务分配给工人。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:14:16",
+      "question": "基于簇的HIT生成问题的优化目标是生成最小数目基于簇的HIT。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    }
+  ]
+}

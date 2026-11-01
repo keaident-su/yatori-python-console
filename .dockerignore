@@ -1,0 +1,39 @@
+# 排除用户配置（含账号信息，由运行时挂载）
+config.yaml
+config/config.yaml
+
+# 排除本地数据库与日志
+*.db
+*.db-shm
+*.db-wal
+logs/
+assets/log/
+assets/logs/
+assets/sound/
+assets/faces/
+assets/fsces/
+
+# 排除大型开发/中间文件
+# questions.json 为题库合并工具的源文件(72MB), 运行时不读取
+questions.json
+questions_answers.json.bak_*
+*.bak_*
+
+# 排除构建产物与日志
+build/
+build_stage/
+dist/
+yatori_build.spec
+build_log.txt
+protected_build_log.txt
+
+# 排除无关内容
+.git
+.gitignore
+.github
+.idea
+.vscode
+__pycache__/
+*.py[cod]
+yatori-go-quesbank-main/
+README.md

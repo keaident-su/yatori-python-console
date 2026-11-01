@@ -1,0 +1,275 @@
+# -*- coding: utf-8 -*-
+"""智慧树考试域协议客户端 (2026-10-13 固化, A方案成果)
+
+## 加密体系 (已字节级验证)
+    secretStr = base64(AES-128-CBC(json_bytes, key, iv, PKCS7))
+    key = b"onbfhdyvz8x7otrp"  iv = b"1g3qqdh4jvbskb9x"
+    请求: POST form = {"secretStr": <密文>, "date": <毫秒时间戳>}
+    (无需RSA/设备签名; f分组免密, t分组即本加密)
+
+## 域
+    业务:  https://studentexam-api.zhihuishu.com/studentExam/gateway/t/v1
+    taurus: https://taurusexam-api.zhihuishu.com/taurusExam/gateway/t/v1  (多数404, 少量可用)
+
+## 已验证接口(200)
+    /exam/getCourseName            {recruitId}
+    /exam/getSingleRecruit         {recruitId}   -> 课程详情(id/name/courseId/起止)
+    /student/getStuProgressRule    {recruitId, schoolId} -> {"makeUpStudent": "1"}
+    /student/getStudentHomework    {recruitId, courseId, type} -> 作业/章测列表(已提交用type=2)
+
+## JS bundle全谱(54个, 详见 ZHS_EXAM_PROTOCOL.md)
+    /answer/submit /answer/saveStudentAnswer /answer/getStuAnswerInfoNew(批阅详情)
+    /student/doExam /student/doHomework /student/lookHomework(拉卷)
+    /student/getStudentFinalExam(期末) /student/getStudentOfflineExam
+    /student/getStudentRoomExam /exam/getAllQuesitonAnalysis /exam/getExamType 等
+
+用法:
+    from logic.zhihuishu.exam_proto import ZhsExamAPI
+    ex = ZhsExamAPI(cookie_dict)         # cookie_dict: {name: value}
+    print(ex.get_single_recruit("431867"))
+    print(ex.get_student_homework("431867", "1000125370", type=2))
+"""
+import base64
+import json
+import time
+from typing import Any, Dict, List, Optional
+
+import httpx
+
+_KEY = b"onbfhdyvz8x7otrp"
+_IV = b"1g3qqdh4jvbskb9x"
+_BASE_T = ("https://studentexam-api.zhihuishu.com"
+           "/studentExam/gateway/t/v1")
+_BASE_TU = ("https://taurusexam-api.zhihuishu.com"
+            "/taurusExam/gateway/t/v1")
+
+
+def encrypt_params(payload: Dict[str, Any]) -> str:
+    """secretStr = base64(AES-128-CBC(json, key, iv, PKCS7))"""
+    from Crypto.Cipher import AES
+    from Crypto.Util.Padding import pad
+    j = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    enc = AES.new(_KEY, AES.MODE_CBC, _IV).encrypt(pad(j.encode("utf-8"), 16))
+    return base64.b64encode(enc).decode("ascii")
+
+
+class ZhsExamAPI:
+    """智慧树考试域API客户端(纯协议, 固定key/iv加密)"""
+
+    def __init__(self, cookies: Optional[Dict[str, str]] = None,
+                 timeout: float = 30.0):
+        self._cli = httpx.Client(
+            cookies=cookies or {}, timeout=timeout,
+            verify=False, follow_redirects=True)
+
+    def _post(self, path: str, payload: Dict[str, Any],
+              taurus: bool = False) -> Dict[str, Any]:
+        base = _BASE_TU if taurus else _BASE_T
+        r = self._cli.post(base + path, data={
+            "secretStr": encrypt_params(payload),
+            "date": str(int(time.time() * 1000)),
+        })
+        try:
+            return r.json()
+        except Exception:
+            return {"status": str(r.status_code), "raw": r.text[:200]}
+
+    # ---------- 已验证接口 ----------
+
+    def get_course_name(self, recruit_id: str) -> Dict[str, Any]:
+        return self._post("/exam/getCourseName", {"recruitId": recruit_id})
+
+    def get_single_recruit(self, recruit_id: str) -> Dict[str, Any]:
+        return self._post("/exam/getSingleRecruit", {"recruitId": recruit_id})
+
+    def get_stu_progress_rule(self, recruit_id: str,
+                              school_id: int = 2731) -> Dict[str, Any]:
+        return self._post("/student/getStuProgressRule",
+                          {"recruitId": recruit_id, "schoolId": school_id})
+
+    def get_student_homework(self, recruit_id: str, course_id: str,
+                             hw_type: int = 2) -> Dict[str, Any]:
+        """作业/章测列表(已提交=2); 返回 rt.next=-1 表示列表尾"""
+        return self._post("/student/getStudentHomework",
+                          {"recruitId": recruit_id, "courseId": course_id,
+                           "type": hw_type})
+
+    # ---------- 待参数定型(JS已确认路径存在) ----------
+
+    def get_student_final_exam(self, recruit_id: str, course_id: str,
+                               **extra: Any) -> Dict[str, Any]:
+        """期末考试列表
+        2026-10-13 定型: 域=studentexam(taurus域同样存在但结果同);
+        无期末考试数据的课程服务端会NPE(平台特性, 非参数错);
+        有数据的课程正常返回。
+        """
+        p = {"recruitId": recruit_id, "courseId": course_id}
+        p.update(extra)
+        return self._post("/student/getStudentFinalExam", p)
+
+    def look_homework(self, hw_id: int) -> Dict[str, Any]:
+        """查看作业详情/拉卷(2026-10-13 结构定型)
+        白名单实测: 仅支持"id"字段(int); 其他字段名→"传入参数异常";
+        含id但值非有效作业→"aes加密参数异常"(=结构已被服务端接受, 只差有效数据)。
+        hw_id 应取 [作业列表(getStudentHomework)中条目的真实作业id]。
+        """
+        return self._post("/student/lookHomework", {"id": int(hw_id)})
+
+    def do_exam(self, exam_id: int, **extra: Any) -> Dict[str, Any]:
+        """进入考试(2026-10-13 骨架: 参数白名单待样本; 已知须int型id类字段)"""
+        p = {"id": int(exam_id)}
+        p.update(extra)
+        return self._post("/student/doExam", p)
+
+    def get_stu_answer_info_new(self, **params: Any) -> Dict[str, Any]:
+        """批阅详情/答案回读(参数待样本定型)"""
+        return self._post("/answer/getStuAnswerInfoNew", params)
+
+    # ---------- 考试链完整实现(2026-10-15 参数白名单定型, 源码转自 fuckzhs SDK exam_ctx) ----------
+    # 答案格式: "#@#" 连接选项ID; courseType固定8; aiKnlowledgeId为智慧树侧拼写(照抄)
+
+    def _post_exam(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """考试链POST(studentexamtest域优先, 回退studentexam-api)"""
+        for base in ("https://studentexamtest.zhihuishu.com/gateway/t/v1",
+                     "https://studentexam-api.zhihuishu.com/studentExam/gateway/t/v1"):
+            try:
+                r = httpx.post(base + path,
+                               data={"secretStr": self.encrypt_params(payload),
+                                     "date": str(int(time.time() * 1000))},
+                               headers={
+                                   "Content-Type": "application/x-www-form-urlencoded"},
+                               timeout=30, verify=False)
+                j = r.json()
+                if j.get("code") in (0, 200):
+                    return j
+                return j
+            except Exception:
+                continue
+        return {}
+
+    def _get_exam(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """考试链GET(studentexamtest域优先)"""
+        import urllib.parse as _up
+        for base in ("https://studentexamtest.zhihuishu.com/gateway/t/v1",
+                     "https://studentexam-api.zhihuishu.com/studentExam/gateway/t/v1"):
+            try:
+                qs = _up.urlencode({"secretStr": self.encrypt_params(payload),
+                                    "date": str(int(time.time() * 1000))})
+                r = httpx.get(base + path + "?" + qs, timeout=30, verify=False)
+                return r.json()
+            except Exception:
+                continue
+        return {}
+
+    def open_exam_paper(self, exam_test_id, exam_paper_id, course_id) -> Dict[str, Any]:
+        """打开试卷: POST /exam/user/openExam {examTestId,examPaperId,courseId}"""
+        return self._post_exam("/exam/user/openExam", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id,
+            "courseId": course_id})
+
+    def get_exam_sheet(self, exam_test_id, exam_paper_id):
+        """试题列表: GET /exam/user/getExamSheetInfo -> [(questionId, version)]"""
+        j = self._get_exam("/exam/user/getExamSheetInfo", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id})
+        try:
+            vos = (((j.get("data") or {}).get("partSheetVos") or [{}])[0]
+                   .get("questionSheetVos") or [])
+            return [(q.get("questionId"), q.get("version", 1)) for q in vos]
+        except Exception:
+            return []
+
+    def get_exam_question_info(self, exam_test_id, exam_paper_id, qid, version=1) -> Dict[str, Any]:
+        """题目详情: GET /question/getExamQuestionInfo (交卷后含批改isCorrect)"""
+        j = self._get_exam("/question/getExamQuestionInfo", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id,
+            "questionId": qid, "version": version})
+        return j.get("data") or {}
+
+    def save_exam_answer(self, recruit_id, exam_test_id, exam_paper_id, qid,
+                         answer_ids) -> Dict[str, Any]:
+        """存单题答案: POST /answer/saveAnswer {..., answer: "#@#"连接选项ID}"""
+        return self._post_exam("/answer/saveAnswer", {
+            "recruitId": recruit_id, "examTestId": exam_test_id,
+            "examPaperId": exam_paper_id, "questionId": qid,
+            "dataVos": None,
+            "answer": "#@#".join(str(a) for a in (answer_ids or []))})
+
+    def submit_exam_paper(self, exam_test_id, course_id, exam_paper_id,
+                          knowledge_id) -> Dict[str, Any]:
+        """交卷: POST /exam/user/submit {courseType:8, aiKnlowledgeId:...}"""
+        return self._post_exam("/exam/user/submit", {
+            "examTestId": exam_test_id, "courseId": course_id,
+            "courseType": 8, "examPaperId": exam_paper_id,
+            "aiKnlowledgeId": knowledge_id})
+
+    def exam_heartbeat_once(self, exam_test_id, exam_paper_id,
+                            beat: int = 10) -> Dict[str, Any]:
+        """考试心跳: POST /exam/user/updateUserUsedTime"""
+        return self._post_exam("/exam/user/updateUserUsedTime", {
+            "examTestId": exam_test_id, "examPaperId": exam_paper_id,
+            "heartbeatTime": beat})
+
+    # ---------- 作业提交链(2026-10-15 基于stuExamWeb.js拦截器证据定型) ----------
+    # 证据: /answer/saveStudentAnswer 与 /answer/submit 与 getStudentHomework 同属
+    #      "uuid加密组"(拦截器列表), 即与本模块已验通的加密同系; 答案格式沿用考试链"#@#"选项ID。
+
+    def save_student_answer_hw(self, recruit_id, homework_id, qid,
+                               answer_ids, course_id: str = "") -> Dict[str, Any]:
+        """作业存单题: POST /answer/saveStudentAnswer(同加密组)
+
+        参数按同济结构尽力: {recruitId, homeworkId, questionId, answer:"#@#"连接}
+        (服务端白名单未逐字段实测, 响应含"传入参数异常"时按返回诊断调整)
+        """
+        payload = {
+            "recruitId": recruit_id,
+            "homeworkId": homework_id,
+            "questionId": qid,
+            "answer": "#@#".join(str(a) for a in (answer_ids or [])),
+        }
+        if course_id:
+            payload["courseId"] = course_id
+        return self._post("/answer/saveStudentAnswer", payload)
+
+    def submit_homework(self, recruit_id, homework_id,
+                        course_id: str = "") -> Dict[str, Any]:
+        """作业交卷: POST /answer/submit(同加密组)"""
+        payload = {"recruitId": recruit_id, "homeworkId": homework_id}
+        if course_id:
+            payload["courseId"] = course_id
+        return self._post("/answer/submit", payload)
+
+
+    # ---------- 章节测试(onlineexamh5new) 三接口 (2026-10-26 逆向定型) ----------
+
+    def do_homework_enter(self, recruit_id: str, exam_id: str,
+                          stu_exam_id: str, school_id: str,
+                          course_id: str) -> Dict[str, Any]:
+        """进入章节测试/拉卷: /student/doHomework
+        exam_id/stu_exam_id 来自 examUrl 两段加密值(dohomework/{rid}/{stuExamId}/{examId}/...)
+        首次调用返回完整试卷(examBase.workExamParts[].questionDtos[]);
+        再次调用(已进入)可能返回空 -> 以页面作答为准
+        """
+        return self._post("/student/doHomework", {
+            "recruitId": str(recruit_id), "examId": str(exam_id),
+            "studentExamId": str(stu_exam_id), "schoolId": str(school_id),
+            "courseId": str(course_id)})
+
+    def save_student_answer(self, stu_exam_answer: List[Dict[str, Any]],
+                            recruit_id: str) -> Dict[str, Any]:
+        """逐题保存答案: /answer/saveStudentAnswer
+        stu_exam_answer 元素: {examId, recruitId, stuExamId, eid(前端加密题ID),
+                             answer(选项id, 多选逗号), schoolId, questionType, fromType:3, ...}
+        注: eid 由前端加密生成(密钥未公开) -> 纯协议不可构造; 页面作答由页面自行调用
+        """
+        return self._post("/answer/saveStudentAnswer", {
+            "stuExamAnswer": json.dumps(stu_exam_answer, ensure_ascii=False,
+                                        separators=(",", ":")),
+            "recruitId": str(recruit_id)})
+
+    def submit_answer(self, recruit_id: str, exam_id: str, stu_exam_id: str,
+                      achieve_count: int) -> Dict[str, Any]:
+        """交卷: /answer/submit; 返回 rt.msg=提交成功 + rt.score"""
+        return self._post("/answer/submit", {
+            "recruitId": str(recruit_id), "examId": str(exam_id),
+            "stuExamId": str(stu_exam_id),
+            "achieveCount": str(int(achieve_count))})

@@ -1,0 +1,133 @@
+{
+  "meta": {
+    "started_at": "2026-10-28 22:28:04",
+    "finished_at": "2026-10-28 22:29:01",
+    "elapsed_sec": 57,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "fill"
+    ],
+    "limit": 6,
+    "start": 0,
+    "end": 199603,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_fill_6ead120c.json"
+  },
+  "summary": {
+    "candidates": 6,
+    "audited": 6,
+    "changed": 2,
+    "same": 0,
+    "report_only": 0,
+    "skipped_invalid": 4,
+    "uncertain": 0,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-28 22:28:04",
+      "question": "BP炼油厂的无线传感器网络能有效弥补错误数据的原因是？（）",
+      "type": "fill",
+      "old_answer": "数据生成数量巨大",
+      "new_answer": "",
+      "ai_raw": "[\"无线传感器网络通过多节点协同采集数据、实时交叉校验监测数据，可及时识别并剔除异常错误数据，同时依托分布式数据比对机制修正偏差信息，保障数据采集的准确性与可靠性\"]",
+      "ai_all": [
+        "<invalid>[\"无线传感器网络通过多节点协同采集数据、实时交叉校验监测数据，可及时识别并剔除异常错误数据，同时依托分布式数据比对机制"
+      ],
+      "votes": 0,
+      "similarity": null,
+      "status": "skipped_invalid",
+      "note": ""
+    },
+    {
+      "time": "2026-10-28 22:28:10",
+      "question": "麻省理工学院Price Stats项目相比官方CPI的主要优势在于？（）",
+      "type": "fill",
+      "old_answer": "更新更及时",
+      "new_answer": "",
+      "ai_raw": "[\"发布频率更高（可实现每日更新，时效性更强，大幅缩短数据发布滞后时长）、覆盖范围更广（可获取更多国家/地区的价格数据，覆盖海量线上零售商品价格）、数据更新速度更快，能更及时捕捉通胀拐点，预测通胀趋势更快速准确\"]",
+      "ai_all": [
+        "<invalid>[\"发布频率更高（可实现每日更新，时效性更强，大幅缩短数据发布滞后时长）、覆盖范围更广（可获取更多国家/地区的价格数据，"
+      ],
+      "votes": 0,
+      "similarity": null,
+      "status": "skipped_invalid",
+      "note": ""
+    },
+    {
+      "time": "2026-10-28 22:28:21",
+      "question": "人工智能的三大核心要素是指什么？（）",
+      "type": "fill",
+      "old_answer": "算法、数据、算力",
+      "new_answer": "",
+      "ai_raw": "[\"数据\", \"算法\", \"算力\"]",
+      "ai_all": [
+        "<invalid>[\"数据\", \"算法\", \"算力\"]"
+      ],
+      "votes": 0,
+      "similarity": null,
+      "status": "skipped_invalid",
+      "note": ""
+    },
+    {
+      "time": "2026-10-28 22:28:27",
+      "question": "在数据处理技术发生巨大变化的背景下，传统抽样分析方法逐渐被淘汰的原因是什么？（）",
+      "type": "fill",
+      "old_answer": "抽样分析忽视了细节的考察",
+      "new_answer": "",
+      "ai_raw": "[\"传统抽样分析方法无法处理全量海量数据，难以挖掘数据间的深层关联与潜在价值，无法满足当下多维度、高精度的数据洞察需求，在数据处理效率、分析全面性等方面均落后于依托大数据技术的全量数据分析模式。\"]",
+      "ai_all": [
+        "<invalid>[\"传统抽样分析方法无法处理全量海量数据，难以挖掘数据间的深层关联与潜在价值，无法满足当下多维度、高精度的数据洞察需求，"
+      ],
+      "votes": 0,
+      "similarity": null,
+      "status": "skipped_invalid",
+      "note": ""
+    },
+    {
+      "time": "2026-10-28 22:28:33",
+      "question": "设计思维五步法中，决定后续所有探索、设计和实践方向正确性的关键阶段是？（）",
+      "type": "fill",
+      "old_answer": "同理心阶段",
+      "new_answer": "共情阶段",
+      "ai_raw": "[\"共情阶段\"]",
+      "ai_all": [
+        "共情阶段",
+        "共情阶段",
+        "共情阶段"
+      ],
+      "votes": 3,
+      "similarity": 0.4,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 22:28:47",
+      "question": "设计思维的五大阶段中，哪一阶段的核心任务是明确问题陈述？（）",
+      "type": "fill",
+      "old_answer": "定义",
+      "new_answer": "定义阶段（Define",
+      "ai_raw": "[\"定义阶段（Define）\"]",
+      "ai_all": [
+        "定义阶段（Define",
+        "定义阶段（Define",
+        "定义阶段(Define"
+      ],
+      "votes": 3,
+      "similarity": 0.2,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    }
+  ]
+}

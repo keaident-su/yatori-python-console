@@ -1,0 +1,70 @@
+name: docker-build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*", "V*"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU (多架构模拟)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version from logo.txt
+        id: version
+        run: |
+          VERSION=$(grep -oP '[vV][0-9]+(\.[0-9]+)+([-.][Bb]eta[0-9.]+)?' config/logo.txt | head -1 || true)
+          VERSION=${VERSION:-latest}
+          # Docker tag 规范允许大写字母(仅仓库名强制小写), 版本标签保持原样 V3.1.2
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "version_lower=$(echo "${VERSION}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "解析到版本号: ${VERSION}"
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.version_lower }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          # 默认构建主流双架构; 异形架构(armv7/ppc64le/s390x 等)本地构建示例:
+          #   docker buildx build --platform linux/arm/v7 -t <tag> .
+          # (Dockerfile 会按 TARGETARCH 自动切换轻量依赖并跳过 chromium)
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

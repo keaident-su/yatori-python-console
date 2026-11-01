@@ -1,0 +1,380 @@
+# -*- coding: utf-8 -*-
+"""
+安全微伴平台逻辑 - 移植自外部项目 AnQuanWeBan_sdk(WeBan) 并适配本工程架构
+
+流程: 登录(验证码OCR自动识别) → 模拟官方首页 → 同步题库(试题回溯合并)
+      → 按项目交替执行「课程学习 + 考试」→ 最终同步题库
+依赖: nodriver(浏览器, 课程点选/考试无感验证码) / pyaes(登录加密) / opencv+onnx(登录验证码识别)
+降级策略(Android/无浏览器/系统限制调起浏览器等场景):
+      登录与课程学习照常(登录验证码用本地 OCR 模型, 无需浏览器);
+      考试环节(需无感验证码)自动跳过; 个别课程完成时的点选验证码提示失败并跳过;
+      手动配置 browserPath 或 cdpHost+cdpPort 时(如 Termux 连接外部调试浏览器)按实测结果处理
+答题: 优先项目多答题源引擎(题库/本地缓存/AI), 其次 SDK 自带 answer.json 兜底, 最后随机/手动
+"""
+import os
+import threading
+from typing import Any, List
+
+from config.config import User, Setting, JSONDataForConfig, display_account
+from config.config import course_allowed  # [V3.1.3] 统一课程过滤
+from global_state.global_var import ACCOUNT_TYPE_STR
+from logic.platform_common import (
+    generic_filter_account, generic_user_block, get_simple_logger,
+    send_user_event_notice, run_stats_bump,
+)
+from utils.log import log_print, with_log_account, INFO, Red, Yellow
+
+PLATFORM_TYPE = "WEBAN"
+_DISPLAY = ACCOUNT_TYPE_STR[PLATFORM_TYPE]
+
+# 依赖延迟导入: 任何依赖缺失时仅对安全微伴平台生效(不影响其他平台启动)
+try:
+    from logic.weban.client import WeBanClient
+    from logic.weban._deps import is_non_interactive as _is_non_interactive
+    _DEPS_IMPORT_ERROR = ""
+except ImportError as _e:  # pragma: no cover - 依赖缺失场景
+    WeBanClient = None  # type: ignore[assignment]
+    def _is_non_interactive(): return False  # type: ignore[assignment]
+    _DEPS_IMPORT_ERROR = str(_e)
+
+# 多账号同步题库串行锁(对齐原 SDK main.py 的 sync_lock)
+_sync_lock = threading.Lock()
+
+
+class WebanUserCache:
+    """安全微伴用户缓存 - 持有已登录客户端与配置用户"""
+    __slots__ = ("client", "user", "account")
+
+    def __init__(self, client: Any, user: User):
+        self.client = client
+        self.user = user
+        self.account = user.account
+
+
+def filter_account(config_data: JSONDataForConfig) -> List[User]:
+    """从配置中过滤出安全微伴账号"""
+    return generic_filter_account(config_data, PLATFORM_TYPE)
+
+
+def _resolve_browser_options(setting: Setting) -> dict:
+    """解析全局浏览器/CDP设置(安全微伴验证码自动识别用)
+
+    优先配置文件: basicSetting.browserPath / cdpHost / cdpPort;
+    环境变量 YATORI_BROWSER_PATH 作为 browserPath 的兜底(Docker 场景)。
+    """
+    bs = getattr(setting, "basic_setting", None)
+    browser_path = ""
+    cdp_host = ""
+    cdp_port = 0
+    if bs is not None:
+        browser_path = (getattr(bs, "browser_path", "") or "").strip()
+        cdp_host = (getattr(bs, "cdp_host", "") or "").strip()
+        try:
+            cdp_port = int(getattr(bs, "cdp_port", 0) or 0)
+        except (TypeError, ValueError):
+            cdp_port = 0
+    browser_path = browser_path or os.environ.get(
+        "YATORI_BROWSER_PATH", "").strip()
+    return {
+        "browser_path": browser_path or None,
+        "cdp_host": cdp_host or None,
+        "cdp_port": cdp_port or None,
+    }
+
+
+def _probe_browser(options: dict, log) -> tuple:
+    """判定浏览器自动化能力: 返回 (是否可用, 原因说明)
+
+    - Android/Termux 且未手动配置 browserPath/CDP: 直接判定不可用
+      (Android 无桌面 Chromium, 避免无谓的昂贵探测);
+    - 其余环境(含手动配置): 调用 check_browser_health 实测;
+    - 系统限制调起浏览器(沙箱/安全软件拦截)由实测失败覆盖。
+    """
+    try:
+        from logic.weban._deps import is_android
+        if is_android() and not (options["browser_path"] or options["cdp_host"]):
+            return False, ("Android 环境无桌面 Chromium, 浏览器验证码不可用"
+                           "(可配置 cdpHost+cdpPort 连接外部调试浏览器以启用)")
+    except ImportError:
+        pass
+    try:
+        from logic.weban._deps import load_captcha_module
+        resolved = load_captcha_module().check_browser_health(
+            options["browser_path"], options["cdp_host"], options["cdp_port"])
+        log.info(f"浏览器检测通过: {resolved}")
+        return True, ""
+    except Exception as e:
+        return False, str(e)
+
+
+def user_login_operation(users: List[User]) -> List[WebanUserCache]:
+    """批量登录(单账号失败仅跳过, 不影响其他账号与其他平台)
+
+    登录验证码使用本地 OCR 模型(cv2+onnx), 不需要浏览器。
+    """
+    if WeBanClient is None:
+        if users:
+            log_print(INFO, f"[{_DISPLAY}]", Red,
+                      f" 缺少依赖, 安全微伴功能不可用: {_DEPS_IMPORT_ERROR}")
+            log_print(INFO, f"[{_DISPLAY}]", Yellow,
+                      " 请执行: pip install -r requirements.txt (需要 nodriver / pyaes 等)")
+        return []
+
+    user_caches: List[WebanUserCache] = []
+    for user in users:
+        if user.account_type != PLATFORM_TYPE:
+            continue
+        cc = user.courses_custom
+        log = get_simple_logger(
+            f"[{_DISPLAY}][{display_account(user.account)}]")
+        tenant = (cc.wb_tenant or "").strip()
+        if not tenant:
+            log.error("未配置学校全称(wbTenant), 请在配置文件生成器中填写后重试, 已跳过")
+            continue
+        try:
+            common_kw = dict(
+                log=log,
+                debug=bool(cc.wb_debug),
+                ai_config=None,  # 答题统一走项目多答题源引擎, 不使用 SDK 内置 AI
+                video_speed=float(cc.wb_video_speed),
+                jupiter_fallback=bool(cc.wb_jupiter_fallback),
+            )
+            if cc.wb_user_id:
+                # Token 登录(密码栏填 token)
+                client = WeBanClient(
+                    tenant, user={"userId": cc.wb_user_id,
+                                  "token": user.password},
+                    **common_kw)
+            else:
+                # 密码登录(密码留空时默认与账号相同, 对齐原 SDK)
+                client = WeBanClient(
+                    tenant, user.account, user.password or user.account, **common_kw)
+        except Exception as e:
+            log.error(f"初始化失败: {e}")
+            continue
+
+        if not client.login():
+            log.error("登录失败(账号/密码错误或验证码识别失败), 已跳过该账号")
+            continue
+        log.success("登录成功")
+        # 2026-10-19: 身份信息(学校=租户配置wbTenant, 姓名/学号=登录用户数据)
+        try:
+            from logic.platform_common import save_user_identity
+            _au = getattr(getattr(client, "api", None), "user", None) or {}
+            if not isinstance(_au, dict):
+                _au = {}
+            _name = str(_au.get("realName") or _au.get("userName") or "")
+            _stuno = str(_au.get("userName") or _au.get("studentNumber")
+                         or _au.get("userId") or "")
+            if _name or _stuno:
+                save_user_identity(user, school=tenant, name=_name,
+                                   stu_no=_stuno, log=log.success)
+        except Exception:
+            pass
+        try:
+            client.simulate_home_page()
+        except Exception as e:
+            log.warning(f"模拟首页异常(不影响学习): {e}")
+        user_caches.append(WebanUserCache(client=client, user=user))
+    return user_caches
+
+
+def run_brush_operation(setting: Setting, users: List[User], user_caches: List[Any]):
+    """执行刷课(每账号一个线程并发)"""
+    threads = []
+    for cache in user_caches:
+        t = threading.Thread(
+            target=with_log_account(
+                cache.user.account, cache.user.remark_name)(_user_block),
+            args=(setting, cache), daemon=True)
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+
+
+def _user_block(setting: Setting, cache: WebanUserCache):
+    """单账号完整流程: 浏览器能力判定(分级降级) → 题库同步 → 学习(+考试) → 最终同步 → 整体通知"""
+    user = cache.user
+    client = cache.client
+    cc = user.courses_custom
+    # 夜间休息检查(2026-10-10 修复): 入口级——休息时段内等待到点继续
+    try:
+        from logic.platform_common import rest_wait_if_needed as _pub_rest_wait
+        _pub_rest_wait(user.account, user.courses_custom,
+                       ACCOUNT_TYPE_STR[PLATFORM_TYPE])
+    except Exception:
+        pass
+    log = get_simple_logger(f"[{_DISPLAY}][{display_account(user.account)}]")
+
+    # 注入全局浏览器/CDP设置并重置验证码处理器(登录阶段未传)
+    browser_opts = _resolve_browser_options(setting)
+    client.browser_path = browser_opts["browser_path"]
+    client.cdp_host = browser_opts["cdp_host"]
+    client.cdp_port = browser_opts["cdp_port"]
+    client._captcha_handler = None
+
+    # 浏览器能力分级降级: 不可用时仅停用浏览器相关环节, 不再跳过整个账号
+    browser_usable, browser_reason = _probe_browser(browser_opts, log)
+    if not browser_usable:
+        client.browser_disabled = True
+        log.warning(f"浏览器验证码不可用: {browser_reason}")
+        log.warning("降级模式: 登录/课程学习照常执行; 考试环节已自动跳过; "
+                    "个别课程完成时的点选验证码将提示失败并跳过")
+
+    # 事件通知回调(课程/考试完成实时推送, 与项目其他平台一致)
+    def _on_event(kind: str, line: str):
+        try:
+            if kind in ("course", "exam"):
+                run_stats_bump(_DISPLAY, user.account, kind)
+            send_user_event_notice(setting, user, _DISPLAY, line)
+        except Exception:
+            pass
+
+    client.on_event = _on_event
+
+    # 题库同步(试题回溯合并; 多账号串行; 受"答题后核对"开关控制 cxVerifyAnswer)
+    try:
+        _do_review = int(getattr(cc, "cx_verify_answer", 1) or 0) == 1
+        with _sync_lock:
+            client.sync_answers(do_review=_do_review)
+    except Exception as e:
+        log.warning(f"题库同步异常(不影响学习): {e}")
+
+    # 学习+考试(按项目交替; 浏览器不可用时跳过考试环节)
+    study_mode = {0: "false", 1: "true", 2: "force"}.get(
+        int(cc.wb_study_mode), "true")
+    exam_mode = {0: "false", 1: "true", 2: "perfect",
+                 3: "force"}.get(int(cc.wb_exam_mode), "true")
+    if not browser_usable and exam_mode != "false":
+        log.info("考试需要浏览器无感验证码, 降级模式下已自动跳过考试环节")
+        exam_mode = "false"
+    client.exam_mode = exam_mode
+    # 2026-10-16: 考试拟人节奏档位(0=固定0.5s/1=标准(3+随机3s)/2=谨慎(5+随机5s))
+    _wb_pace = int(getattr(cc, "wb_exam_pace", 1) or 0)
+    if _wb_pace >= 2:
+        _wb_qt = "5,5"
+    elif _wb_pace >= 1:
+        _wb_qt = f"{max(0, int(cc.wb_exam_question_time))},3"
+    else:
+        _wb_qt = "0.5,0"
+    try:
+        client.run_project_cycle(
+            study_time=f"{max(0, int(cc.wb_study_time))},10",
+            study_mode=study_mode,
+            exam_mode=exam_mode,
+            random_answer=bool(cc.wb_random_answer) or _is_non_interactive(),
+            exam_question_time=_wb_qt,
+            exam_submit_match_rate=int(cc.wb_exam_submit_match_rate),
+            project_filter=lambda _n: course_allowed(cc, _n),
+        )
+    except PermissionError as e:
+        # 2026-10-08 增强: 结构化输出Token失效事件+排查建议(入运行日志)
+        log.error(
+            f"Token失效或账号被锁定: {e} | 事件=异地或重复登录冲突 "
+            f"建议=关闭手机APP/网页等其他端的安全微伴登录后重新运行")
+    except Exception as e:
+        log.error(f"执行异常: {e}")
+
+    # 最终同步(同样受"答题后核对"开关控制)
+    try:
+        with _sync_lock:
+            client.sync_answers(do_review=int(
+                getattr(cc, "cx_verify_answer", 1) or 0) == 1)
+    except Exception:
+        pass
+
+    log.success("所有待学习课程执行完毕")
+    generic_user_block(setting, user, _DISPLAY, brush_func=None)
+
+
+# ============ Web 端课程查询(供前端控制台"课程"按钮) ============
+
+def web_course_list(cache: WebanUserCache, user: User) -> List[dict]:
+    """Web端课程(项目)列表+总进度 - 安全微伴以"项目"为课程粒度
+
+    list_my_project 返回每个项目的 progressPet(完成百分比) 与
+    studyStateLabel(未完成/已完成), 直接作为进度展示。
+    """
+    result = []
+    try:
+        client = cache.client
+        res = client.api.list_my_project(ended=2)
+    except Exception:
+        return result
+    for item in (res.get("data") or []):
+        if not isinstance(item, dict):
+            continue
+        try:
+            rate = float(item.get("progressPet", 0) or 0)
+        except (TypeError, ValueError):
+            rate = 0.0
+        result.append({
+            "courseId": str(item.get("userProjectId", "")),
+            "courseName": item.get("projectName", ""),
+            "teacher": "",
+            "jobFinishCount": int(rate >= 100),
+            "jobCount": 1,
+            "jobRate": round(rate, 1),
+            "hasProgress": True,
+            "statusText": (item.get("studyStateLabel")
+                           or ("已完成" if rate >= 100 else "进行中")),
+        })
+    return result
+
+# ============ Web端课程详情统计(考试清单, 2026-10-17) ============
+
+
+def web_course_detail_stat(cache, user, course_id: str) -> dict:
+    """安全微伴: 项目=课程(用户课程=userProjectId), exam_list_plan+history 统计考试"""
+    exam_items = []
+    exam_fin = exam_all = None
+    try:
+        client = cache.client
+        plans = client.api.exam_list_plan(str(course_id)).get("data", [])
+        if isinstance(plans, list):
+            exam_all = len(plans)
+            exam_fin = 0
+            for plan in plans:
+                if not isinstance(plan, dict):
+                    continue
+                _pid = plan.get("examPlanId")
+                _ptype = plan.get("examType")
+                _name = str(plan.get("examPlanName") or plan.get(
+                    "name") or plan.get("title") or "考试")[:80]
+                _done = False
+                _score = None
+                # 查历史记录判定是否已参加
+                try:
+                    hs = client.api.exam_list_history(
+                        _pid, _ptype).get("data", [])
+                    if isinstance(hs, list) and hs:
+                        _done = True
+                        _last = hs[-1] if isinstance(hs[-1], dict) else {}
+                        _score = _last.get("score") or _last.get("totalScore")
+                except Exception:
+                    pass
+                if _done:
+                    exam_fin += 1
+                exam_items.append({
+                    "name": _name,
+                    "status": "已完成" if _done else "未参加",
+                    "deadline": "",
+                    "ongoing": (not _done), "score": _score})
+    except Exception:
+        pass
+    return {"supported": True,
+            "workFinish": None, "workCount": None,
+            "examFinish": exam_fin, "examCount": exam_all,
+            "workList": [], "examList": exam_items,
+            "workOngoing": 0,
+            "examOngoing": sum(1 for e in exam_items if e["ongoing"])}
+
+
+
+# [V3.2.3] 可重做项巡检接入(全平台统一框架; 本平台暂无可重做/重考接口 -> 占位发现层)
+try:
+    from logic.core.retake_scanner import register_placeholder as _rs_ph
+    _rs_ph("WEBAN", "安全微伴")
+except Exception:
+    pass

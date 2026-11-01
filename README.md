@@ -1,0 +1,717 @@
+# Yatori-Python-Console
+
+> 本项目是借助 AI 基于 [yatori-go-console](https://github.com/yatori-dev/yatori-go-console) 重构的 **Python 版本** 多平台网课自动刷课工具。
+>
+> 独立程序、不依赖浏览器，支持多账号并行、多任务点并发刷课。
+>
+> **当前版本：V3.1.2**
+
+## 📢 作者有话说
+
+我也是用 AI 协助重构的，学习通测试通过了，其他的没试过。
+
+> **特别鸣谢**：本项目的完成离不开多位热心人士提供的各种帮助，特此感谢。
+
+> **功能精简说明**：因程序原有的一些功能之间存在严重冲突，本版本不得不精简掉了一部分功能模块。
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Python 3.13+
+
+### 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 配置
+
+在项目根目录创建 `config.yaml` 配置文件（该文件已加入 `.gitignore`，不会上传到仓库）：
+
+- **方式一**：直接打开 `配置文件生成器.html`，在浏览器中可视化生成 `config.yaml`
+- **方式二**：参考 `config/config.yaml` 模板手动编写（详见下方「详细使用方法」）
+
+### 启动
+
+```bash
+python main.py
+```
+
+## 📖 详细使用方法
+
+### 1. 配置文件结构
+
+```yaml
+setting:                          # 全局设置
+  basicSetting:                   # 基础设置
+    completionTone: 1             # 刷完提示音：0关闭 / 1开启
+    colorLog: 1                   # 彩色日志：0关闭 / 1开启
+    logOutFileSw: 1               # 输出日志文件：0关闭 / 1开启
+    logLevel: 'INFO'              # 日志等级：DEBUG / INFO / WARNING / ERROR
+    logModel: 0                   # 日志模式
+  emailInform:                    # 邮箱通知（可选）
+    sw: true                      # 总开关
+    SMTPHost: 'smtp.example.com'
+    SMTPPort: '465'
+    userName: 'your@email.com'
+    password: 'your_password'
+  aiSetting:                      # AI 答题设置（autoExam=1 时必填）
+    aiType: 'DEEPSEEK'            # 见下方「AI 类型对照表」
+    aiUrl: ''                     # aiType=OTHER 时填自定义接口地址
+    model: 'deepseek-chat'        # 留空则使用该类型默认模型
+    API_KEY: 'sk-xxxx'            # 你的 API Key
+  apiQueSetting:                  # 外部题库接口（autoExam=2 时使用）
+    url: 'http://localhost:8083'
+  answerSetting:                  # 多答题源设置（顺序依次调用、失败即回退）
+    tokenCheck: 1                 # 启动时对 token 有效性自检：0关闭 / 1开启
+    localCacheEnable: 1           # 本地缓存默认开关(兼容项: 也可在 sources 中以 type: local 独立配置)
+    localCachePath: 'questions_answers.json'  # 缓存文件(格式与题库json一致: {"题目":"答案"})
+    # 调用顺序：填各答题源的【自定义名称】，逗号分隔，从高到低
+    # 未列出的答题源按配置顺序排在后面；留空则全部按配置顺序
+    order: '本地题库缓存, 言溪题库, AVXE题库, AI'
+    # 答题源列表：支持多个题库组，每组可含多个子项(items)，组与子项均可自定义命名
+    # 类型：local=本地题库缓存 / emmcy=言溪题库 / axe=AVXE题库 / n1=N1题库 / ze=ZE题库 / every=EveryAPI题库 / ai=AI大模型
+    sources:
+      - name: '本地题库缓存'      # 本地缓存也是独立答题源: 可排序/可开关
+        type: 'local'
+        enable: 1                # 0禁用(不读也不写缓存) / 1启用
+        # url: 'questions_answers.json'   # 缓存文件路径(可留空用默认)
+      - name: '言溪题库'          # 自定义名称(二次命名，用于上方 order 排序)
+        type: 'emmcy'
+        enable: 1                # 独立启停开关：0禁用 / 1启用
+        token: '你的言溪token'    # 官网个人中心获取
+      - name: 'AVXE题库'
+        type: 'axe'
+        enable: 1
+        token: '你的AVXE token'
+        url: ''                   # 可留空用默认; 旧的apifox文档地址会被自动纠正
+      - name: 'AI'
+        type: 'ai'
+        enable: 1
+        token: 'sk-xxxx'         # AI 的 APIKey
+        aiType: 'DEEPSEEK'       # AI 类型(同旧版 aiSetting.aiType)
+        model: ''                # 可留空用默认模型
+
+users:                            # 账号列表，支持多账号
+  - accountType: 'XUEXITONG'      # 平台类型(全大写)，全部取值见「支持平台」章节
+    url: ''                       # 部分平台需要学校专属 URL（可留空）
+    remarkName: ''                # 备注名，日志中显示（可留空）
+    account: '手机号/学号'
+    password: '密码'
+    isProxy: 0                    # 是否使用代理：0否 / 1是
+    informEmails:                 # 该账号刷课状态通知邮箱（可选）
+      - 'notify@email.com'
+    coursesCustom:                # 该账号的课程自定义设置
+      studyTime: '10-30'          # 学习时长区间（秒），随机取中间值，仅部分平台生效
+      shuffleSw: 0                # 打乱课程顺序：0关闭 / 1开启
+      videoModel: 1               # 刷视频模式，见下方说明
+      autoExam: 0                 # 自动答题/考试模式: 0不考 / 1自动答题(多答题源) / 2同1(旧配置兼容) / 3内置AI
+      examAutoSubmit: 0           # 考完自动提交试卷：0否 / 1是
+      cxNode: 3                   # 【学习通】多任务点并发数
+      cxChapterTestSw: 1          # 【学习通】章测开关：0关闭 / 1开启
+      cxWorkSw: 1                 # 【学习通】作业开关：0关闭 / 1开启
+      cxExamSw: 1                 # 【学习通】考试开关：0关闭 / 1开启
+      cxExamSwAgain: 0            # 【学习通】强制重考开关：1=支持重考的考试不管分数一律重考 / 0=仅分数<60时重考
+      addStudySw: 0               # 【学习通】增加学习次数/学习时长开关(0关/1开，课程任务点全部完成后自动执行)
+      addStudyCount: 10           # 【学习通】每门课程增加的次数
+      addStudyDelay: 30           # 【学习通】每次学习记录上报间隔秒数(建议≥30)
+      bruteSpeed: 2.4             # 【学习公社】暴力模式倍速(最低2.4/默认2.4；服务端有效上限12x)
+      deviceFlag: ''              # 【学习通】设备特征码（见下方说明）
+      excludeCourses: []          # 排除课程（按名称过滤）
+      includeCourses: []          # 只刷指定课程（按名称过滤，空=全部）
+```
+
+### 2. videoModel 刷视频模式说明
+
+| 值 | 模式     | 说明                                                   |
+|----|----------|--------------------------------------------------------|
+| 0  | 不刷视频 | 跳过所有视频任务点                                     |
+| 1  | 普通模式 | 按正常时长刷，最安全                                   |
+| 2  | 暴力模式 | 无视前置课程限制并发同刷（部分平台会被检测到）         |
+| 3  | 多任务点 | 【学习通专用】多任务点并发刷课，配合 `cxNode` 控制并发数 |
+
+> [!TIP]
+> 学习通 `videoModel: 3` 为多任务点并发模式：`cxNode` 设为几就同时刷几个任务点，并支持多课程并发；该模式已解除并发数量限制（对齐 Go 版 CxNode=-1 路径），每个节点独立 relogin 并发执行，配合多核 CPU 自适应调度可大幅提速。
+
+> [!TIP]
+> **学习公社（ENAEA）暴力模式倍速**：由 `coursesCustom.bruteSpeed` 控制（最低 2.4 / 未填写默认 2.4）。工作原理：每 25 秒为一个周期，按倍速记入对应学时（2.4倍 ≈ 每周期1分钟，12倍 = 每周期5分钟）。经实测：服务端对单次提交**封顶 5 分钟**（提交60分钟也只记约5分钟），且提交间隔小于25秒会被拒绝（request frequently!），因此**有效倍速上限为 12x**——设置大于 12 时会自动按 12x 执行并在日志中提示。
+
+### 3. autoExam 自动答题/考试模式说明
+
+| 值 | 模式           | 说明                                       |
+|----|----------------|--------------------------------------------|
+| 0  | 不考           | 不进行自动答题(跳过考试/章测/作业答题)     |
+| 1  | 自动答题       | 自动答题-多答题源（题库+AI+本地缓存 按 order 顺序调用），需配置 `answerSetting` |
+| 2  | 自动答题       | 同 1（保留旧值兼容，同样使用多答题源）-旧配置兼容 |
+| 3  | 内置AI         | 内置AI答题（学习通自带接口）               |
+
+> [!TIP]
+> 学习通考试刷完后，若支持重考：`cxExamSwAgain: 0`（默认）仅在分数低于 60 分时重考；`cxExamSwAgain: 1` 则只要还有重考机会，不管分数一律强制重考。
+
+### 4. 多答题源说明（answerSetting）
+
+自动答题（章测/作业/考试/讨论）统一走多答题源引擎，特性如下：
+
+| 特性 | 说明 |
+|------|------|
+| 顺序调用·失败回退 | 按顺序依次调用答题源，某个源取不到答案自动转向下一个，直到拿到答案 |
+| 配置极简 | 每个答题源只需填 `token`，其余参数（接口地址/请求格式/返回解析）全部内置 |
+| 内置题库源 | 言溪题库(`emmcy`)、AVXE题库(`axe`)、N1题库(`n1`)、ZE题库(`ze`)、EveryAPI题库(`every`)、AI大模型(`ai`)、本地题库缓存(`local`) |
+| 自定义顺序 | `order` 填写各答题源的自定义名称调整调用优先级（含"本地题库缓存"），未列出的按配置顺序排在后面 |
+| 独立启停 | 每个答题源 `enable: 0/1` 可单独开启关闭（含本地题库缓存） |
+| 题库组与子项 | `sources` 支持多个题库组；组内可用 `items` 配置多个子项（多个token），组名与子项名均可自定义（二次命名），子项名称同样可用于 `order` 排序 |
+| 本地题库缓存 | 独立答题源（`type: local`）：可单独开关、可参与 `order` 排序；文件路径可用条目 `url` 或 `localCachePath` 指定；**外部题库/AI 答对的题目会自动写入缓存并输出日志**，下次优先命中 |
+| 启动自检 | 程序启动时自动检查各答题源 token 有效性并输出结果（如剩余次数），显示本地缓存加载条数，可用 `tokenCheck: 0` 关闭 |
+| 全量日志 | 每个答题源每一次被尝试调用（成功/无结果/异常/禁用/跳过）均输出日志，并明确标注每题由哪个源回答成功、是否已写入本地缓存 |
+
+> [!TIP]
+> EveryAPI题库(`every`) 接口域名为 `https://q.icodef.com`（旧域名 go.every-api.com 已停用；配置里若填了旧地址会自动纠正）。简单模式优先：直接返回以 `#` 拼接的答案串；服务端有限流（2并发/滚动窗口），程序内已做全局串行节流与退避重试，无需手动配置。
+
+题库组 + 子项 + 本地缓存示例（同类型多个token可分别命名、按序调用）：
+
+```yaml
+  answerSetting:
+    order: '本地题库缓存, 言溪题库, N1题库, ZE题库, 言溪小号, AI'
+    sources:
+      - name: '本地题库缓存'
+        type: 'local'
+        enable: 1
+      - name: 'N1题库'
+        type: 'n1'
+        enable: 1
+        token: 'N1的API密钥'
+      - name: 'ZE题库'
+        type: 'ze'
+        enable: 1
+        token: 'ZE的token'
+      - name: '言溪题库组'
+        type: 'emmcy'
+        enable: 1
+        items:
+          - name: '言溪主号'
+            token: 'token-1'
+          - name: '言溪小号'
+            token: 'token-2'
+      - name: 'AI'
+        type: 'ai'
+        enable: 1
+        token: 'sk-xxxx'
+        aiType: 'DEEPSEEK'
+```
+
+> [!TIP]
+> 兼容旧配置：若 `answerSetting` 未配置任何答题源，但旧版 `aiSetting.API_KEY` 已填写，程序会自动将旧 AI 配置作为兜底答题源使用。
+
+### 5. AI 类型对照表（aiType）
+
+| 值           | 服务商               | 默认模型           |
+|--------------|----------------------|--------------------|
+| DEEPSEEK     | DeepSeek             | deepseek-chat      |
+| TONGYI       | 阿里云通义           | qwen-plus-latest   |
+| CHATGLM/ZHIPU| 智谱 AI              | glm-4              |
+| XINGHUO      | 讯飞星火             | generalv3.5        |
+| DOUBAO       | 字节豆包             | 自定义             |
+| OPENAI       | OpenAI               | 自定义             |
+| SILICONFLOW  | 硅基流动             | 自定义             |
+| METAAI       | 秘塔 AI              | 自定义             |
+| OTHER        | 自定义接口           | 配合 aiUrl 使用    |
+
+### 6. 学习通 deviceFlag 设备特征码
+
+学习通考试启用客户端签名校验时，纯 HTTP 程序无法作答，需要配置 `deviceFlag`：
+
+1. 手机学习通 APP 内打开 `https://doc.micono.eu.org/tools/device` 获取设备特征码
+2. 填入 `coursesCustom.deviceFlag`
+3. 留空则每次登录自动生成（部分课程考试可能无法完成）
+
+### 7. 学习通 增加学习次数/学习时长（addStudySw）
+
+参照 yatori-free 的**三指标设计**（学习次数 / 视频观看时长 / 阅读时长）实现，核心机制兼容 chaoxing_tool 的 setlog / set_time：
+
+1. 当某课程**所有可访问任务点已完成**（服务端任务点进度 100%）时，自动进入该功能；
+2. **学习次数**：打开课程学习页提取学习记录上报链接（setlog），按配置间隔逐次访问，每次访问计为一次学习；
+3. **视频观看时长**：对课程视频任务点做播放进度上报（从当前进度逐分钟上报至视频结束），**按真实播放节奏执行（约 1 分钟/分钟）**——过快上报服务器不会计入，请耐心等待；
+4. **阅读时长**：当课程存在阅读类任务点时，对阅读任务点循环进行阅读行为上报（ac_mark/readPoint）；
+5. 执行前后会自动读取并日志展示当前学习次数。
+
+相关配置（**每个学习通账号**的 `coursesCustom` 下独立设置，未设置时默认均为 0=不增加，与 yatori-free 默认一致）：
+
+| 配置项 | 默认 | 上限 | 说明 |
+|--------|------|------|------|
+| `addStudySw` | 0 | - | 开关：0 关闭 / 1 开启 |
+| `addStudyCount` | 0 | 400 | 增加的学习次数（0=不增加） |
+| `addStudyVideoMinutes` | 0 | 4000 | 增加的视频观看时长（分钟，0=不增加） |
+| `addStudyReadMinutes` | 0 | 4000 | 增加的阅读时长（分钟，0=不增加；仅课程含阅读类任务点时生效） |
+| `addStudyDelay` | 30 | ≥30 | 学习记录上报间隔秒数（参照 chaoxing_tool 默认 30） |
+
+> [!TIP]
+> - 三项指标均为 **0 时不做任何增加**（与 yatori-free 默认一致）；按需填写其中任意一项即可，超出上限自动修正。
+> - 学习次数耗时约为 `次数 × 间隔` 秒/课程；视频观看时长按真实播放节奏执行（目标 N 分钟约需等待 N 分钟）；阅读时长约为 `分钟数 × 间隔` 秒。
+> - 配置文件生成器（学习通账号区域）已同步提供以上选项。
+> - 实测：视频进度上报后服务器实时保存（play_time 0→565s）并将对应任务点标记完成（课程进度 14%→15%）。
+
+### 8. 学习通人脸识别说明
+
+学习通刷课时触发人脸识别，程序会自动尝试绕过（手机端卡片人脸/PC端视频人脸两套流程）：
+
+**自动绕过流程：**
+
+1. **人脸图片获取**：优先读取本地 `assets/faces/{账号}.jpg`，不存在则自动拉取该账号的历史人脸图片
+2. **RGB 扰动处理**：对图片做像素扰动（防平台检测）
+3. **上传人脸**：获取上传 token 后上传图片，拿到 objectId
+4. **更换基准 FaceId**：调用 `api/changefaceid` 将基准 FaceId 换成新上传的照片（对齐新版 APP，绕过历史基准照片限制）
+5. **新接口验证**：QR码方案验证通过则继续刷课；"用户图片信息出错"自动重试 8 次
+6. **老接口回退**：新接口彻底失败时自动回退老接口 `uploadInfo` 验证
+
+**使用建议：**
+
+- **本地人脸缓存**：可手动将本人清晰正脸照片放到 `assets/faces/{账号}.jpg`，程序优先使用本地图片（成功率更高）
+- **失败处理**：若账号从未录入过人脸（提示"没有历史人脸"），需先在手机学习通 APP 完成一次人脸识别录入
+- **PC端视频人脸**：视频 403 触发时走 PC 端流程（updateqrstatus/getqrstatus 轮询验证）
+
+### 9. 常用场景示例
+
+```yaml
+# 示例：学习通账号，多任务点并发刷课 + AI 自动考试 + 章测/作业
+users:
+  - accountType: 'XUEXITONG'
+    account: '13800138000'
+    password: 'your_password'
+    coursesCustom:
+      videoModel: 3        # 多任务点并发
+      cxNode: 10           # 10个任务点并发
+      autoExam: 1          # 自动答题(多答题源: 题库+AI 顺序调用)
+      examAutoSubmit: 1    # 自动交卷
+      cxChapterTestSw: 1   # 刷章测
+      cxWorkSw: 1          # 刷作业
+      cxExamSw: 1          # 刷考试
+      includeCourses:      # 只刷这两门课（可留空=全部）
+        - '形势与政策'
+        - '古代汉语'
+```
+
+### 10. 本地图片 OCR（可选，离线）
+
+部分课程的题目/选项以**图片**形式给出，程序内置本地 OCR 自动识别为文本后再交给答题源作答：
+
+| 引擎 | 说明 |
+|------|------|
+| rapidocr-onnxruntime（首选） | PaddleOCR 的 ONNX 移植，wheel 内置模型，**完全离线**，无需下载、无需联网 |
+| ddddocr（降级备选） | 轻量验证码识别，同样内置模型；未安装时自动跳过 |
+
+- 依赖已包含在 `requirements.txt`，安装即用（会自动带上 onnxruntime/numpy/opencv）
+- **Intel Mac 注意**：`requirements.txt` 已将 onnxruntime 钉扎至 1.23.2（官方 1.24+ 停止发布 macOS x86_64 轮子），安装会自动适配，无需手动处理
+- 引擎懒加载 + 单例 + 线程安全，不影响启动速度；缺库时优雅降级，**不会中断刷课**
+- Windows 单文件 exe 已内置 OCR 模型与 GPU 推理运行库，开箱即用
+
+#### GPU 硬件加速（全厂商 / 跨平台，自动适配）
+
+OCR 推理会自动选择当前平台可用的最优后端，**无需任何手动配置**；任一环节不可用则静默回落 CPU，功能不受影响：
+
+| 平台 | GPU 后端 | 覆盖显卡 |
+|------|----------|----------|
+| Windows | **DirectML**（exe 内置）→ 有 CUDA 时优先 CUDA | NVIDIA / AMD / Intel / 核显 **全厂商** |
+| macOS | CoreML | Apple GPU / 神经引擎 |
+| Linux | CUDA → ROCm | NVIDIA / AMD（需自行换装对应 onnxruntime 变体） |
+| 无 GPU / 老显卡 / 驱动不全 | CPU（自动回落） | 任意机器，功能完整 |
+
+> [!NOTE]
+> **关于更老的显卡**：DirectML 需要 DirectX 12 硬件（约 2015 年后的显卡）；更早的显卡（2008–2014）不在任何现代推理框架的 GPU 支持范围内（CUDA 最低要求 2014+ Maxwell，DX12 硬件同年起步），这类机器会自动使用 CPU 推理——**功能完全不受影响，仅速度用 CPU**。
+
+**随时验证 GPU 是否生效**（源码或 exe 均可）：
+
+```bash
+yatori-python刷课系统V2.0.9.2.exe --gpu-check   # Windows exe
+python main.py --gpu-check                     # 源码运行
+```
+
+输出会明确列出：检测到的显卡、平台后端优先级、onnxruntime 可用后端、**实际生效的推理后端**（如 `DmlExecutionProvider`）。想强制用 CPU 对比：设环境变量 `YATORI_OCR_CPU=1`。
+
+> [!TIP]
+> **源码安装时确保 Windows GPU 生效**：`rapidocr-onnxruntime` 会以依赖形式带入 CPU 版 onnxruntime 并可能覆盖 DirectML 版。若 `--gpu-check` 显示可用后端里没有 `DmlExecutionProvider`，执行一次：`pip install --force-reinstall onnxruntime-directml`。
+
+## 🪟 Windows 单文件 exe
+
+打包产物：`yatori-python刷课系统V2.0.9.2.exe`（单文件、免安装 Python 环境）。
+
+### 使用方法
+
+1. 将 exe 放到任意文件夹（如 `D:\yatori`），并把 `config.yaml` 放在 **exe 同目录**
+2. 双击运行；首次运行自动生成 `assets\faces`、`assets\fsces`、`assets\logs`、`assets\sound` 等目录
+3. 日志输出在 `assets\logs\日期.log`；人脸图缓存放 `assets\faces\账号.jpg`（可选）
+4. 本地题库缓存文件为 exe 同目录的 `questions_answers.json`（运行时自动创建/回写）
+
+### 重新构建
+
+```bash
+pip install -r requirements.txt
+pip install cython setuptools pyinstaller
+python build_protected.py
+```
+
+上面一条命令会自动完成构建与打包，产物输出到 `dist/`。
+
+> [!IMPORTANT]
+> **Windows 构建需要 DirectML 版 ONNX Runtime**（否则包内只有 CPU，GPU 加速不可用）：
+> 构建脚本会自动在本机搜寻含 `DirectML.dll` 的 onnxruntime 安装，找不到时会直接报错并给出安装指引；
+> 也可用环境变量显式指定：`set YATORI_ORT_SRC=<含 onnxruntime-directml 的 site-packages 目录>`。
+> 构建完成后脚本会自动核验包内 `DirectML.dll`（Windows 缺则拒绝发布）。
+
+## 🍎 macOS 安装与使用指南
+
+> 本章专为不熟悉 Mac 操作的同学编写，跟着步骤一步步做即可，全程约 5 分钟。
+
+### 第 0 步：先确认你的 Mac 芯片类型
+
+发布包按芯片分开提供，**选错会导致打不开**。查看方法：点屏幕**左上角  →「关于本机」**，看「芯片」那一栏。
+
+发布页提供两种 macOS 安装形式（**Intel 与 Apple Silicon 分架构提供**）：
+
+| 芯片类型 | 下载文件 |
+|----------|----------|
+| Apple Silicon（M1/M2/M3/M4…） | `...-V2.0.9.2-macos-arm64.zip` / `.dmg` |
+| Intel（x86_64） | `...-V2.0.9.2-macos-x86_64.zip` / `.dmg` |
+
+### 获取 config.yaml（安装前先准备好）
+
+程序运行必须有一份账号配置 `config.yaml`，两种获取方式任选：
+
+- **方式 A（推荐，点点鼠标就行）**：
+  1. 用浏览器打开仓库页面，点开根目录的 `配置文件生成器.html`
+  2. 点文件页右上角的「**Download raw file**」按钮，把它下载到电脑
+  3. 双击下载好的 html 文件（用浏览器打开），按页面提示填好账号等信息
+  4. 点页面里的「导出 config.yaml」按钮，得到配置文件
+- **方式 B**：参考本文档「详细使用方法 → 1. 配置文件结构」手写一份（可参考仓库 `config/config.yaml` 模板）
+
+> 建议先完成安装、把 `config.yaml` 放到指定位置后再第一次运行程序。
+
+### 方式一：DMG 安装包（推荐新手，安装效果如同普通 Mac 软件）
+
+#### 第 1 步：下载正确版本
+
+1. 浏览器打开 Releases 页面：https://github.com/keaident-su/yatori-python-console/releases
+2. 在最新版本的「Assets」文件列表里，按第 0 步确认的芯片类型下载：
+   - Apple 芯片 → `yatori-python-console-V2.0.9.2-macos-arm64.dmg`
+   - Intel 芯片 → `yatori-python-console-V2.0.9.2-macos-x86_64.dmg`
+
+   （版本号以你看到的最新版为准，认准结尾的 **arm64** / **x86_64** 即可）
+3. 下载完成后，在「访达 → 下载」里能找到这个 `.dmg` 文件
+
+#### 第 2 步：拖进“应用程序”完成安装
+
+1. **双击**下载好的 `.dmg` 文件（会自动弹出一个安装窗口）
+2. 窗口里有两个图标：**程序图标** + 一个指向「Applications（应用程序）」的文件夹
+3. 按住程序图标**拖到「Applications」文件夹上再松手** —— 安装完成
+4. 关闭该窗口；如果桌面/访达侧边栏出现一个磁盘图标（就是刚才的 dmg），点它右边的 **⏏** 按钮弹出，避免占位置
+
+#### 第 3 步：首次打开会被系统“拦一下”，这样放行（每人只会遇到一次）
+
+> 原因：免费开源程序没有购买 Apple 每年 99 美元的开发者签名，首次运行系统一定会提示一次——**不是病毒、文件也没坏**，按弹窗类型操作即可。
+
+**情况 A：弹窗说“无法打开，因为 Apple 无法检查其是否包含恶意软件”**
+
+1. 打开「**启动台**」，或「访达（左栏）→ 应用程序」
+2. **右键点程序图标**（触控板：两根手指同时轻点）→ 在弹出的菜单里选「**打开**」
+3. 又弹出一个窗口（这次多了一个「**打开**」按钮）→ 点「打开」
+4. **程序开始运行：会自动弹出一个「终端」窗口显示实时日志** ✅ 之后每次直接双击打开即可，不会再被拦
+
+**情况 B：弹窗说“已损坏，无法打开，您应该将它移到废纸篓”**
+
+1. 打开「**启动台 → 其他 → 终端**」
+2. 把下面一整行（含引号）复制粘贴进终端，按回车（此命令只是去掉下载隔离标记，无其他影响）：
+
+   ```bash
+   xattr -cr "/Applications/yatori-python-console-V2.0.9.2-macos-arm64.app"
+   ```
+
+   - 版本号以你下载的为准；记不住名字？先把「应用程序」里的程序图标**拖进终端窗口**，路径会自动补全，再在最前面补上 `xattr -cr ` 即可
+   - 回车后**没有任何输出就是成功**
+3. 回到「应用程序」双击程序即可打开 ✅
+
+#### 第 4 步：把 config.yaml 放进程序内部（只需做一次）
+
+1. 打开「**访达**」→ 左边栏点「**应用程序**」
+2. 找到程序图标（名字如 yatori-python-console-V2.0.9.2-macos-arm64），**右键 → 选择「显示包内容」**
+3. 弹出的新窗口里，依次双击进入 **`Contents` → `MacOS`** 文件夹
+4. 把准备好的 `config.yaml` **拖进 MacOS 文件夹**（放进去就行，不用改名）
+5. 完成 ✅ 以后正常使用不再需要重复此步
+
+#### 第 5 步：正式运行与查看进度
+
+1. 回到「启动台 / 应用程序」，双击程序
+2. 程序会自动弹出一个「终端」窗口：刷课实时日志（进度、答题情况）就在这个窗口里一行行滚动显示 ✅
+3. **想提前停止**：在终端窗口里按 `Control + C`，或直接关闭该终端窗口
+4. 日志文件（可随时翻阅）：再次「显示包内容」→ `Contents/MacOS/assets/logs/` → 双击当天的 `日期.log`（边刷边写）
+5. 人脸缓存等数据自动保存在 `Contents/MacOS/assets/` 内，无需手动创建
+
+> 进阶：也可以直接在「终端」里运行程序体（适合脚本化/服务场景），二进制位于应用包内：
+>
+> ```bash
+> "/Applications/yatori-python-console-V2.0.9.2-macos-arm64.app/Contents/MacOS/yatori-python-console-V2.0.9.2-macos-arm64-bin"
+> ```
+
+#### 第 6 步：卸载
+
+- 「应用程序」里把程序图标**拖进「废纸篓」**即卸载完成（`config.yaml`、日志都在程序内部，随程序一并清除；想保留日志可先「显示包内容」拷出来）
+
+### 方式二：ZIP 点开即用（免安装，适合不想装进“应用程序”的用户）
+
+#### 第 1 步：解压并放配置
+
+1. 下载自己芯片对应的 `yatori-python-console-V2.0.9.2-macos-arm64.zip`（Intel 则为 `-x86_64`），**双击解压**，得到一个无图标后缀的程序文件（如 `yatori-python刷课系统V2.0.9.2-macos-arm64`）
+2. 把准备好的 `config.yaml` **拖到与该文件同一个文件夹**（只要放一起就行）
+3. （可选）建议把程序文件重命名为简单的 `yatori`（右键 → 重新命名），后续命令更好输入
+
+#### 第 2 步：终端运行
+
+1. 打开「**启动台 → 其他 → 终端**」
+2. 输入 `cd `（注意最后有个空格），再把存放程序的**文件夹从访达拖进终端窗口**（路径自动补全），回车
+3. 复制下面整行回车，给程序加运行权限（只需一次）：
+
+   ```bash
+   chmod +x ./yatori*
+   ```
+
+4. 运行程序（输入 `./` 后按 **Tab 键**可自动补全文件名，再回车）：
+
+   ```bash
+   ./yatori
+   ```
+
+5. 首次运行同样会被系统拦一下：弹窗时到「系统设置 → 隐私与安全性」拉到底点「仍要打开」；或先执行 `xattr -cr ./yatori*` 再重新运行
+6. 之后运行日志会**实时滚动显示在终端里**；日志文件同时保存在程序同目录 `assets/logs/日期.log`
+
+> ZIP 方式的所有文件（配置、日志、人脸缓存）都在解压文件夹里，想搬家直接拷走整个文件夹即可；不用了直接删除文件夹即卸载干净。
+
+### 常见问题（FAQ）
+
+| 问题 | 处理 |
+|------|------|
+| 双击程序后弹出的是终端窗口？ | 是的：双击后会自动弹出「终端」窗口显示实时日志 |
+| 怎么知道程序在不在运行？ | ① 弹出的终端窗口里日志在滚动；② `assets/logs/` 里当天的日志文件内容在持续增加 |
+| 提示“找不到配置文件” | `config.yaml` 没放到位：DMG 版按方式一第 4 步放入 `Contents/MacOS/`；ZIP 版与程序文件放同一文件夹 |
+| 改了账号/配置怎么生效？ | 把新的 `config.yaml` 再拷一遍覆盖旧文件（位置同上），重新运行程序即可，不需要重装 |
+| 首次打开被系统拦截 | 属正常（未购买 Apple 签名），按方式一第 3 步的「情况 A / 情况 B」放行即可，每人只会遇到一次 |
+| Intel Mac / Apple 芯片该下载哪个？ | Intel → `-macos-x86_64`；Apple 芯片（M 系列）→ `-macos-arm64`，两者不能混用 |
+| 想可视化配账号 | 用浏览器打开仓库根目录的 `配置文件生成器.html`（本地单文件工具），填完导出 `config.yaml`（见「获取 config.yaml」） |
+| 报错 “No such file or directory” | 终端里输入 `./` 后按 **Tab 键**自动补全文件名（中文名手动输入易出错） |
+| 如何卸载 | DMG 版：把程序从「应用程序」拖入废纸篓；ZIP 版：删除解压的文件夹。配置、日志都在上述位置内，随删随清，无残留 |
+| 日志在哪里？ | DMG 版：`Contents/MacOS/assets/logs/日期.log`；ZIP 版：程序同目录 `assets/logs/日期.log`（日志采用“按日期一个新文件”的滚动方式） |
+
+## 🐳 Docker 部署
+
+项目已支持容器化部署，GitHub Actions 自动构建**多处理器架构**镜像（linux/amd64 + linux/arm64）并推送到 GitHub Container Registry（GHCR）。
+
+> 多架构镜像采用 manifest 自动分发：`docker pull` 时会根据当前机器的处理器自动拉取对应架构版本（Intel/AMD x86_64 自动获取 amd64 版，ARM64/Apple Silicon/树莓派自动获取 arm64 版）。
+
+### 拉取镜像
+
+```bash
+# 最新版(多架构，自动适配当前处理器)
+docker pull ghcr.io/keaident-su/yatori-python-console:latest
+
+# 指定版本
+docker pull ghcr.io/keaident-su/yatori-python-console:V2.0.9.2
+```
+
+### 运行（挂载本地 config.yaml）
+
+```bash
+# 推荐: 同时挂载 assets 目录(人脸图/日志持久化) 与题库缓存(回写持久化)
+docker run -d --name yatori \
+  -v $(pwd)/config.yaml:/app/config.yaml \
+  -v $(pwd)/assets:/app/assets \
+  -v $(pwd)/questions_answers.json:/app/questions_answers.json \
+  ghcr.io/keaident-su/yatori-python-console:latest
+
+# macOS/Windows(Docker Desktop) 下 $(pwd) 换成对应绝对路径即可
+docker logs -f yatori   # 实时查看运行日志
+```
+
+> [!IMPORTANT]
+> `config.yaml` 不会打进镜像（避免泄露账号信息），运行时必须通过 `-v` 挂载本地配置文件。
+> `questions_answers.json` 可不挂载(镜像内自带合并版大题库缓存)；不挂载时答案回写仅存于容器内，重建容器会丢失新增题。
+
+### 镜像标签
+
+| 标签         | 说明                       |
+|--------------|----------------------------|
+| latest       | 最新版本（多架构，自动适配处理器） |
+| V2.0.9.2       | 版本标签（自动从 logo.txt 解析，多架构） |
+
+## 💻 跨平台支持与部署矩阵
+
+程序为纯 Python + 全平台预期依赖，官方构建/CI 覆盖以下平台：
+
+| 平台 | 架构 | 分发形式 | 说明 |
+|------|------|----------|------|
+| Windows 10/11 | x86_64 | 单文件 exe | 开箱即用（内置 OCR 模型/tls 原生库/**全厂商 GPU 推理运行库**） |
+| macOS 13+ | Intel x86_64 | ZIP / DMG | 单文件可执行；未签名时首次运行需右键→打开 |
+| macOS 13+ | Apple Silicon arm64 | ZIP / DMG | 同上 |
+| Linux | x86_64 | 单文件二进制 | 或源码运行 |
+| Linux | arm64 (aarch64) | 单文件二进制 | 含树莓派64位系统、ARM 服务器等 |
+| Docker | linux/amd64 + linux/arm64 | 多架构镜像 | `docker pull` 自动按当前架构拉取；镜像内置 Chromium 供安全微伴验证码使用 |
+| Linux 异形架构（armv7 / RISC-V / LoongArch 等） | 任意 | 源码运行 | 轻量模式：用 requirements-lite.txt 安装（自动禁用本地 OCR，其余功能正常） |
+| Docker 异形架构（arm/v7、ppc64le、s390x 等） | 多架构 | 镜像 | Dockerfile 按 TARGETARCH 自动切换轻量依赖并跳过 Chromium |
+| Android（APK） | arm64-v8a / armeabi-v7a / x86_64 | APK（适配底座） | 本地 OCR 登录可用、浏览器类验证码自动降级跳过；依赖子集见 requirements-android.txt |
+
+### 源码运行（Windows / macOS / Linux 通用）
+
+```bash
+# 需要 Python 3.13+
+pip install -r requirements.txt   # Windows
+# macOS/Linux 建议: python3 -m pip install -r requirements.txt
+python main.py                    # macOS/Linux 用 python3 main.py
+```
+
+### 其他处理器架构（armv7 / RISC-V / LoongArch 等）
+
+无完整二进制轮子支持的异形架构，请使用轻量依赖清单（自动禁用本地 OCR，其余功能不受影响）：
+
+```bash
+pip install -r requirements-lite.txt
+python main.py
+```
+
+### 平台适配要点（已内建处理）
+
+| 事项 | 处理方式 |
+|------|----------|
+| Windows 控制台 ANSI 颜色 | 启动时自动启用虚拟终端（VT） |
+| Windows 重定向输出编码(GBK) | stdout/stderr 自动 `errors=replace`，生僻字符不再导致崩溃 |
+| onnxruntime 轮子差异 | **Intel Mac 自动钉扎 1.23.2**（1.24+ 已停发 macOS x86_64 轮子）；其余平台跟随最新版 |
+| TLS 指纹库(tls-client) | 自带全平台原生库（Win/Linux/macOS × x86/x64/ARM64），任意目标架构可安装 |
+| 换行符规范 | `.gitattributes` 强制 `.sh`/`.py`/`.yaml` 为 LF、`.bat` 为 CRLF |
+| CPU 拓扑（大小核） | Windows/Linux/macOS 分别探测（EFI 类/频率/性能级）；探测不到自动降级同构，绝不报错 |
+| 可选依赖缺失 | OCR / tls_client 等缺失时优雅降级并提示，不中断刷课 |
+| Docker 系统库 | 预装 libgomp1（onnxruntime）/libgl1（OpenCV）/tzdata（时区） |
+
+> 程序启动时会打印 `[平台]`（系统/架构/容器 + OCR 与浏览器验证码能力状态）与 `[CPU拓扑]` 画像，便于确认当前运行环境与降级状态；加 `--gpu-check` 参数可打印含 GPU/推理后端在内的完整硬件自检报告。
+
+## 🎯 功能/特性
+
+| 功能/特性                    | 状态 |
+|------------------------------| ---- |
+| 独立程序，不依赖浏览器        | ✅ |
+| AI 自动识别跳过验证码         | ✅ |
+| 人脸识别自动绕过（历史人脸/QR码方案，支持本地人脸图片缓存） | ✅ |
+| 多账号同刷                    | ✅ |
+| 多任务点并发（多核 CPU 自适应调度） | ✅ |
+| 支持状态邮箱通知              | ✅ |
+| 支持自动考试                  | ✅ |
+| 答题支持 AI 大模型加持        | ✅ |
+| 多答题源顺序调用（题库/AI/本地缓存，失败自动回退） | ✅ |
+| 本地题库缓存自动回写（命中优先） | ✅ |
+| 本地图片题 OCR 识别（离线，内置模型） | ✅ |
+| GPU 硬件加速（Windows 全厂商 DirectML / macOS CoreML / Linux CUDA·ROCm；无 GPU 自动回落 CPU；`--gpu-check` 可验证） | ✅ |
+| 低配机性能自适应（自动下调并发防卡顿） | ✅ |
+| 课程列表与总进度查询（全平台，含任务点 x/y） | ✅ |
+| 人脸照片上传（多张随机轮换，降低风控） | ✅ |
+| Windows 单文件 exe（免安装 Python 环境） | ✅ |
+| 考试客户端签名（deviceFlag）  | ✅ |
+| 灵活配置文件                  | ✅ |
+| 可视化配置文件生成器          | ✅ |
+| 自动继续上次记录时长刷课      | ✅ |
+| 部分平台支持暴力模式（无视前置课程学习限制所有视频同刷） | ✅ |
+
+> [!WARNING]
+> **前端（Web 图形界面）功能因严重问题已移除**：当前版本仅提供纯控制台模式运行，相关代码与部署文档不再随本仓库提供。
+
+## 🎯 支持平台
+
+| 平台 | accountType | 描述 | 状态 |
+|------|-------------|------|------|
+| 英华学堂 | `YINGHUA` | 支持暴力模式（会被检测到） | 已完成 ✅ |
+| 仓辉实训/海奇科技 | `HQKJ` | 支持暴力模式（套壳英华版本会被检测到） | 已完成 ✅ |
+| 重庆工业学院 CQIE | `CQIE` | 支持暴力模式（支持秒刷） | 已完成 ✅ |
+| 学习公社（ENAEA） | `ENAEA` | 支持暴力模式（倍速可配置，默认2.4x，有效上限12x） | 已完成 ✅ |
+| 学习通 | `XUEXITONG` | 支持绕过人脸认证（历史人脸/QR码方案）、自动写章测/作业/考试、多课程/多任务点模式、增加学习次数/时长 | 已完成 ✅ |
+| 随行课堂 | `KETANGX` | 支持秒刷完成度以及学时累计刷取 | 已完成 ✅ |
+| 智慧职教（ICVE） | `ICVE` | 默认秒刷（目前只支持 Cookie 登录方式） | 已完成 ✅ |
+| 青书学堂 | `QSXT` | 只支持普通模式 | 已完成 ✅ |
+| 微学（WELEARN） | `WELEARN` | 移植自 Go 版 | 已完成 ✅ |
+| 安全微伴（WeBan） | `WEBAN` | 课程学习+考试自动作答(题库+AI), 验证码自动识别; 无浏览器环境自动降级(登录/学习照常, 考试跳过) | 已完成 ✅ |
+| 智慧树（ZHIHUISHU） | `ZHIHUISHU` | 共享课/新版AI课视频进度刷取, 速度可配 | 验证中 🧪 |
+
+> `accountType` 即 `config.yaml` 中每个账号的 `accountType` 字段，必须**全大写**填写（如 `XUEXITONG`）。
+
+> [!TIP]
+> 英华"限制性暴力模式"指：如果你学校英华平台的课程视频没有前置视频观看限制就可以开。前置视频观看限制 = 一个章节的视频必须先把前面章节的视频看完才能看。重庆工程学院 CQIE 可以做到真正意义上的秒刷，使用暴力模式即可。
+
+## 📋 更新与修复记录
+
+最近的版本更新与问题修复摘要（**详细记录见根目录 [CHANGELOG.md](./CHANGELOG.md)**）：
+
+**V2.0.9.2（2026-10-21）— 考试签名v2 + UA现代化 + 赞助面板**
+
+- 【学习通】考试签名 v2 攻克“最新版本 APP”强校验考试（cxcid+cxtime+signt+signk 签名链，两账号入门考试全链实测通过）
+- 【全平台】UA 现代化防风控（非学习通平台统一 Chrome 143 真机 UA；学习通 7.0.4/10995_342）
+- 【赞助】开局 LOGO 与任务完成界面加层赞助提示；开源剥离 web-s/WordPress 插件
+- V2.0.6~V2.0.9.1（讨论/拓展阅读、多节点架构、身份信息体系、综合成绩、非任务点章测、作业重做修复）详见 CHANGELOG.md
+
+**V2.0.5（2026-10-16）— 正式版：全平台拟人考试 + 通用答题框架 + 学习通直播新版链**
+
+- 【学习通】直播任务点新版接口链破解（进度真实增长）；空任务点（零任务）黄点清零（实测 83 个）
+- 【全平台】考试拟人节奏 6 平台全覆盖：学习通 / 智慧树 / 微伴 / 英华 / 青书 / 重庆，均为 0/1/2 档位可选
+- 【通用】新增多源答题桥接与答题流程框架（`answer_bridge` / `qa_flow`）：各平台作业/考试统一接入多源引擎
+- 【智慧树】AI智课协议客户端固化 + 国安教育 SSO 逆向入档；【重庆】纯 Python SM4 加密；【英华】考试解析移植
+- 【打包】py_mini_racer 随包（易盾 JS / TCaptcha 纯协议能力）
+
+**V2.0.4-beta8（2026-10-13晚）— AI修复 + 拟人化升级 + 协议体系扩展**
+
+- 【学习通】人类化节奏引擎：对数正态分布、相邻题自相关、每账号固定行为画像、疲劳曲线，章测/考试全链路接入
+- 【学习通】学习次数/时长升级为账号级门禁（全部课程完成前不执行，完成后统一执行）
+- 【智慧树】协议秒刷接入主流程 + 考试域协议客户端固化；【题库】三方合并超 60 万条
+- 【AI 答题源】修复配置保存丢失 / 在线测试按钮错位 / 非 JSON 数组误判三处关键问题
+
+**V2.0.4-beta6（2026-10-13）— 智慧树协议秒刷 + 全系采集 + 题库体系升级**
+
+- **智慧树协议级秒刷全链路**：不再依赖浏览器播放，登录/进度同步全自动，24 节课程约 10 分钟全部完成变绿（实测）；方案已固化为独立模块与文档（获热心人士参考资料帮助攻克）
+- **学习通题库采集全模式**：考试采集（进考拉卷归档）/ 指定考试采集 / 采集填充策略；新增"考试提交正确率(%)"参数
+- **题库"一键并入"新增投票清洗模式**（多源投票 + AI 复核 + 无法判定隔离）；学习次数/时长上限提升至 1000 次 / 10000 分钟
+- 题库全功能六层体检全部通过
+
+## 📁 项目结构
+
+```
+yatori-python-console/
+├── main.py                # 主入口
+├── config.yaml            # 用户配置（不入库，本地创建）
+├── questions_answers.json # 本地题库缓存（运行时自动创建/回写）
+├── build_protected.py     # 打包脚本
+├── CHANGELOG.md           # 版本更新与修复记录
+├── assets/                # 日志/人脸缓存等运行目录（首次运行自动生成）
+├── 配置文件生成器.html      # 可视化配置生成器
+├── config/                # 配置加载与模型定义
+├── dao/                   # 数据库访问层（SQLite）
+├── entity/                # DTO/POJO/VO 实体
+├── global_state/          # 全局状态
+├── logic/                 # 核心业务逻辑
+│   ├── core/              # HTTP/AI客户端、多答题源引擎、题库客户端、OCR、CPU调度等基础设施
+│   ├── xuexitong/         # 学习通
+│   ├── yinghua/           # 英华学堂
+│   ├── enaea/             # 学习公社
+│   ├── cqie/              # 重庆工业学院
+│   ├── ketangx/           # 随行课堂
+│   ├── icve/              # 智慧职教
+│   ├── qingshuxuetang/    # 青书学堂
+│   ├── welearn/           # 微学
+│   ├── haiqikeji/         # 海奇科技（仓辉实训）
+│   ├── weban/             # 安全微伴
+│   └── zhihuishu/         # 智慧树
+└── utils/                 # 日志、通知、邮件等工具
+```
+
+## ⚠️ 免责声明
+
+> 代码已开源，程序只供技术学习使用，严禁贩卖，严禁滥用，若对相关平台造成损失立马删库（保命(doge)）。
+>
+> 他人或组织使用本代码进行的任何违法行为与本人无关，该代码纯技术学习交流。
+
+## 📚 相关技术参考引用
+
+> CxKitty 系列项目
+>
+> 油猴、Script Cat 相关脚本

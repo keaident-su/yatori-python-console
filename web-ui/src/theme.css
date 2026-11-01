@@ -1,0 +1,671 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==================================================================
+   [V3.2.0] Liquid Glass 基底（iOS 26 液态玻璃）
+   · 玻璃材质: 半透明 + backdrop blur/saturate + 内高光 + 外柔影 + 顶部镜面弧光
+   · 壁纸层: body::before 渐变/图片壁纸, body::after 细噪点提升"液态"质感
+   · 兼容: 保留旧变量名(--bg/--panel/--panel-2/--border/--subtext/--primary/
+     --primary-2/--panel-blur/--radius/--glow/--ok/--danger/--warn),
+     所有页面无需改动即继承新皮肤
+   · 模式: data-theme="" 浅色玻璃 / "dark" 深色玻璃 / "frost" 磨砂灰
+   ================================================================== */
+
+:root {
+    /* ---- 基础令牌 ---- */
+    --radius: 20px;
+    --radius-sm: 14px;
+    --radius-xs: 10px;
+    --lg-blur: 30px;
+    --lg-sat: 185%;
+    --panel-blur: var(--lg-blur);
+    --panel-alpha: .58;
+
+    /* ---- 主/副色(JS 覆盖, 默认 iOS 蓝) ---- */
+    --primary: #5b8cff;
+    --primary-2: color-mix(in srgb, var(--primary) 80%, #16305e);
+    --accent: #9b6bff;
+
+    /* ---- 文本 ---- */
+    --text: #17233b;
+    --subtext: rgba(23, 35, 59, .62);
+
+    /* ---- 浅色玻璃 ---- */
+    --panel: rgba(255, 255, 255, .58);
+    --panel-2: rgba(255, 255, 255, .40);
+    --panel-3: rgba(255, 255, 255, .78);
+    --border: rgba(255, 255, 255, .68);
+    --border-soft: rgba(23, 35, 59, .10);
+    --shadow-lg: 0 14px 44px rgba(23, 40, 80, .14), 0 2px 10px rgba(23, 40, 80, .06);
+    --inner-hi: inset 0 1px 0 rgba(255, 255, 255, .92),
+        inset 0 -1px 0 rgba(255, 255, 255, .22);
+    --glow: var(--shadow-lg);
+
+    --danger: #ef4b57;
+    --ok: #1fb573;
+    --warn: #e89b2f;
+
+    /* ---- 壁纸(JS 覆盖 --wallpaper; --bg-image 为用户自定义图) ---- */
+    --bg: #eaf0fb;
+    --bg-image: none;
+    --wallpaper:
+        radial-gradient(1100px 760px at 10% 6%, rgba(122, 168, 255, .85) 0%, transparent 62%),
+        radial-gradient(960px 700px at 92% 10%, rgba(186, 154, 255, .78) 0%, transparent 58%),
+        radial-gradient(900px 860px at 74% 96%, rgba(120, 235, 205, .68) 0%, transparent 60%),
+        linear-gradient(158deg, #eef4ff 0%, #f7f2ff 46%, #e9faf3 100%);
+}
+
+[data-theme="dark"] {
+    --primary-2: color-mix(in srgb, var(--primary) 74%, #dff3ff);
+    --text: #eaf2ff;
+    --subtext: rgba(214, 228, 255, .60);
+    --panel: rgba(22, 30, 48, .55);
+    --panel-2: rgba(28, 38, 60, .42);
+    --panel-3: rgba(18, 26, 42, .72);
+    --border: rgba(255, 255, 255, .14);
+    --border-soft: rgba(255, 255, 255, .10);
+    --shadow-lg: 0 18px 52px rgba(0, 0, 0, .46), 0 2px 10px rgba(0, 0, 0, .34);
+    --inner-hi: inset 0 1px 0 rgba(255, 255, 255, .16),
+        inset 0 -1px 0 rgba(0, 0, 0, .18);
+    --danger: #ff5c77;
+    --ok: #2fe6a8;
+    --warn: #ffcf5c;
+    --bg: #0a0f1b;
+    --wallpaper:
+        radial-gradient(1100px 760px at 12% 8%, rgba(46, 92, 190, .55) 0%, transparent 62%),
+        radial-gradient(900px 700px at 90% 14%, rgba(104, 66, 190, .48) 0%, transparent 58%),
+        radial-gradient(860px 820px at 72% 96%, rgba(20, 120, 120, .40) 0%, transparent 62%),
+        linear-gradient(160deg, #0a1120 0%, #0d1428 48%, #0a1a1c 100%);
+}
+
+[data-theme="frost"] {
+    --primary: #3a4356;
+    --primary-2: #1c2331;
+    --text: #1f242e;
+    --subtext: rgba(31, 36, 46, .60);
+    --panel: rgba(255, 255, 255, .66);
+    --panel-2: rgba(255, 255, 255, .48);
+    --panel-3: rgba(255, 255, 255, .84);
+    --border: rgba(255, 255, 255, .78);
+    --border-soft: rgba(31, 36, 46, .10);
+    --shadow-lg: 0 16px 44px rgba(40, 48, 64, .16), 0 2px 8px rgba(40, 48, 64, .07);
+    --bg: #e7eaf0;
+    --wallpaper:
+        radial-gradient(1000px 700px at 8% 6%, rgba(214, 222, 238, .95) 0%, transparent 62%),
+        radial-gradient(900px 680px at 94% 12%, rgba(226, 230, 240, .95) 0%, transparent 58%),
+        radial-gradient(860px 800px at 70% 96%, rgba(206, 214, 230, .90) 0%, transparent 62%),
+        linear-gradient(160deg, #eef1f6 0%, #e6eaf1 50%, #edf0f5 100%);
+}
+
+/* ---------------- 基础布局与壁纸层 ---------------- */
+html,
+body,
+#root {
+    height: 100%;
+}
+
+/* 深色模式: 壁纸自动暗化(即使选用浅色壁纸也能获得沉浸与对比) */
+[data-theme="dark"] body::before {
+    filter: brightness(.42) saturate(1.12);
+}
+
+body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto,
+        "Noto Sans", "Noto Sans SC", "Noto Sans TC", "Noto Sans JP", "Noto Sans KR",
+        "Noto Sans Arabic", "Microsoft YaHei", "PingFang SC", "Meiryo", "Malgun Gothic", sans-serif;
+    transition: color .25s ease;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* 壁纸层(固定, 位于所有内容之下) */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background-image: var(--bg-image), var(--wallpaper);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: background-image .3s ease;
+}
+
+/* 液态噪点层(极低透明度, 让玻璃有"材质感") */
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .30;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* ---------------- 玻璃通用材质 ---------------- */
+.yglass,
+.ycard,
+.ycard-2 {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(var(--panel-blur)) saturate(var(--lg-sat));
+    -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(var(--lg-sat));
+    box-shadow: var(--shadow-lg), var(--inner-hi);
+}
+
+.ycard,
+.ycard-2 {
+    position: relative;
+    transition: box-shadow .22s ease, transform .22s ease, background .22s ease;
+}
+
+/* 顶部镜面弧光: 液态玻璃的"高光边" */
+.ycard::before,
+.yglass::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 46%;
+    border-radius: var(--radius) var(--radius) 46% 46% / var(--radius) var(--radius) 26% 26%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 78%);
+    pointer-events: none;
+    opacity: .9;
+}
+
+[data-theme="dark"] .ycard::before,
+[data-theme="dark"] .yglass::before {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 78%);
+}
+
+.ycard:hover {
+    box-shadow: 0 20px 56px rgba(23, 40, 80, .18), var(--inner-hi);
+}
+
+.ycard-2 {
+    background: var(--panel-2);
+    border-radius: var(--radius-sm);
+}
+
+/* ---------------- 按钮 ---------------- */
+.ybtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 2px 8px rgba(23, 40, 80, .08);
+    transition: transform .14s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+[data-theme="dark"] .ybtn {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12), 0 2px 8px rgba(0, 0, 0, .35);
+}
+
+.ybtn:hover {
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 6px 18px rgba(23, 40, 80, .14);
+}
+
+.ybtn:active {
+    transform: translateY(0) scale(.985);
+}
+
+.ybtn-primary {
+    background: linear-gradient(150deg,
+            color-mix(in srgb, var(--primary) 78%, #ffffff) 0%,
+            var(--primary) 52%,
+            color-mix(in srgb, var(--primary) 84%, #16204a) 100%);
+    color: #fff;
+    border-color: color-mix(in srgb, var(--primary) 70%, #ffffff);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55),
+        0 8px 22px color-mix(in srgb, var(--primary) 42%, transparent);
+}
+
+.ybtn-primary:hover {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6),
+        0 12px 30px color-mix(in srgb, var(--primary) 52%, transparent);
+    color: #fff;
+}
+
+[data-theme="frost"] .ybtn-primary {
+    color: #fff;
+}
+
+.ybtn-danger {
+    background: linear-gradient(150deg, color-mix(in srgb, var(--danger) 82%, #ffffff) 0%, var(--danger) 100%);
+    color: #fff;
+    border-color: color-mix(in srgb, var(--danger) 70%, #ffffff);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5),
+        0 8px 22px color-mix(in srgb, var(--danger) 38%, transparent);
+}
+
+.ybtn-danger:hover {
+    opacity: .94;
+    color: #fff;
+}
+
+.ybtn:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ---------------- 输入 / 下拉 ---------------- */
+.yinput,
+.yselect,
+.ytextarea {
+    width: 100%;
+    padding: 9px 13px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--panel) 76%, transparent);
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: inset 0 1px 3px rgba(23, 40, 80, .08);
+    transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+
+[data-theme="dark"] .yinput,
+[data-theme="dark"] .yselect,
+[data-theme="dark"] .ytextarea {
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, .4);
+}
+
+.yinput:focus,
+.yselect:focus,
+.ytextarea:focus {
+    border-color: var(--primary);
+    background: color-mix(in srgb, var(--panel) 92%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent),
+        inset 0 1px 3px rgba(23, 40, 80, .06);
+}
+
+select.yselect {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 30px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--subtext) 50%),
+        linear-gradient(135deg, var(--subtext) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 55%, calc(100% - 11px) 55%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+/* ---------------- 标签 ---------------- */
+.ytag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--panel) 70%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.ytag-ok {
+    color: var(--ok);
+    border-color: color-mix(in srgb, var(--ok) 55%, transparent);
+    background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.ytag-run {
+    color: var(--primary);
+    border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+    background: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.ytag-warn {
+    color: var(--warn);
+    border-color: color-mix(in srgb, var(--warn) 55%, transparent);
+    background: color-mix(in srgb, var(--warn) 14%, transparent);
+}
+
+.ytag-danger {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+/* ---------------- 进度条(液态) ---------------- */
+.yprogress {
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text) 10%, transparent);
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(23, 40, 80, .12);
+}
+
+.yprogress>i {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+            color-mix(in srgb, var(--primary) 72%, #ffffff),
+            var(--primary) 60%,
+            color-mix(in srgb, var(--accent) 70%, var(--primary)));
+    box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 55%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, .5);
+    transition: width .45s cubic-bezier(.22, .8, .28, 1);
+}
+
+/* ---------------- 侧边栏(玻璃列) ---------------- */
+.yside {
+    width: 248px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 12px 0 12px 12px;
+    border-radius: 26px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    backdrop-filter: blur(34px) saturate(190%);
+    -webkit-backdrop-filter: blur(34px) saturate(190%);
+    box-shadow: var(--shadow-lg), var(--inner-hi);
+    overflow: hidden;
+}
+
+.ynav-group {
+    padding: 10px 14px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--subtext);
+}
+
+.ynav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 10px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    color: var(--text);
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: background .16s ease, transform .14s ease, box-shadow .18s ease, color .16s ease;
+}
+
+.ynav-item:hover {
+    background: color-mix(in srgb, var(--panel-3) 55%, transparent);
+}
+
+.ynav-item:active {
+    transform: scale(.985);
+}
+
+.ynav-item.active {
+    color: #fff;
+    font-weight: 600;
+    background: linear-gradient(150deg,
+            color-mix(in srgb, var(--primary) 76%, #ffffff) 0%,
+            var(--primary) 55%,
+            color-mix(in srgb, var(--primary) 82%, #131c44) 100%);
+    border-color: color-mix(in srgb, var(--primary) 62%, #ffffff);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5),
+        0 8px 22px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+/* 彩色 icon 胶囊(iOS 图标块) */
+.ychip {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+    background: linear-gradient(150deg, var(--chip-a, #6ea1ff), var(--chip-b, #3f6fe0));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 3px 8px rgba(23, 40, 80, .18);
+}
+
+.ynav-item.active .ychip {
+    background: rgba(255, 255, 255, .22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35);
+    backdrop-filter: blur(6px);
+}
+
+/* 底部运行状态卡 */
+.ystatus {
+    margin: 10px;
+    padding: 12px 12px 10px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--panel-3) 46%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+
+[data-theme="dark"] .ystatus {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1);
+}
+
+/* ---------------- 分段控件(iOS segmented) ---------------- */
+.yseg {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--panel-2) 80%, transparent);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.yseg>button {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 0;
+    background: transparent;
+    color: var(--subtext);
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.yseg>button.on {
+    background: linear-gradient(150deg, color-mix(in srgb, var(--primary) 78%, #fff), var(--primary));
+    color: #fff;
+    font-weight: 600;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+
+/* ---------------- 颜色圆点(主题预设) ---------------- */
+.ydot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .9);
+    box-shadow: 0 4px 12px rgba(23, 40, 80, .22), inset 0 1px 0 rgba(255, 255, 255, .4);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+    position: relative;
+}
+
+.ydot:hover {
+    transform: translateY(-2px) scale(1.06);
+}
+
+.ydot.on::after {
+    content: "✓";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+/* 壁纸缩略卡 */
+.ywall {
+    width: 74px;
+    height: 48px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 4px 12px rgba(23, 40, 80, .16), inset 0 1px 0 rgba(255, 255, 255, .35);
+    transition: transform .15s ease, border-color .15s ease;
+}
+
+.ywall:hover {
+    transform: translateY(-2px);
+}
+
+.ywall.on {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 26%, transparent), 0 4px 12px rgba(23, 40, 80, .18);
+}
+
+/* 窄窗口(小屏幕/缩小窗口)自适应 */
+@media (max-width: 1020px) {
+    .yside {
+        width: 212px;
+    }
+
+    .ynav-item {
+        font-size: 13px;
+    }
+}
+
+/* ---------------- 滚动条(细玻璃) ---------------- */
+::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--text) 16%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* ---------------- 模态框 ---------------- */
+.ymask {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 16, 32, .38);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+
+.ymodal {
+    width: min(720px, 92vw);
+    max-height: 86vh;
+    overflow: auto;
+    background: color-mix(in srgb, var(--panel-3) 88%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    backdrop-filter: blur(36px) saturate(190%);
+    -webkit-backdrop-filter: blur(36px) saturate(190%);
+    padding: 22px;
+    box-shadow: 0 32px 90px rgba(4, 10, 26, .40), var(--inner-hi);
+}
+
+/* ---------------- Toast(玻璃) ---------------- */
+.ytoast {
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    z-index: 80;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: var(--shadow-lg), var(--inner-hi);
+    animation: ytoast-in .28s cubic-bezier(.22, .9, .3, 1.2);
+}
+
+@keyframes ytoast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ---------------- 表单滚动容器 ---------------- */
+.yform-scroll {
+    scrollbar-gutter: stable;
+}
+
+/* ---------------- 无障碍: 减弱动效 ---------------- */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+    }
+}
+
+/* ---------------- RTL(阿拉伯语等) ---------------- */
+html[dir="rtl"] body {
+    direction: rtl;
+}
+
+html[dir="rtl"] .yform-scroll,
+html[dir="rtl"] .ycard {
+    text-align: right;
+}
+
+html[dir="rtl"] input[type="text"],
+html[dir="rtl"] input[type="password"],
+html[dir="rtl"] input[type="number"],
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+    direction: rtl;
+    text-align: right;
+}
+
+/* 兼容: 旧代码里以 var(--panel-blur) 内联的 backdrop-filter 仍然生效 */

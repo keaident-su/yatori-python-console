@@ -1,0 +1,688 @@
+# -*- coding: utf-8 -*-
+"""
+AI client module - 完全对齐 Go que-core/aiq/AiQuestion.go
+每种 AI 类型硬编码官方端点（url 参数仅 OTHER 类型使用），
+temperature=0.2，7 次重试，JSON 格式校验失败追加纠正消息重试，
+AI 并发信号量基础容量=2（对齐 Go AiSem），多核优化后随 CPU 核心数动态扩展。
+"""
+import json as _json
+import re
+import threading
+import time
+from typing import Any, List, Optional
+
+import httpx
+
+from utils.log import log_print, INFO, BoldRed
+from logic.core import parallel as _par
+
+# AI 并发限制（对齐 Go AiSem 基础上按 CPU 核心数/性能档位动态取值）
+_AI_SEM = threading.Semaphore(_par.ai_concurrency())
+
+# ============ 各 AI 类型官方端点（对齐 Go AggregationAIApi 各实现） ============
+_AI_ENDPOINTS = {
+    "DEEPSEEK": "https://api.deepseek.com/chat/completions",
+    "TONGYI": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    "CHATGLM": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "ZHIPU": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+    "XINGHUO": "https://spark-api-open.xf-yun.com/v1/chat/completions",
+    "DOUBAO": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+    "OPENAI": "https://api.openai.com/v1/chat/completions",
+    "MOONSHOT": "https://api.moonshot.cn/v1/chat/completions",
+    "SILICON": "https://api.siliconflow.cn/v1/chat/completions",
+    "SILICONFLOW": "https://api.siliconflow.cn/v1/chat/completions",
+    "METAAI": "https://metaso.cn/api/v1/chat/completions",
+    "OPENROUTER": "https://openrouter.ai/api/v1/chat/completions",
+}
+
+# 填了 aiUrl/url 则一律优先使用(OpenAI 格式中转/聚合 API 场景)，
+# 留空才回退内置官方端点。覆盖所有 AI 类型：答题源/aiSetting 里填了
+# 自定义地址就一定生效，避免选错 aiType 时被硬编码官方端点劫持。
+
+# 默认模型（对齐 Go 各 API 中 model == "" 时的默认值）
+_AI_DEFAULT_MODELS = {
+    "DEEPSEEK": "deepseek-chat",
+    "TONGYI": "qwen-plus-latest",
+    "CHATGLM": "glm-4",
+    "ZHIPU": "glm-4",
+    "XINGHUO": "generalv3.5",
+    "MOONSHOT": "moonshot-v1-8k",
+    "SILICON": "Qwen/Qwen2.5-7B-Instruct",
+    "SILICONFLOW": "Qwen/Qwen2.5-7B-Instruct",
+    "METAAI": "fast",
+}
+
+_RETRY_NUM = 7
+_JSON_FIX_PROMPT = "你刚才生成的回复未严格遵循json格式，我无法正常解析，请你重新生成。"
+
+# ============ AI System Prompts - 完全对齐 Go BuildAiQuestionMessage ============
+
+_SYSTEM_PROMPT_SINGLE = (
+    '接下来无论出现任何题目，你都必须只回答题目中某个选项对应的内容，并严格按照以下要求作答：\n\n'
+    '【回答规则】\n'
+    '1. 最终输出必须严格遵循 JSON 数组格式，例如：["选项内容"]\n'
+    '2. 数组中只能有一个字符串元素。\n'
+    '3. 字符串中不能包含选项前缀，如 A. B. C. D. 等，只能输出选项的纯内容。\n'
+    '4. 不能输出解析、解释步骤、理由、提示语或任何多余文本。\n'
+    '5. 不能输出题目本身、不能输出其他格式，只能输出 JSON 数组。\n'
+    '6. 如果你无法判断正确答案，也必须随机选择一个选项的内容进行输出，不允许回答"我不知道""无法判断"之类内容。\n\n'
+    '【格式要求】\n'
+    '- 只能输出 JSON\n'
+    '- 不允许换行，若内容中需要换行必须使用\\n\n'
+    '- 不能出现额外的空格、标点或第二层数组'
+)
+
+_SYSTEM_PROMPT_MULTI = (
+    '接下来无论出现任何题目，你都必须只回答选项对应的内容，且必须严格按照以下格式输出：\n\n'
+    '【最终输出格式】\n'
+    '["选项内容1","选项内容2", ...]\n'
+    '- JSON 数组只能包含字符串元素。\n'
+    '- 每个元素对应一个被选中的选项内容。\n'
+    '- 严禁携带 A. B. C. D. 等前缀，只能输出纯内容。\n'
+    '- 不得输出解析、解释、思考过程、题目内容或任何无关文本。\n'
+    '- 如果你无法判断正确选项，也必须随机选择多个选项内容填入数组。'
+)
+
+_SYSTEM_PROMPT_JUDGE = (
+    '接下来你只需要回答"正确"或者"错误"即可...格式：["正确"]\n'
+    '就算你不知道选什么也随机选...无需回答任何解释！！！'
+)
+
+_SYSTEM_PROMPT_FILL = (
+    '其中，"（answer_数字）"相关字样的地方是你需要填写答案的地方，回答时请严格遵循json格式：["答案1","答案2"]\n'
+    '就算你不知道选什么也随机选...无需回答任何解释！！！'
+)
+
+_SYSTEM_PROMPT_SHORT = (
+    '这是一个简答题，回答时请严格遵循json格式，包括换行等特殊符号也要遵循json语法：["答案"]，注意不要拆分答案！！！'
+)
+
+_SYSTEM_PROMPT_ESSAY = (
+    '最终输出必须是一个合法 JSON 数组格式：["答案内容"]\n'
+    '数组中只能包含一个字符串元素，答案必须完整写在同一个字符串里，不能拆分成多个元素。\n'
+    '字符串内如需换行必须写为 \\n，不能出现真正的换行符。\n'
+    '答案内容必须是连贯的完整论述，不得包含解析、题目、注释或生成说明。\n'
+    '答案字数不少于 500 字。\n'
+    '除 JSON 数组外严禁输出任何其他内容。'
+)
+
+_SYSTEM_PROMPT_DEFAULT = (
+    'You are a professional quiz assistant. '
+    'For choice questions, reply with ONLY the letter (A/B/C/D). '
+    'For true/false questions, reply with True or False. '
+    'For short answer questions, give the answer directly. '
+    'No extra explanation needed.'
+)
+
+# [V3.2.4 参考资料对齐] 排序题/完型填空专用提示词
+_SYSTEM_PROMPT_SORT = (
+    '这是一个排序题。请将给出的选项按正确顺序排列。\n'
+    '1. 最终输出必须严格遵循 JSON 数组格式，数组元素为按正确顺序排列的选项原文。\n'
+    '2. 只输出 JSON 数组，禁止输出编号、解释或任何多余内容。\n'
+)
+_SYSTEM_PROMPT_CLOZE = (
+    '这是一个完型填空/阅读填空。请按空的顺序为每个空填入正确内容。\n'
+    '1. 最终输出必须严格遵循 JSON 数组格式，按空的先后顺序输出每个空的答案。\n'
+    '2. 不要输出空号或解释，只输出 JSON 数组。\n'
+)
+
+_Q_TYPE_MAP = {
+    'single_choice': ('单选题', _SYSTEM_PROMPT_SINGLE),
+    'multiple_choice': ('多选题', _SYSTEM_PROMPT_MULTI),
+    'judge': ('判断题', _SYSTEM_PROMPT_JUDGE),
+    'fill': ('填空题', _SYSTEM_PROMPT_FILL),
+    'short': ('简答题', _SYSTEM_PROMPT_SHORT),
+    'essay': ('论述题', _SYSTEM_PROMPT_ESSAY),
+    'term_explanation': ('名词解释', _SYSTEM_PROMPT_ESSAY),
+    'matching': ('连线题', _SYSTEM_PROMPT_DEFAULT),
+    'sorting': ('排序题', _SYSTEM_PROMPT_SORT),
+    'cloze': ('完型填空', _SYSTEM_PROMPT_CLOZE),
+    # 中文题型别名(部分调用方如在线测试直接传中文题型)
+    '单选题': ('单选题', _SYSTEM_PROMPT_SINGLE),
+    '多选题': ('多选题', _SYSTEM_PROMPT_MULTI),
+    '判断题': ('判断题', _SYSTEM_PROMPT_JUDGE),
+    '填空题': ('填空题', _SYSTEM_PROMPT_FILL),
+    '简答题': ('简答题', _SYSTEM_PROMPT_SHORT),
+    '论述题': ('论述题', _SYSTEM_PROMPT_ESSAY),
+    '名词解释': ('名词解释', _SYSTEM_PROMPT_ESSAY),
+    '连线题': ('连线题', _SYSTEM_PROMPT_DEFAULT),
+    '排序题': ('排序题', _SYSTEM_PROMPT_SORT),
+    '完型填空': ('完型填空', _SYSTEM_PROMPT_CLOZE),
+    '完形填空': ('完型填空', _SYSTEM_PROMPT_CLOZE),
+}
+
+_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+# ============ [V3.2.4 参考资料对齐] 外置AI话术模式 ============
+# 参考 IKUN 体系: 话术模板占位符(#题型替换#/#题目替换#/#选项数组替换#/#分割符替换#)
+# + 响应截取规则(如 choices###0###message###content)
+_EXT_KEY_MAP = {
+    'single_choice': 'xuanze', 'multiple_choice': 'xuanze', 'judge': 'xuanze',
+    'fill': 'tiankong', 'short': 'tiankong', 'essay': 'tiankong',
+    'term_explanation': 'tiankong', 'matching': 'lianxian',
+    'sorting': 'paixu', 'cloze': 'wanxing',
+    '单选题': 'xuanze', '多选题': 'xuanze', '判断题': 'xuanze',
+    '填空题': 'tiankong', '简答题': 'tiankong', '论述题': 'tiankong',
+    '名词解释': 'tiankong', '连线题': 'lianxian', '排序题': 'paixu',
+    '完型填空': 'wanxing', '完形填空': 'wanxing',
+}
+_EXT_CFG = {"mode": 0, "prompt": "",
+            "extract": "choices###0###message###content",
+            "header": "", "body": ""}
+
+
+def set_ext_config(mode: int = 0, prompt: str = "", extract: str = "",
+                   header: str = "", body: str = "") -> None:
+    """配置外置AI话术模式(由 answer_engine.configure 调用; 进程内全局生效)"""
+    try:
+        _EXT_CFG["mode"] = 1 if int(mode or 0) == 1 else 0
+    except Exception:
+        _EXT_CFG["mode"] = 0
+    _EXT_CFG["prompt"] = str(prompt or "")
+    _EXT_CFG["extract"] = (str(extract or "").strip()
+                           or "choices###0###message###content")
+    _EXT_CFG["header"] = str(header or "")
+    _EXT_CFG["body"] = str(body or "")
+
+
+def _pick_ext_prompt(prompt: str, q_type: str) -> str:
+    """从话术配置中取对应题型模板(JSON 字典或单模板文本)"""
+    if not prompt:
+        return ""
+    p = prompt.strip()
+    if p.startswith("{"):
+        try:
+            d = _json.loads(p)
+        except Exception:
+            return p
+        if isinstance(d, dict):
+            key = _EXT_KEY_MAP.get(q_type, "")
+            tpl = d.get(key) or d.get(q_type) or ""
+            return str(tpl or "")
+    return p
+
+
+def _extract_by_rule(data: Any, rule: str) -> str:
+    """按截取规则取值: rule = 'choices###0###message###content'"""
+    cur = data
+    for seg in (rule or "").split("###"):
+        seg = seg.strip()
+        if not seg:
+            continue
+        if isinstance(cur, dict):
+            cur = cur.get(seg)
+        elif isinstance(cur, list):
+            try:
+                cur = cur[int(seg)]
+            except Exception:
+                return ""
+        else:
+            return ""
+        if cur is None:
+            return ""
+    if isinstance(cur, (dict, list)):
+        return _json.dumps(cur, ensure_ascii=False)
+    return str(cur)
+
+
+def _build_question_prompt(q_type: str, question: str,
+                           options: Optional[List[str]] = None) -> tuple:
+    """构建结构化的 AI 提问 - 完全对齐 Go buildProblemHeader + system prompts
+    Returns: (system_prompt, user_content)
+    """
+    info = _Q_TYPE_MAP.get(q_type)
+    if info:
+        type_cn, system_prompt = info
+    else:
+        type_cn, system_prompt = '简答题', _SYSTEM_PROMPT_DEFAULT
+
+    user_content = f'题目类型：{type_cn}\n题目内容：\n{question}\n'
+
+    if options and q_type in ('single_choice', 'multiple_choice', 'judge', 'fill'):
+        for i, opt in enumerate(options):
+            if i < len(_LETTERS):
+                user_content += f'{_LETTERS[i]}.{opt}\n'
+
+    return system_prompt, user_content
+
+
+def _extract_answer_value(p: Any) -> str:
+    """从AI返回的JSON数组元素中提取字符串值
+    兼容两种格式: ["内容"] 与 [{"name":"内容"}] 等对象数组
+    """
+    if isinstance(p, str):
+        return p.strip()
+    if isinstance(p, dict):
+        # 优先提取常见内容字段
+        for k in ("name", "value", "text", "content", "answer",
+                  "option", "title", "key"):
+            v = p.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+            if isinstance(v, (int, float)):
+                return str(v)
+        # 兜底: 取第一个非空字符串值
+        for v in p.values():
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return ""
+    if isinstance(p, (int, float)):
+        return str(p)
+    return str(p).strip()
+
+
+def _parse_json_array_answer(raw: str) -> str:
+    """解析 AI 返回的 JSON 数组格式答案 - 对齐 Go ResponseTurnQuestion
+    返回: 逗号分隔的答案内容字符串
+    兼容: ["内容"]、[{"name":"内容"}]、代码块包裹的JSON、纯文本
+    """
+    if not raw:
+        return ""
+    text = raw.strip()
+    # 处理代码块包裹的JSON(```json ... ```)
+    m = re.search(r'\[.*?\]', text, re.DOTALL)
+    json_part = m.group() if m else text
+    try:
+        parsed = _json.loads(json_part)
+        if isinstance(parsed, list) and len(parsed) > 0:
+            parts = [_extract_answer_value(p) for p in parsed]
+            parts = [p for p in parts if p]
+            if parts:
+                return ','.join(parts)
+            # JSON数组但元素全为空(如[""]): 返回空串由调用方兜底
+            return ""
+        # 2026-10-13 兼容: 单个对象如 {"answer": "X"}/{"content": "X"}/单键对象
+        if isinstance(parsed, dict):
+            for _k in ("answer", "content", "value", "result", "text", "name"):
+                _v = parsed.get(_k)
+                if _v is not None and not isinstance(_v, (dict, list)):
+                    _s = str(_v).strip()
+                    if _s:
+                        return _s
+            if len(parsed) == 1:
+                _v = list(parsed.values())[0]
+                if not isinstance(_v, (dict, list)):
+                    _s = str(_v).strip()
+                    if _s:
+                        return _s
+    except (ValueError, _json.JSONDecodeError):
+        pass
+    # 非JSON数组: 去除JSON外壳符号后返回原文
+    cleaned = re.sub(r'^[\[\]{}"\']+|[\[\]{}"\']+$', '', text).strip()
+    return cleaned if cleaned else ""
+
+
+def _is_valid_json_array(content: str) -> bool:
+    try:
+        return isinstance(_json.loads(content), list)
+    except (ValueError, _json.JSONDecodeError):
+        return False
+
+
+class AIClient:
+    """AI client - 对齐 Go AggregationAIApi：按 aiType 分发到硬编码官方端点。
+    url 参数仅 OTHER 类型使用。
+    """
+
+    def __init__(self, ai_url: str, model: str, api_key: str, ai_type: str):
+        self.config_url = (ai_url or "").strip().rstrip("/")
+        self.api_key = api_key or ""
+        self.ai_type = (ai_type or "").strip().upper()
+        # 端点解析：填了 aiUrl 则优先用 aiUrl(OpenAI 格式中转站场景)，
+        # 留空才回退内置官方端点；未知类型必须填 aiUrl
+        if self.config_url:
+            u = self.config_url
+            # 2026-10-13 防呆加固: 未写协议则补 https:// ; 仅写官方域名时
+            # 智能补全路径(deepseek官方支持 /chat/completions 与 /v1/chat/completions)
+            if not u.startswith("http://") and not u.startswith("https://"):
+                u = "https://" + u
+            _host = u.split("/")[2] if u.count("/") >= 2 else ""
+            _is_official = _host in (
+                "api.deepseek.com", "dashscope.aliyuncs.com",
+                "open.bigmodel.cn", "api.moonshot.cn", "api.openai.com",
+                "api.siliconflow.cn", "ark.cn-beijing.volces.com",
+                "spark-api-open.xf-yun.com")
+            if _host and _is_official and u.rstrip("/") == "https://" + _host:
+                # 只写了官方域名: 按类型补全官方标准路径
+                u = _AI_ENDPOINTS.get(self.ai_type, "").rstrip("/") or (
+                    u + "/v1/chat/completions")
+            elif ("/chat/completions" not in u and "/v1" not in u
+                    and "/v3" not in u and "/v4" not in u):
+                u = u + "/v1/chat/completions"
+            self.endpoint = u
+        elif self.ai_type in _AI_ENDPOINTS:
+            self.endpoint = _AI_ENDPOINTS[self.ai_type]
+        else:
+            # 未知类型：使用配置的 url（补全 chat/completions 路径）
+            u = self.config_url
+            if u and not u.startswith("http"):
+                u = "https://" + u
+            if u and "/chat/completions" not in u and "/v1" not in u and "/v3" not in u and "/v4" not in u:
+                u = u + "/v1/chat/completions"
+            self.endpoint = u
+        # 模型解析：为空则使用该类型的默认模型（对齐 Go）
+        self.model = (model or "").strip(
+        ) or _AI_DEFAULT_MODELS.get(self.ai_type, "")
+        # [V3.2.4] 外置话术模式(全局配置; 未开启则为内建模式)
+        self.ext_mode = _EXT_CFG["mode"]
+        self.ext_prompt = _EXT_CFG["prompt"]
+        self.ext_extract = _EXT_CFG["extract"]
+        self.ext_header = _EXT_CFG["header"]
+        self.ext_body = _EXT_CFG["body"]
+
+    def check(self) -> Optional[Exception]:
+        """Check AI availability - 对齐 Go AICheck。"""
+        if not self.ai_type:
+            return Exception("请先填写AIType参数，详细参考官方文档：https://yatori-dev.github.io/yatori-docs/yatori-go-console/docs.html")
+        if not self.api_key:
+            return Exception("无效apiKey，请检查apiKey是否正确填写")
+        if not self.endpoint:
+            return Exception("AI请求地址为空，OTHER类型需要在aiUrl中填写对应地址")
+        # 对齐 Go AICheck：发送测试消息
+        content, err = self._request_chat(
+            [{"role": "user", "content": '请你原模原样输出：["测试成功"]'}],
+            expect_json=False)
+        if err:
+            return err
+        return None
+
+    def ask(self, question: str, options: Optional[List[str]] = None,
+            q_type: str = '') -> str:
+        """Ask AI for an answer.
+        :param q_type: question type key (single_choice/multiple_choice/judge/fill/short/essay)
+        """
+        if self.ext_mode == 1:
+            return self._ask_ext(question, options, q_type)
+        if q_type:
+            system_prompt, user_content = _build_question_prompt(
+                q_type, question, options)
+        else:
+            user_content = question
+            if options:
+                lines = []
+                for i, opt in enumerate(options):
+                    lines.append("%s. %s" % (chr(65 + i), opt))
+                user_content = question + "\n\nOptions:\n" + \
+                    "\n".join(lines) + "\n\nPlease give the answer directly."
+            system_prompt = _SYSTEM_PROMPT_DEFAULT
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+        content, err = self._request_chat(messages, expect_json=True)
+        if err or not content:
+            if err:
+                log_print(INFO, BoldRed, "AI request error: %s" % str(err))
+            return ""
+        # 统一解析: 无论题型，内容是JSON数组时提取元素值
+        # (兼容 ["内容"] 与 [{"name":"内容"}] 对象数组；非JSON返回原文)
+        return _parse_json_array_answer(content)
+
+    # ============ [V3.2.4] 外置话术模式 ============
+
+    def _ask_ext(self, question: str, options: Optional[List[str]] = None,
+                 q_type: str = '') -> str:
+        """外置话术模式: 渲染模板 -> 请求 -> 按截取规则取值 -> 字符串答案"""
+        tpl = _pick_ext_prompt(self.ext_prompt, q_type)
+        if not tpl:
+            return ""
+        info = _Q_TYPE_MAP.get(q_type)
+        type_cn = info[0] if info else (q_type or "题目")
+        _sep = "###"
+        opts_txt = _sep.join(str(o)
+                             for o in (options or [])) if options else ""
+        text = (tpl.replace("#题型替换#", str(type_cn))
+                .replace("#题目替换#", str(question))
+                .replace("#选项数组替换#", opts_txt)
+                .replace("#分割符替换#", _sep))
+        # [V3.2.4 mogo对齐] 全自由模板: ext_body 非空 -> 原始HTTP请求(header/body自定义)
+        if (self.ext_body or "").strip():
+            return self._ask_ext_raw(text, question, options, q_type)
+        content, err = self._request_chat(
+            [{"role": "user", "content": text}],
+            expect_json=False, retry=2)
+        if err or not content:
+            return ""
+        raw = content.strip()
+        data = None
+        try:
+            data = _json.loads(raw)
+        except Exception:
+            data = None
+        if isinstance(data, (dict, list)):
+            got = _extract_by_rule(data, self.ext_extract)
+            if got:
+                raw = got.strip()
+        return raw.strip().strip('"').strip("'").strip()
+
+    def _ask_ext_raw(self, rendered_prompt: str, question: str,
+                     options: Optional[List[str]] = None,
+                     q_type: str = '') -> str:
+        """[V3.2.4 mogo对齐] 全自由请求: ext_header/ext_body 模板直接发 HTTP
+        body 占位: #prompt#=话术渲染结果 #question#=题目 #api_key#=密钥
+        """
+        import json as _j
+        url = self.endpoint or self.config_url
+        if not url:
+            return ""
+        # 请求头
+        headers = {"Content-Type": "application/json"}
+        hdr_tpl = (self.ext_header or "").strip()
+        if hdr_tpl:
+            try:
+                h = _j.loads(hdr_tpl)
+                if isinstance(h, dict):
+                    headers = {str(k): str(v).replace("#api_key#", self.api_key)
+                               for k, v in h.items()}
+            except Exception:
+                pass
+        elif self.api_key:
+            headers["Authorization"] = "Bearer " + self.api_key
+        # 请求体
+        body = (self.ext_body.replace("#prompt#", rendered_prompt)
+                .replace("#question#", question)
+                .replace("#api_key#", self.api_key))
+        last_err = ""
+        for _ in range(3):
+            try:
+                import httpx
+                resp = httpx.post(url, content=body.encode("utf-8"),
+                                  headers=headers, timeout=60, verify=False)
+                raw = resp.text.strip()
+                if not raw:
+                    last_err = "空响应"
+                    continue
+                data = None
+                try:
+                    data = _j.loads(raw)
+                except Exception:
+                    data = None
+                if isinstance(data, (dict, list)):
+                    got = _extract_by_rule(data, self.ext_extract)
+                    if got:
+                        raw = got.strip()
+                return raw.strip().strip('"').strip("'").strip()
+            except Exception as e:
+                last_err = str(e)[:120]
+                time.sleep(0.3)
+        if last_err:
+            log_print(INFO, BoldRed, "AI(自由模板)请求失败: %s" % last_err)
+        return ""
+
+    # ============ 核心请求逻辑（对齐 Go 各 ChatReplyApi） ============
+
+    def _request_chat(self, messages: List[dict], expect_json: bool = True,
+                      retry: int = _RETRY_NUM) -> tuple:
+        """发送聊天请求，返回 (content, error)。
+        - 并发信号量限制（对齐 Go AiSem）
+        - 7次重试
+        - expect_json 时校验返回是否为 JSON 数组，失败追加纠正消息重试（对齐 Go）
+        """
+        if not self.endpoint:
+            return "", Exception("AI请求地址为空")
+
+        _AI_SEM.acquire()
+        try:
+            return self._request_chat_inner(list(messages), expect_json, retry)
+        finally:
+            _AI_SEM.release()
+
+    def _request_chat_inner(self, messages: List[dict], expect_json: bool,
+                            retry: int, last_err: str = "") -> tuple:
+        if retry < 0:
+            if last_err:
+                return "", Exception(
+                    "AI重试次数已用完，最后错误: " + last_err[:300])
+            return "", Exception("AI重试次数已用完")
+
+        try:
+            if self.ai_type == "METAAI":
+                # 秘塔AI特殊格式（对齐 Go MetaAIReplyApi）
+                last_user = ""
+                for m in reversed(messages):
+                    if m.get("role") == "user":
+                        last_user = m.get("content", "")
+                        break
+                payload = {
+                    "q": last_user,
+                    "model": self.model or "fast",
+                    "format": "text",
+                    "scope": "online",
+                }
+            else:
+                # 统一 OpenAI 兼容 chat/completions 协议
+                # (含 OPENAI/中转站/各厂商，兼容性最佳)
+                payload = {
+                    "model": self.model,
+                    "temperature": 0.2,
+                    "messages": messages,
+                }
+
+            resp = httpx.post(
+                self.endpoint,
+                json=payload,
+                headers={
+                    "Authorization": "Bearer " + self.api_key,
+                    "Content-Type": "application/json",
+                },
+                timeout=60,
+                verify=False,
+            )
+            body = resp.text
+
+            if self.ai_type == "METAAI":
+                try:
+                    data = resp.json()
+                except Exception as e:
+                    time.sleep(0.1)
+                    return self._request_chat_inner(
+                        messages, expect_json, retry - 1, f"响应非JSON: {e}")
+                content = ""
+                if isinstance(data, dict):
+                    content = data.get("answer", "") or data.get(
+                        "content", "") or ""
+                if not content:
+                    return "", Exception("AI回复内容未找到，AI返回信息：" + body[:300])
+                if expect_json and not _is_valid_json_array(content):
+                    messages.append({"role": "system", "content": content})
+                    messages.append(
+                        {"role": "user", "content": _JSON_FIX_PROMPT})
+                    return self._request_chat_inner(
+                        messages, expect_json, retry - 1,
+                        f"回复非JSON数组: {content[:150]}")
+                return content, None
+
+            # 通用 OpenAI 兼容解析
+            try:
+                data = resp.json()
+            except Exception as e:
+                time.sleep(0.1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1, f"响应非JSON: {e}")
+
+            # 处理业务异常（对齐 Go: message contains "Request processing has failed"）
+            result_msg = data.get("message", "")
+            if isinstance(result_msg, str) and "Request processing has failed" in result_msg:
+                time.sleep(0.1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1, f"服务异常: {result_msg[:150]}")
+
+            # 401/403 鉴权失败直接返回，不重试
+            if resp.status_code in (401, 403):
+                return "", Exception(
+                    "API Key 无效或无权限(status=%d): %s"
+                    % (resp.status_code, body[:200]))
+
+            # 404 多为地址/路径错误(常见于中转站地址填错)，不重试
+            if resp.status_code == 404:
+                return "", Exception(
+                    "AI 接口地址不存在(404)，请检查「AI地址」是否正确"
+                    "（示例：https://中转站域名/v1 或完整到 /chat/completions）: %s"
+                    % body[:150])
+
+            # 429 限流：携带服务端消息重试
+            if resp.status_code == 429:
+                time.sleep(0.5)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1,
+                    f"请求过于频繁(429): {body[:150]}")
+
+            # 非2xx业务错误(如模型不存在)：带上服务器消息重试
+            if resp.status_code >= 400:
+                err_detail = (body or "")[:200]
+                time.sleep(0.1)
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1,
+                    f"HTTP {resp.status_code}: {err_detail}")
+
+            choices = data.get("choices")
+            if not isinstance(choices, list) or not choices:
+                return "", Exception("AI回复内容未找到，AI返回信息：" + body[:300])
+
+            message = choices[0].get("message", {}) if isinstance(
+                choices[0], dict) else {}
+            content = message.get("content", "")
+            if not isinstance(content, str):
+                return "", Exception("content field missing or not a string in response")
+
+            # JSON 格式检查（对齐 Go：失败追加纠正消息重试）
+            if expect_json and not _is_valid_json_array(content):
+                # 2026-10-13 宽松兜底: 非数组但可提取答案(如 {"answer":"X"}/单键对象)
+                # 直接接受, 避免可用模型因输出格式差异被重试耗尽误判失败
+                _loose = _parse_json_array_answer(content)
+                if _loose and _loose != content.strip():
+                    return _loose, None
+                messages.append({"role": "system", "content": content})
+                messages.append({"role": "user", "content": _JSON_FIX_PROMPT})
+                return self._request_chat_inner(
+                    messages, expect_json, retry - 1,
+                    f"回复非JSON数组: {content[:150]}")
+
+            return content, None
+        except httpx.TimeoutException as e:
+            time.sleep(0.1)
+            return self._request_chat_inner(
+                messages, expect_json, retry - 1, f"请求超时(60s): {e}")
+        except httpx.HTTPError as e:
+            time.sleep(0.1)
+            return self._request_chat_inner(
+                messages, expect_json, retry - 1, f"网络错误: {e}")
+
+
+# ============ Shortcut Functions ============
+
+def ai_check(ai_url: str, model: str, api_key: str, ai_type: str) -> Optional[Exception]:
+    """Check AI availability (shortcut)."""
+    client = AIClient(ai_url, model, api_key, ai_type)
+    return client.check()
+
+
+def ai_problem_message(ai_url: str, model: str, api_key: str, ai_type: str,
+                       question: str, options: Optional[List[str]] = None,
+                       q_type: str = '') -> str:
+    """AI question answering - 对齐 Go AIProblemMessage
+    :param q_type: 题型键 (single_choice/multiple_choice/judge/fill/short/essay/...)
+    """
+    client = AIClient(ai_url, model, api_key, ai_type)
+    return client.ask(question, options, q_type)

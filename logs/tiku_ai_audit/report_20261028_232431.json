@@ -1,0 +1,507 @@
+{
+  "meta": {
+    "started_at": "2026-10-28 23:24:31",
+    "finished_at": "2026-10-28 23:28:35",
+    "elapsed_sec": 243,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "judge"
+    ],
+    "limit": 30,
+    "start": 900,
+    "end": 130413,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_judge_6ead120c_900-130413.json"
+  },
+  "summary": {
+    "candidates": 30,
+    "audited": 30,
+    "changed": 6,
+    "same": 21,
+    "report_only": 0,
+    "skipped_invalid": 0,
+    "uncertain": 3,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-28 23:24:31",
+      "question": "电源系统采用负极搭铁的方式，是因为在搭铁处不易造成虚接。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:24:38",
+      "question": "转向横拉杆的作用是将转向摇臂传来的力和运动传给转向梯形臂。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 23:24:50",
+      "question": "一般情况下，主转向灯的功率较大，而侧转向灯功率较小。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:24:57",
+      "question": "空调系统一经开放就必须重新抽真空，以清除可能进入空调系统的空气和水分。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:25:03",
+      "question": "燃油箱除了储油外，还有沉淀杂质的作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:25:07",
+      "question": "缸内直喷发动机，在进气行程中吸入的是可燃空气。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 23:25:21",
+      "question": "如果故障范围是准确的，故障点也不一定在故障范围之中。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:25:27",
+      "question": "汽车电动车窗的电机一般为永磁式.",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 23:25:40",
+      "question": "汽车车架按其结构型式主要可分为边梁式车架和中梁式车架两种。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 23:25:54",
+      "question": "缸内直喷的发动机上，除了使用电动燃油泵还需要配备低压燃油泵。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:25:59",
+      "question": "转向器的传动比越大，转动转向盘所需要的操纵力就越大，但转向操纵的灵敏度就会下降。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-28 23:26:15",
+      "question": "光电二极管工作在正向状态，正向电流大小与照度成正比.",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:26:20",
+      "question": "雾灯都是可以独立开启的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:26:25",
+      "question": "一般情况下，四灯制前照灯并排安装时，装于最外侧的一对应为近光灯。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-28 23:26:43",
+      "question": "装配活塞环时,每道环开口错开120°。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:26:49",
+      "question": "下止点为活塞顶离曲轴回转中心最近处。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:26:54",
+      "question": "正、逆传动效率都很高的转向器，有利于汽车转向后转向轮的自动回正。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:26:59",
+      "question": "故障诊断一般应遵循从外面到里面的原则",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:27:04",
+      "question": "交流发电机的励磁过程是先自励后它励。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:27:09",
+      "question": "起动机电机的电阻为60-180欧",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:27:14",
+      "question": "数据流显示冷却液温度-39摄氏度,说明冷却液温度传感器有故障或线路短路。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-28 23:27:27",
+      "question": "单向超越离合器需要控制机构，它是依靠其单向锁止理来发挥固定或连接作用的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:27:32",
+      "question": "活塞裙部的截面形状是圆形",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:27:37",
+      "question": "进入及启动许可系统中，车内天线用于需要进入车辆时识别钥匙。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 23:27:51",
+      "question": "火花塞的电极的检测要求无积碳、无烧蚀、无油腻、两极之间的间隙为0.5-1.1毫米",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:27:57",
+      "question": "汽车在行驶过程中的临时停车由手动变速器的空挡来实现。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 23:28:11",
+      "question": "起动机运转，发动机不着车可能是燃油供给系统故障导致的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:28:17",
+      "question": "发动机控制系统中普遍采用由氧传感器组成的空燃比反馈控制方式,即闭环控制方式。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:28:22",
+      "question": "液力变矩器由泵轮、涡轮和导轮三大部分组成。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 23:28:28",
+      "question": "起动机运转，发动机不着车可能是点火系统故障导致的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    }
+  ]
+}

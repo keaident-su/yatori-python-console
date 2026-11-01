@@ -1,0 +1,581 @@
+# -*- coding: utf-8 -*-
+"""学习通 拓展阅读 + 课程讨论tab 全套功能 (2026-10-17)
+
+【拓展阅读】入口: stucoursemiddle外层菜单 li[dataname=expandread]
+  data-url = https://appcd.chaoxing.com/read/index
+  实际iframe: appcd.chaoxing.com/read/index?courseid={cid}&clazzid={cls}
+              &cpi={cpi}&ut=s&t={ms}&stuenc={enc}&fid={fid}&userId={uid}
+  阅读时长: 需在实际阅读页面上报, 由 run_extend_read 处理
+
+【课程讨论tab】入口: li[dataname=tl] -> groupweb.chaoxing.com/course/topic/topicList
+  话题列表API: POST https://groupweb.chaoxing.com/course/topic/{bbsid}/getTopicList
+  返回 datas[]: {id, uuid, content, createrName, reply_count, create_time, tags...}
+
+用户定夺(2026-10-17): 讨论=全部话题·未回复的; 回复=AI生成学生口吻(话术兜底); 开关默认开
+"""
+import re
+import json
+import time
+import random
+import html as _html
+
+
+def _http(cache):
+    import requests
+    import urllib3
+    urllib3.disable_warnings()
+    s = requests.Session()
+    s.verify = False
+    try:
+        s.cookies.update(cache.cookie_dict or {})
+    except Exception:
+        pass
+    s.headers.update({
+        "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/120.0.0.0 Safari/537.36"),
+        "Accept": "*/*",
+        # 2026-10-18: 实测需要 AJAX 头, 否则 getTopicList 返回"你没有权限操作"
+        "X-Requested-With": "XMLHttpRequest",
+    })
+    return s
+
+
+def _parse_outer_menu(cache, course) -> dict:
+    """拉stucoursemiddle外层HTML, 解析菜单(dataname->data-url)与隐藏字段"""
+    from logic.xuexitong import api as xxt
+    info = {"menus": {}, "courseid": str(course.course_id),
+            "clazzid": str(course.key), "cpi": str(course.cpi),
+            "bbsid": "", "enc": "", "fid": "", "uid": ""}
+    try:
+        client = xxt._build_client(cache)
+        try:
+            body, _ = client.get(
+                f"https://mooc1-1.chaoxing.com/mooc-ans/visit/stucoursemiddle"
+                f"?courseid={course.course_id}&clazzid={course.key}"
+                f"&vc=1&cpi={course.cpi}&ismooc2=1&v=2", retry=2)
+        finally:
+            client.close()
+        h = str(body or "")
+        for m in re.finditer(
+                r'<li[^>]*dataname="([^"]+)"[^>]*>\s*<a[^>]*data-url="([^"]+)"', h):
+            info["menus"][m.group(1)] = m.group(2)
+
+        def _hid(k):
+            mm = re.search(rf'id="{k}"[^>]*value="([^"]*)"', h)
+            return mm.group(1) if mm else ""
+        info["bbsid"] = _hid("bbsid")
+        info["enc"] = _hid("enc") or _hid("showAIEnc")
+        info["fid"] = _hid("cfid") or _hid("fid")
+        info["uid"] = _hid("uid") or (cache.cookie_dict or {}).get("_uid", "")
+        # 2026-10-18: stuenc 来自外层 studentcourse iframe URL 参数,
+        # groupweb 讨论页/接口必须携带它, 否则返回"你没有权限操作"
+        _sm = re.search(r'studentcourse\?[^"\']*?stuenc=([0-9a-f]{32})', h)
+        info["stuenc"] = _sm.group(1) if _sm else ""
+        return info
+    except Exception:
+        return info
+
+
+def fetch_topics(cache, course) -> list:
+    """拉课程讨论tab话题列表(分页), 返回话题dict列表
+    2026-10-23: 优先用缓存的讨论四件套cookie({courseId}cpi/ut/t/enc)
+    纯协议拉取(实测有四件套即可成功); 无缓存时退回旧式两段式请求"""
+    info = _parse_outer_menu(cache, course)
+    bbsid = info.get("bbsid", "")
+    if not bbsid:
+        return []
+    s = _http(cache)
+    _ck4 = load_discuss_ck(cache)
+    if _ck4:
+        for _n, _meta in _ck4.items():
+            try:
+                if isinstance(_meta, dict):
+                    s.cookies.set(_n, _meta.get("value", ""),
+                                  domain=_meta.get(
+                                      "domain") or ".chaoxing.com",
+                                  path="/")
+                else:
+                    s.cookies.set(_n, _meta, domain=".chaoxing.com", path="/")
+            except Exception:
+                pass
+    # 两段式——先 GET topicList 页(带 stuenc/bbsid)建立讨论会话, 再 POST getTopicList
+    # 2026-10-23: 有ck4四件套时跳过GET预热(实测预热会重置JSESSIONID导致四件套失配),
+    #   直接POST即可; 无ck4时保持旧式预热。
+    _stuenc = info.get("stuenc", "")
+    _t = str(int(time.time() * 1000))
+    page_url = (f"https://groupweb.chaoxing.com/course/topic/topicList"
+                f"?courseid={course.course_id}&clazzid={course.key}"
+                f"&cpi={course.cpi}&ut=s&t={_t}&stuenc={_stuenc}"
+                f"&bbsid={bbsid}&learnSilverStartTime=&learnSilverEndTime=")
+    if not _ck4:
+        try:
+            s.get(page_url, timeout=25)
+        except Exception:
+            pass
+    topics = []
+    for page in range(1, 6):
+        url = (f"https://groupweb.chaoxing.com/course/topic/{bbsid}/getTopicList"
+               f"?folder_uuid=&page={page}&pageSize=20&kw=&courseId={course.course_id}"
+               f"&isSetTop=&selectedStartTime=&selectedEndTime=&selectedType=0"
+               f"&learnSilverStartTime=&learnSilverEndTime=")
+        try:
+            r = s.post(url, timeout=20,
+                       data=("tags=classId0000001,classId"
+                             f"{course.key},courseId{course.course_id}"),
+                       headers={"Content-Type":
+                                "application/x-www-form-urlencoded; charset=UTF-8",
+                                "Referer": page_url})
+            d = r.json()
+        except Exception:
+            break
+        datas = d.get("datas") if isinstance(d, dict) else None
+        if not datas:
+            break
+        topics.extend([x for x in datas if isinstance(x, dict)])
+        if len(datas) < 20:
+            break
+        time.sleep(1)
+    return topics
+
+
+def _gen_reply_text(topic: dict, cc) -> str:
+    """AI按话题生成学生口吻回复(20-60字), 话术库兜底"""
+    title = str(topic.get("content", "") or "")
+    title = re.sub(r"<[^>]+>", " ", title)
+    title = re.sub(r"\s+", " ", _html.unescape(title)).strip()[:120]
+    try:
+        from logic.core.answer_engine import answer_query_detail
+        _prompt = (f"请以一名大学生学生的身份, 针对讨论话题「{title}」"
+                   f"写一段20-60字的自然口语化回复, 直接输出回复正文, 不要引号不要解释")
+        ans, src = answer_query_detail(_prompt, options=None, q_type="short")
+        if ans and 10 <= len(str(ans)) <= 120:
+            return str(ans).strip()
+    except Exception:
+        pass
+    _phrases = [
+        "学习了这个话题，我深刻认识到青年一代要勇担时代责任，把个人成长融入国家发展之中。",
+        "通过这节课的学习，我更加明白了初心和使命的意义，今后会更加努力学习、积极实践。",
+        "这个话题让我感触很深，历史是最好的教科书，我们要从中汲取前进的力量。",
+        "我认为作为新时代青年，应当脚踏实地、勤学笃行，用实际行动回答时代的问卷。",
+        "学习之后收获很大，立志把爱国之情转化为报国之行，从身边小事做起。",
+    ]
+    return random.choice(_phrases)
+
+
+def _reply_topic(cache, course, topic: dict, text: str, info: dict = None) -> bool:
+    """提交话题回复(groupweb addReply)"""
+    info = info or _parse_outer_menu(cache, course)
+    bbsid = info.get("bbsid", "")
+    if not bbsid:
+        return False
+    s = _http(cache)
+    data = {
+        "bbsid": bbsid,
+        "topicId": topic.get("id", ""),
+        "uuid": topic.get("uuid", ""),
+        "content": text,
+        "courseId": str(course.course_id),
+        "classId": str(course.key),
+        "cpi": str(course.cpi),
+    }
+    _stuenc = info.get("stuenc", "")
+    _t = str(int(time.time() * 1000))
+    referer = (f"https://groupweb.chaoxing.com/course/topic/topicList"
+               f"?courseid={course.course_id}&clazzid={course.key}"
+               f"&cpi={course.cpi}&ut=s&t={_t}&stuenc={_stuenc}"
+               f"&bbsid={bbsid}&learnSilverStartTime=&learnSilverEndTime=")
+    try:
+        r = s.post(
+            f"https://groupweb.chaoxing.com/course/topic/{bbsid}/addReply",
+            data=data, timeout=20,
+            headers={"Content-Type":
+                     "application/x-www-form-urlencoded; charset=UTF-8",
+                     "Referer": referer})
+        d = r.json() if r.text.strip().startswith("{") else {}
+        return bool(d.get("status") or d.get("msg") == "success")
+    except Exception:
+        return False
+
+
+def reply_topic_protocol(cache, course, topic: dict, text: str,
+                         info: dict = None, log=None) -> bool:
+    """纯协议回复话题(2026-10-23 实测请求结构):
+    GET 详情页(replysList) -> 解析 urlToken + replyEdit uuid ->
+    POST /pc/invitation/{topicId}/addReplys
+      courseId/classId/replyId=-1/uuid/topic_content(双重编码)/urlToken/bbsid
+    前提: 全套讨论cookie(含课程四件套+groupweb JSESSIONID)已加载到session
+
+    [V3.2.2] 新增 log 回调: 失败时明确告知哪一步失败(便与定位凭证失效/接口变化)
+    """
+    from urllib.parse import quote as _quote
+    _lg = log or (lambda m: None)
+    info = info or _parse_outer_menu(cache, course)
+    bbsid = info.get("bbsid", "")
+    topic_uuid = str(topic.get("uuid", ""))
+    topic_id = str(topic.get("id", ""))
+    if not bbsid or not topic_uuid:
+        _lg(f"  回复失败: 缺少 bbsid/uuid(bbsid={bool(bbsid)}, uuid={bool(topic_uuid)})")
+        return False
+    s = _http(cache)
+    _ck = load_discuss_ck(cache)
+    if not _ck:
+        _lg("  警告: 讨论凭证(discuss_ck)为空, 将直接尝试(可能失败)")
+    for _n, _meta in (_ck or {}).items():
+        try:
+            if isinstance(_meta, dict):
+                s.cookies.set(_n, _meta.get("value", ""),
+                              domain=_meta.get("domain") or ".chaoxing.com",
+                              path="/")
+            else:
+                s.cookies.set(_n, _meta, domain=".chaoxing.com", path="/")
+        except Exception:
+            pass
+    # 1) 详情页解析 urlToken / replyEdit uuid
+    # [V3.2.4 纯协议化] 先 GET topicList 预热(种齐 groupweb JSESSIONID 等讨论凭证), 再取详情页
+    try:
+        _stuenc = info.get("stuenc", "")
+        _tk = str(int(time.time() * 1000))
+        _pre = (f"https://groupweb.chaoxing.com/course/topic/topicList"
+                f"?courseid={course.course_id}&clazzid={course.key}"
+                f"&cpi={course.cpi}&ut=s&t={_tk}&stuenc={_stuenc}"
+                f"&bbsid={bbsid}&learnSilverStartTime=&learnSilverEndTime=")
+        s.get(_pre, timeout=25)
+    except Exception:
+        pass
+    du = (f"https://groupweb.chaoxing.com/course/topic/v3/bbs/"
+          f"{bbsid}/{topic_uuid}/replysList"
+          f"?courseId={course.course_id}&classId={course.key}"
+          f"&cpi={course.cpi}&ut=s")
+    _st = "?"
+    try:
+        _dr = s.get(du, timeout=25)
+        _st = _dr.status_code
+        detail = str(_dr.text or "")
+    except Exception as e:
+        detail = ""
+        _lg(f"  回复失败: 详情页请求异常 {type(e).__name__}: {str(e)[:60]}")
+    if not detail:
+        if _st != "?":
+            _lg(f"  回复失败: 详情页为空(HTTP={_st}, 凭证数={len(_ck or {})})")
+        return False
+    m_tk = re.search(r"urlToken\s*:\s*'([^']+)'", detail)
+    m_uu = re.search(r'class="replyEdit"\s+uuid="([^"]+)"', detail)
+    m_uu2 = re.search(r'replyEdit[^>]*uuid="([^"]+)"', detail)
+    url_token = m_tk.group(1) if m_tk else ""
+    reply_uuid = (m_uu.group(1) if m_uu else (m_uu2.group(1) if m_uu2 else ""))
+    if not reply_uuid:
+        _lg(f"  回复失败: 未解析到 replyEdit uuid(HTTP={_st}, "
+            f"页面长度={len(detail)}, 凭证数={len(_ck or {})}, "
+            "多为讨论凭证失效或页面结构变化)")
+        return False
+    # 2) POST addReplys (topic_content需手动再编码一层)
+    body = (f"courseId={course.course_id}&classId={course.key}"
+            f"&replyId=-1&uuid={reply_uuid}"
+            f"&topic_content={_quote(text, safe='')}"
+            f"&anonymous=&urlToken={url_token}&bbsid={bbsid}")
+    try:
+        r = s.post(
+            f"https://groupweb.chaoxing.com/pc/invitation/{topic_uuid}/addReplys",
+            data=body, timeout=20,
+            headers={"Content-Type":
+                     "application/x-www-form-urlencoded; charset=UTF-8",
+                     "X-Requested-With": "XMLHttpRequest",
+                     "Referer": du})
+        _txt = str(r.text or "")
+        d = r.json() if _txt.strip().startswith("{") else {}
+        ok = bool(d.get("status") or d.get("msg") == "success"
+                  or d.get("result"))
+        if not ok:
+            _lg(f"  回复失败: addReplys 未被接受(HTTP={r.status_code}, "
+                f"返回={_txt[:80]!r})")
+        return ok
+    except Exception as e:
+        _lg(f"  回复失败: addReplys 异常 {type(e).__name__}: {str(e)[:60]}")
+        return False
+
+
+def _browser_session(cache):
+    """2026-10-23修复: 家机无系统Chrome(旧版channel="chrome"直接报
+    Chromium distribution 'chrome' is not found) -> 改用 Playwright 内置 chromium;
+    同时导出讨论四件套cookie({courseId}cpi/ut/t/enc)供纯协议列表/回复复用。
+    返回 (playwright, browser, ctx, page) 或抛异常"""
+    from playwright.sync_api import sync_playwright
+    p = sync_playwright().start()
+    try:
+        browser = p.chromium.launch(headless=True)
+    except Exception:
+        # 内置浏览器缺失时回退系统通道(兼容开发机)
+        browser = p.chromium.launch(headless=True, channel="chrome")
+    ctx = browser.new_context(viewport={"width": 1440, "height": 900},
+                              ignore_https_errors=True)
+    page = ctx.new_page()
+    cks = []
+    for k, v in (cache.cookie_dict or {}).items():
+        try:
+            cks.append({"name": str(k), "value": str(v),
+                        "domain": ".chaoxing.com", "path": "/"})
+        except Exception:
+            pass
+    try:
+        ctx.add_cookies(cks)
+    except Exception:
+        pass
+    return p, browser, ctx, page
+
+
+def export_course_ck(ctx, course) -> dict:
+    """从浏览器态导出讨论全套cookie(2026-10-23修正: 四件套与groupweb会话
+    JSESSIONID/route强绑定, 必须整套导出) — 纯协议列表/回复的必备凭证"""
+    out = {}
+    for c in ctx.cookies():
+        out[c.get("name", "")] = {"value": c.get("value", ""),
+                                  "domain": c.get("domain", "")}
+    return out
+
+
+def _discuss_ck_path(cache):
+    import os
+    d = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__)))), "assets")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        pass
+    return os.path.join(d, f"discuss_ck_{cache.account}.json")
+
+
+def load_discuss_ck(cache) -> dict:
+    try:
+        return json.loads(open(_discuss_ck_path(cache), encoding="utf-8").read())
+    except Exception:
+        return {}
+
+
+def save_discuss_ck(cache, data: dict) -> None:
+    try:
+        open(_discuss_ck_path(cache), "w", encoding="utf-8").write(
+            json.dumps(data, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+def _open_discuss_frame(page, course):
+    """打开课程页并点击「讨论」菜单, 返回 groupweb iframe 句柄"""
+    page.goto(f"https://mooc1-1.chaoxing.com/mooc-ans/visit/stucoursemiddle"
+              f"?courseid={course.course_id}&clazzid={course.key}&vc=1"
+              f"&cpi={course.cpi}&ismooc2=1&v=2",
+              timeout=90000, wait_until="domcontentloaded")
+    page.wait_for_timeout(8000)
+    page.evaluate("""() => {
+        var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), n;
+        while (n = w.nextNode()) {
+            if (n.textContent.trim() === '讨论') { n.parentElement.click(); return; }
+        }
+    }""")
+    page.wait_for_timeout(8000)
+    for f in page.frames:
+        if "groupweb.chaoxing.com/course/topic" in f.url:
+            return f
+    return None
+
+
+def run_discussions(cache, course, cc, log) -> int:
+    """课程讨论tab全套(2026-10-28 完全纯协议化, 零浏览器):
+    流程: _parse_outer_menu -> 纯协议 fetch_topics -> 逐条 reply_topic_protocol;
+    凭证缺失/失效(列表空) -> 再试一次(新会话预热) -> 仍空则优雅跳过。
+    [V3.2.4] 彻底移除 Playwright 浏览器刷新分支:
+    开发机实测浏览器启动崩溃会弹系统错误框并连锁杀死主进程(两轮静默死亡根因);
+    topicList 预热 GET 本身即可种齐讨论凭证(groupweb JSESSIONID等), 无需浏览器。
+    """
+    if int(getattr(cc, "cx_bbs_sw", 1) or 0) != 1:
+        return 0
+    info = _parse_outer_menu(cache, course)
+    bbsid = info.get("bbsid", "")
+    if not bbsid:
+        log("该课程无讨论区(bbsid缺失), 跳过")
+        return 0
+    topics = fetch_topics(cache, course)
+    if not topics:
+        # 纯协议重试一次(新会话重新预热)
+        log("讨论凭证可能失效, 纯协议重试一次...")
+        time.sleep(2)
+        topics = fetch_topics(cache, course)
+    if not topics:
+        log("讨论区无话题或纯协议凭证不可用(已跳过, 不启动浏览器)")
+        return 0
+    log(f"讨论区共{len(topics)}个话题, 纯协议处理未回复的...")
+    my_uid = str(info.get("uid", "") or "")
+    done = 0
+    # [V3.2.2] 连续失败熔断: 凭证失效/接口变更时避免上百次无效重试(实测单账号 586 次)
+    _fail_streak = 0
+    for tp in topics:
+        try:
+            if str(tp.get("createrId", "")) == my_uid and my_uid:
+                continue  # 自己发的话题跳过
+            _uuid = str(tp.get("uuid", ""))
+            if not _uuid:
+                continue
+            text = _gen_reply_text(tp, cc)
+            if not text:
+                continue
+            ok = reply_topic_protocol(cache, course, tp, text, info, log=log)
+            _t = re.sub(r"<[^>]+>", "", str(tp.get("content", "")))[:30]
+            if ok:
+                done += 1
+                _fail_streak = 0
+                log(f"讨论回复成功[{_t}]: {text[:40]}")
+            else:
+                _fail_streak += 1
+                log(f"讨论回复失败[{_t}]")
+                if _fail_streak >= 3:
+                    log(f"连续 {_fail_streak} 次讨论回复失败，本课程讨论已跳过"
+                        "（多为讨论凭证失效或页面接口变化，请在设置里重新打开该课程"
+                        "以便重新导出讨论凭证；详见上方失败原因日志）")
+                    break
+            time.sleep(random.uniform(20, 45))  # 拟人节奏(防重复发布风控)
+        except Exception as e:
+            log(f"讨论处理异常: {str(e)[:80]}")
+    return done
+
+
+def run_extend_read(cache, course, cc, log, read_books: int = 5,
+                    delay: int = 8, pages_per_book: int = 3) -> int:
+    """拓展阅读(纯协议, 2026-10-19重写)
+    背景: 家机日志实锤 V2.0.8 exe 无 playwright 模块 -> 旧浏览器版全部失效,
+      按用户要求改为纯协议(零浏览器依赖)。链路(真机实测):
+      外层菜单expandread确认 -> GET appcd阅读页 -> 书目列表
+      -> 逐本 POST /read/api/dot/{uid}/{资源id}_{页码} 上报阅读点(实测200 code1)
+      -> 页间/书间拟人停留。返回: 成功上报的书目数
+    """
+    if int(getattr(cc, "cx_extend_read_sw", 1) or 0) != 1:
+        return 0
+    info = _parse_outer_menu(cache, course)
+    if "expandread" not in info.get("menus", {}):
+        log("该课程无「拓展阅读」菜单, 跳过")
+        return 0
+    s = _http(cache)
+    uid = str(info.get("uid", "") or (cache.cookie_dict or {}).get("_uid", ""))
+    _enc = info.get("enc", "")
+    _fid = info.get("fid", "")
+    t = str(int(time.time() * 1000))
+    base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
+            f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
+            f"&stuenc={_enc}&fid={_fid}&userId={uid}")
+    try:
+        r0 = s.get(base, timeout=25)
+        if r0.status_code != 200 or len(r0.text) < 500:
+            log(f"拓展阅读: 进入阅读页失败({r0.status_code})")
+            return 0
+    except Exception as e:
+        log(f"拓展阅读: 进入阅读页异常: {str(e)[:80]}")
+        return 0
+    log("拓展阅读: 已进入阅读页(纯协议)")
+    # categoryId: 页面正则提取失败则用12576(浏览器实测该课程书目分类)
+    cat = ""
+    try:
+        m = re.search(r'resource/(\d+)/list', r0.text)
+        if m:
+            cat = m.group(1)
+    except Exception:
+        pass
+    if not cat:
+        cat = "12576"
+    # 拉书目列表(资源id在resourceInfo嵌套JSON.id)
+    books = []
+    try:
+        r1 = s.get(f"https://appcd.chaoxing.com/read/resource/{cat}/list"
+                   f"?page=1&pageSize=20", timeout=20)
+        d = r1.json()
+        for it in (d.get("data") or []):
+            ri = it.get("resourceInfo") or "{}"
+            try:
+                ri = json.loads(ri) if isinstance(ri, str) else ri
+            except Exception:
+                ri = {}
+            rid = ri.get("id") if isinstance(ri, dict) else None
+            rinfo = (ri.get("info") or {}) if isinstance(ri, dict) else {}
+            title = str(rinfo.get("field1") or rinfo.get("author")
+                        or it.get("resourceId", ""))[:16]
+            if rid:
+                books.append((rid, title))
+    except Exception:
+        pass
+    if not books:
+        log("拓展阅读: 书目列表为空, 结束")
+        return 0
+    log(f"拓展阅读: 共{len(books)}本书, 逐本阅读上报...")
+    ok = 0
+    for rid, title in books[:max(1, read_books)]:
+        pages_ok = 0
+        for pg in range(1, max(1, pages_per_book) + 1):
+            try:
+                rd = s.post(
+                    f"https://appcd.chaoxing.com/read/api/dot/{uid}/{rid}_{pg}",
+                    timeout=15)
+                body = (rd.text or "").replace(
+                    " ", "").replace("\n", "").replace("\t", "")
+                if rd.status_code == 200 and '"code":1' in body:
+                    pages_ok += 1
+            except Exception:
+                pass
+            # 页间拟人停留
+            time.sleep(max(1, delay) * 0.5 + random.uniform(0, 1))
+        if pages_ok:
+            ok += 1
+            log(f"拓展阅读: 已阅读《{title}》(资源{rid}, dot上报{pages_ok}/{pages_per_book}页)")
+        # 书间停留
+        time.sleep(random.uniform(2, 4))
+    return ok
+
+
+def fetch_read_books(cache, course):
+    """获取课程拓展阅读书目(纯协议, 2026-10-21新增: 供"无阅读任务点课程"的阅读时长fallback)
+    返回: (uid, [(resourceId, title), ...]); 无拓展阅读菜单时返回 ("", [])
+    """
+    info = _parse_outer_menu(cache, course)
+    if "expandread" not in (info.get("menus") or {}):
+        return "", []
+    s = _http(cache)
+    uid = str(info.get("uid", "") or (cache.cookie_dict or {}).get("_uid", ""))
+    _enc = info.get("enc", "")
+    _fid = info.get("fid", "")
+    t = str(int(time.time() * 1000))
+    base = (f"https://appcd.chaoxing.com/read/index?courseid={course.course_id}"
+            f"&clazzid={course.key}&cpi={course.cpi}&ut=s&t={t}"
+            f"&stuenc={_enc}&fid={_fid}&userId={uid}")
+    try:
+        r0 = s.get(base, timeout=25)
+        if r0.status_code != 200 or len(r0.text) < 500:
+            return uid, []
+    except Exception:
+        return uid, []
+    cat = ""
+    try:
+        m = re.search(r'resource/(\d+)/list', r0.text)
+        if m:
+            cat = m.group(1)
+    except Exception:
+        pass
+    if not cat:
+        cat = "12576"
+    books = []
+    try:
+        r1 = s.get(f"https://appcd.chaoxing.com/read/resource/{cat}/list"
+                   f"?page=1&pageSize=20", timeout=20)
+        d = r1.json()
+        for it in (d.get("data") or []):
+            ri = it.get("resourceInfo") or "{}"
+            try:
+                ri = json.loads(ri) if isinstance(ri, str) else ri
+            except Exception:
+                ri = {}
+            rid = ri.get("id") if isinstance(ri, dict) else None
+            rinfo = (ri.get("info") or {}) if isinstance(ri, dict) else {}
+            title = str(rinfo.get("field1") or rinfo.get("author")
+                        or it.get("resourceId", ""))[:16]
+            if rid:
+                books.append((rid, title))
+    except Exception:
+        pass
+    return uid, books

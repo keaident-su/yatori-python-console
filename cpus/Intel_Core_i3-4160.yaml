@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— Intel Core i3-4160
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "Intel Core i3-4160"
+aliases:
+  - "Core i3-4160"
+logicalCores: 4
+physicalCores: 2
+tier: low
+
+loginWorkers: 8
+workConcurrency: 3
+aiConcurrency: 2
+fastVideoWorkers: 5
+nodeStartInterval: 0.667
+httpMaxConnections: 128
+cpuPoolWorkers: 2

@@ -1,0 +1,78 @@
+/* API层(2026-10-23): 统一fetch封装 + token + 错误处理 */
+const qs = new URLSearchParams(location.search)
+const TOKEN = qs.get('token') || localStorage.getItem('yui_token') || ''
+if (qs.get('token')) localStorage.setItem('yui_token', TOKEN)
+
+export async function api<T = any>(path: string, opts: {
+  method?: string; body?: any; timeout?: number
+} = {}): Promise<T> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), opts.timeout ?? 60000)
+  try {
+    const res = await fetch(path, {
+      method: opts.method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-UI-Token': TOKEN,
+      },
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      signal: ctrl.signal,
+    })
+    const data = await res.json()
+    if (data.code !== 200) throw new Error(data.msg || data.message || ('HTTP ' + res.status))
+    // 统一解包: 返回 data 字段(各页面直接拿到业务数据)
+    // [V3.1.2] 兑底: 若 data.data 内又是完整响应(code/message) 再解一层
+    let out = (data.data !== undefined ? data.data : data)
+    if (out && typeof out === 'object' && !Array.isArray(out)
+      && out.code === 200 && ('message' in out) && ('data' in out)) {
+      out = out.data
+    }
+    return out as T
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export const UI = {
+  ping: () => api('/ui/api/ping'),
+  accounts: () => api<any[]>('/ui/api/accounts'),
+  addAccount: (b: any) => api('/ui/api/account/add', { method: 'POST', body: b }),
+  delAccount: (uid: string) => api('/ui/api/account/delete', { method: 'POST', body: { uid } }),
+  updAccount: (b: any) => api('/ui/api/account/update', { method: 'POST', body: b }),
+  loginCheck: (b: any) => api('/ui/api/account/logincheck', { method: 'POST', body: b }),
+  // [V3.2.5] 启动来源自报: pywebview(GUI) / 浏览器(Web前端) 自动区分
+  // opts.batch=true 表示“界面批量启动”(GUI批量/Web批量)
+  start: (uid: string, source?: string, opts?: { batch?: boolean }) =>
+    api('/ui/api/task/start', {
+      method: 'POST',
+      body: {
+        uid,
+        source: source || (() => {
+          const gui = typeof window !== 'undefined' && (window as any).pywebview
+          if (opts && opts.batch) return gui ? 'GUI批量' : 'Web批量'
+          return gui ? 'GUI手动' : 'Web前端手动'
+        })()
+      }
+    }),
+  stop: (uid: string) => api('/ui/api/task/stop', { method: 'POST', body: { uid } }),
+  status: (uid: string) => api<any>(`/ui/api/task/status/${uid}`),
+  courses: (uid: string, force = false) => api<any>(`/ui/api/courses/${uid}${force ? '?force=1' : ''}`, { timeout: 120000 }),
+  rtstatus: (uid: string) => api<any>(`/ui/api/rtstatus/${uid}`),
+  logAccounts: () => api<any>('/ui/api/logs/accounts'),
+  logTail: (account = '', date = '', lines = 300) =>
+    api<any>(`/ui/api/logs/tail?account=${encodeURIComponent(account)}&date=${encodeURIComponent(date)}&lines=${lines}`),
+  getSetting: () => api<any>('/ui/api/setting'),
+  saveSetting: (b: any) => api('/ui/api/setting', { method: 'POST', body: b }),
+  answerSources: () => api<any>('/ui/api/answersources'),
+  saveAnswerSources: (b: any) => api('/ui/api/answersources', { method: 'POST', body: b }),
+  uploadBg: (dataUrl: string) => api<any>('/ui/api/bg/upload', { method: 'POST', body: { dataUrl } }),
+  // [V3.2.2] 飞书通知测试
+  feishuTest: (webhook: string, secret: string) =>
+    api<any>('/ui/api/notify/feishu/test',
+      { method: 'POST', body: { webhook, secret }, timeout: 30000 }),
+  // [赞助/赞赏] 微信赞赏码信息/上传
+  sponsor: () => api<any>('/ui/api/sponsor'),
+  uploadSponsorQr: (dataUrl: string) =>
+    api('/ui/api/sponsor/qr', { method: 'POST', body: { dataUrl } }),
+  about: () => api<any>('/ui/api/about'),
+}

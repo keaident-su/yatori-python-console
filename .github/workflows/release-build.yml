@@ -1,0 +1,238 @@
+name: release-build
+
+# 触发: 推送 V* tag(如 V2.0.2-beta4) / 手动触发
+# 产物: Linux(x86_64/arm64) 单文件二进制、macOS(x86_64/arm64) ZIP+DMG
+# 构建: Cython 编译 + PyInstaller 单文件(与 build_protected.py 一致)
+# 说明: Release 附件真实文件名使用 ASCII(GitHub 不支持非 ASCII 文件名),
+#       中文显示名通过 asset label 设置; 压缩包内部文件名保留中文。
+on:
+  push:
+    tags: ["V*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  APP_VERSION: V3.1.2
+  APP_BASE_ZH: "yatori-python刷课系统V3.1.2" # 程序/压缩包内中文名
+  APP_BASE: "yatori-python-console-V3.1.2" # Release 附件 ASCII 名
+
+jobs:
+  # ================= Linux: 各处理器架构二进制 =================
+  build-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-latest, arch: x86_64 }
+          - { runner: ubuntu-24.04-arm, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cython setuptools pyinstaller
+
+      - name: 清理 tls_client 异平台原生库 (防 PyInstaller 误收集)
+        run: |
+          python - <<'PY'
+          import glob, os, sys, tls_client
+          dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+          if sys.platform == "win32":
+              want = ".dll"
+          elif sys.platform == "darwin":
+              want = ".dylib"
+          else:
+              want = ".so"
+          for f in glob.glob(os.path.join(dep, "*")):
+              ext = os.path.splitext(f)[1].lower()
+              if ext in (".dll", ".dylib", ".so") and ext != want:
+                  os.remove(f)
+                  print("removed:", os.path.basename(f))
+          PY
+
+      - name: 构建 (Cython -> PyInstaller 单文件)
+        run: python build_protected.py
+
+      - name: 重命名产物 (平台-架构分版本)
+        run: |
+          OUT="${{ env.APP_BASE }}-linux-${{ matrix.arch }}"
+          mv "dist/${{ env.APP_BASE_ZH }}" "dist/${OUT}"
+          chmod +x "dist/${OUT}"
+          ls -lh dist/
+
+      - name: 清理构建中间产物 (释放磁盘空间)
+        run: |
+          rm -rf build_stage
+          python -m pip cache purge || true
+          df -h / | tail -1
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_BASE }}-linux-${{ matrix.arch }}
+          path: dist/${{ env.APP_BASE }}-linux-${{ matrix.arch }}
+          if-no-files-found: error
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.APP_VERSION }}
+          files: dist/${{ env.APP_BASE }}-linux-${{ matrix.arch }}
+
+      - name: 设置中文显示名 (asset label)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/set_asset_label.py \
+            "${{ github.repository }}" "${{ github.ref_name }}" \
+            "${{ env.APP_BASE }}-linux-${{ matrix.arch }}" \
+            "${{ env.APP_BASE_ZH }}-linux-${{ matrix.arch }}"
+
+  # ================= macOS: 各处理器架构 ZIP + DMG =================
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15-intel, arch: x86_64 }
+          - { runner: macos-15, arch: arm64 }
+    runs-on: ${{ matrix.runner }}
+    env:
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      MACOS_KEYCHAIN_PWD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cython setuptools pyinstaller
+
+      - name: 清理 tls_client 异平台原生库 (防 PyInstaller 误收集)
+        run: |
+          python - <<'PY'
+          import glob, os, sys, tls_client
+          dep = os.path.join(os.path.dirname(tls_client.__file__), "dependencies")
+          if sys.platform == "win32":
+              want = ".dll"
+          elif sys.platform == "darwin":
+              want = ".dylib"
+          else:
+              want = ".so"
+          for f in glob.glob(os.path.join(dep, "*")):
+              ext = os.path.splitext(f)[1].lower()
+              if ext in (".dll", ".dylib", ".so") and ext != want:
+                  os.remove(f)
+                  print("removed:", os.path.basename(f))
+          PY
+
+      - name: 构建 (Cython -> PyInstaller 单文件)
+        run: python build_protected.py
+
+      - name: 生成 ZIP 点开即用包 (包内保留中文名)
+        run: |
+          BIN="${{ env.APP_BASE }}-macos-${{ matrix.arch }}"
+          mv "dist/${{ env.APP_BASE_ZH }}" "dist/${BIN}"
+          chmod +x "dist/${BIN}"
+          cp "dist/${BIN}" "${{ env.APP_BASE_ZH }}"
+          zip "${BIN}.zip" "${{ env.APP_BASE_ZH }}"
+          mv "${BIN}.zip" dist/
+          rm -f "${{ env.APP_BASE_ZH }}"
+          ls -lh dist/
+
+      - name: 清理构建中间产物 (释放磁盘空间, DMG 需足够临时空间)
+        run: |
+          rm -rf build_stage
+          python -m pip cache purge || true
+          df -h / | tail -1
+
+      - name: 导入签名证书 (可选, 未配置 secrets 则跳过)
+        id: sign
+        run: |
+          if [ -n "${MACOS_CERTIFICATE}" ]; then
+            echo "==> 检测到签名证书, 导入钥匙串"
+            KEYCHAIN="build.keychain"
+            KEYCHAIN_PWD="${MACOS_KEYCHAIN_PWD:-buildpwd}"
+            security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+            security default-keychain -s "$KEYCHAIN"
+            security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+            echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+            security import certificate.p12 -k "$KEYCHAIN" \
+              -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: \
+              -s -k "$KEYCHAIN_PWD" "$KEYCHAIN" > /dev/null
+            rm -f certificate.p12
+            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
+              | grep "Developer ID Application" | head -1 \
+              | sed 's/.*"\(.*\)".*/\1/')
+            echo "sign_identity=${IDENTITY}" >> "$GITHUB_OUTPUT"
+            echo "==> 签名身份: ${IDENTITY}"
+          else
+            echo "==> 未配置 MACOS_CERTIFICATE, 跳过签名(产物未签名/未公证)"
+            echo "sign_identity=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 生成 DMG 拖拽安装包
+        run: |
+          bash .github/scripts/make_macos_dmg.sh \
+            "dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}" \
+            "dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg" \
+            "${{ steps.sign.outputs.sign_identity }}"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APP_BASE }}-macos-${{ matrix.arch }}
+          path: |
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg
+          if-no-files-found: error
+
+      - name: 发布到 Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.APP_VERSION }}
+          files: |
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip
+            dist/${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg
+
+      - name: 设置中文显示名 (asset label)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/set_asset_label.py \
+            "${{ github.repository }}" "${{ github.ref_name }}" \
+            "${{ env.APP_BASE }}-macos-${{ matrix.arch }}.zip" \
+            "${{ env.APP_BASE_ZH }}-macos-${{ matrix.arch }}.zip"
+          python .github/scripts/set_asset_label.py \
+            "${{ github.repository }}" "${{ github.ref_name }}" \
+            "${{ env.APP_BASE }}-macos-${{ matrix.arch }}.dmg" \
+            "${{ env.APP_BASE_ZH }}-macos-${{ matrix.arch }}.dmg"

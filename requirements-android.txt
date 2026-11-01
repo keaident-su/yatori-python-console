@@ -1,0 +1,24 @@
+# -*- Android (APK / Chaquopy 等打包器) 依赖清单 -*-
+# 适用场景: 将本程序打包为安卓应用(APK)时使用。
+#
+# 说明:
+#   - 仅包含纯 Python 或 Android 可用的依赖子集;
+#   - 不含本地 OCR(rapidocr/onnxruntime/opencv): 图片题/图片选项 OCR 自动降级跳过;
+#   - 不含桌面浏览器自动化(nodriver/mss/websockets): 安全微伴验证码类环节自动降级跳过
+#     (登录验证码 OCR 若打包器支持 opencv 仍可启用);
+#   - 不含 tls-client(无 Android 原生库): 学习通滑块校验自动回退 httpx 裸请求;
+#   - 若打包器支持 opencv/onnxruntime 的 Android 轮子, 可自行加入以启用图片题 OCR。
+fastapi>=0.104.0
+uvicorn>=0.24.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+pyyaml>=6.0
+httpx>=0.25.0
+jmespath>=1.0.0
+python-multipart>=0.0.6
+pycryptodome>=3.19.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+Pillow>=10.0.0
+# 安全微伴登录加密(纯 Python); 不使用该平台时可省略
+pyaes>=1.6.1

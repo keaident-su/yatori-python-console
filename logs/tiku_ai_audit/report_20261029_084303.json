@@ -1,0 +1,7675 @@
+{
+  "meta": {
+    "started_at": "2026-10-29 08:43:03",
+    "finished_at": "2026-10-29 09:49:18",
+    "elapsed_sec": 3975,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "judge"
+    ],
+    "limit": 500,
+    "start": 2000,
+    "end": 130413,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_judge_6ead120c_2000-130413.json"
+  },
+  "summary": {
+    "candidates": 500,
+    "audited": 500,
+    "changed": 61,
+    "same": 432,
+    "report_only": 0,
+    "skipped_invalid": 0,
+    "uncertain": 7,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-29 08:43:03",
+      "question": "BiBigpt可以将想要分析的视频总结为一张思维导图。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:43:18",
+      "question": "Videosearch在分析视频后会直接生成高频词用户选择。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:43:34",
+      "question": "Kimi不能对论文进行篇章翻译。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:43:42",
+      "question": "Napkin.AI不能根据给定主题生成文本。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:43:49",
+      "question": "气质的四种类型中，多血质比抑郁质好。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:43:55",
+      "question": "心理健康与心理障碍是相对的概念，二者相比较而存在，其中没有绝对的界线。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:01",
+      "question": "一个人，只要身体没病就是健康。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:08",
+      "question": "来做心理咨询的人都是心理有毛病的人。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:13",
+      "question": "心理不健康与心理健康并非泾渭分明的对立的两极，而是一个连续的状态。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:21",
+      "question": "心理健康状态是静止的，固定不变的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:28",
+      "question": "每个人都可以去做心理咨询。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:44:43",
+      "question": "心理健康与不健康无明显界限，是一个连续的状态",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:49",
+      "question": "学校心理咨询老师是可以不尊重保密原则的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:44:56",
+      "question": "心理不健康就是心理变态。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:03",
+      "question": "发现学生可能存在心理问题，作为教育者的咨询师可强制学生前来咨询。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:11",
+      "question": "抑郁症是矫情，无病呻吟",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:17",
+      "question": "负面情绪对人们是无益的",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:23",
+      "question": "情绪持续时间过长，凭自身能力无法调节，那么要去寻求他人甚至是心理咨询师帮助",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:28",
+      "question": "快乐、愤怒、悲哀和恐惧是人类基本的情绪。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:34",
+      "question": "“爱屋及乌”是属于首因效应。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:41",
+      "question": "“以小人之心度君子之腹”是属于投射效应",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:48",
+      "question": "“嘴上无毛、办事不牢”是属于晕轮效应。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:45:55",
+      "question": "对他人的第一印象一旦形成，就不会再改变。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:01",
+      "question": "健康的性应该是生理层面（性欲）、心理层面（爱情）、社会层面（婚姻）三者统一；",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:10",
+      "question": "“亲密无间、爱一定要你看见”是恋爱的正常表现；",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:16",
+      "question": "批评是负性刺激，通常只有当用意善良、符合事实、方法得当的时，才能产生积极的效果，才能促进对方的进步。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:23",
+      "question": "“求助是弱者的行为”，成功人士往往更懂得自己解决问题。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:30",
+      "question": "有效的心理测评能够成为探索自己的工具，并且帮助我们在理解自己的基础上更好地理解他人。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:37",
+      "question": "有人偏外向一端，有人偏内向一端，其实这两种性格类型在交往中各有特点，但总的来说外向性格更有优势。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:44",
+      "question": "投射效应指与人交往时把自己具有的某些不讨人喜欢、不为人接受的观念、性格、态度、欲望转移到别人身上，认为别人也是如此的，以掩盖自己不受人欢迎的特征。(  )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:46:50",
+      "question": "性关系不能增进双方的感情或解决已经出现的危机。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:47:05",
+      "question": "精神障碍只要配合治疗，大部分患者都能痊愈。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:47:23",
+      "question": "精神障碍的发病原因是比较复杂的，自身脆弱是很重要的一个原因。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:47:40",
+      "question": "光环效应常使人犯“以偏概全”“爱屋及乌”的错误。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:47:46",
+      "question": "患抑郁症的人是他们太闲了，每天想太多。（ ）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:47:52",
+      "question": "性经验不是个性成熟的标志。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:00",
+      "question": "人一定要得到别人的赞同和喜欢，否则就是失败的人生。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:05",
+      "question": "咨询师不可以随时改变咨询的时间和地点。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:12",
+      "question": "做好计划，提高个人能力可以有效减小压力。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:18",
+      "question": "刻板印象是百害无一利的效应。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:24",
+      "question": "强迫性洗手跟洁癖是一样的心理疾病。（ ）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:31",
+      "question": "一直处于愉快中才是正常的情绪",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:37",
+      "question": "培养爱的能力就是要培养表达爱的能力、接受爱的能力、拒绝爱的能力、鉴别爱的能力、解决爱的冲突的能力和保持爱情长久的能力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:48:44",
+      "question": "人的能力的发展离不开活动的参与。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:49:03",
+      "question": "对情绪的调节与控制不能等同于对情绪的抑制或压抑。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:49:09",
+      "question": "在不同阶段，革命的主要对象相同。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:49:18",
+      "question": "新民主主义革命的动力包括无产阶级、农民阶级、城市小资产阶级和官僚资产阶级。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:49:24",
+      "question": "农村革命根据地是中国民主革命的主要形式。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:49:31",
+      "question": "新旧民主革命的根本区别在于革命任务不同。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:49:39",
+      "question": "新民主主义革命是无产阶级革命。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:49:54",
+      "question": "推进马克思主义中国化时代化，是马克思主义理论本身发展的内在要求。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:01",
+      "question": "毛泽东思想是马克思主义中国化时代化的第一次历史性飞跃。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:09",
+      "question": "推进马克思主义中国化时代化是一个追求真理、揭示真理、笃行真理的过程。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:16",
+      "question": "社会主义社会的矛盾反映在政治上可以划分为敌我矛盾和人民内部矛盾，这是两类性质完全不同的矛盾。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:22",
+      "question": "1957年2月毛泽东所作的《关于正确处理人民内部矛盾的问题》的报告，系统论述了社会主义社会矛盾的理论。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:29",
+      "question": "《论人民民主专政》标志着党探索中国社会主义建设道路的良好开端。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:37",
+      "question": "敌我矛盾是非对抗性矛盾。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:43",
+      "question": "对于人民内部矛盾，实行“团结—批评—团结”的方针。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:51",
+      "question": "只要将高级程序语言编写的源程序文件(如try.c)的扩展名更改为.exe,则它就成为可执行文件了。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:50:58",
+      "question": "世界上第一台电子数字计算机ENIAC是1946年研制成功的,其诞生的国家是英国。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:05",
+      "question": "高档计算机可以直接执行用高级程序语言编写的程序。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:12",
+      "question": "将二进制数1101.101转换成等值的十进制数是13.625( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:19",
+      "question": "计算机操作系统的作用是管理计算机系统的全部软、硬件资源,合理组织计算机的工作流程,以充分发挥计算机资源的效率,为用户提供使用计算机的友好界面。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:26",
+      "question": "ENIAC是首次采用存储程序和程序控制自动工作的电子计算机。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:32",
+      "question": "根据汉字国标码GB2312-80的规定,一级常用汉字数是7445个( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:40",
+      "question": "Z的ASCII码值比9小( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:46",
+      "question": "在一个非零无符号二进制整数之后添加一个0,则此数的值为原数的2倍( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:52",
+      "question": "在计算机指令中,规定其所执行操作功能的部分称为操作数。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:51:57",
+      "question": "1个汉字的信息占8个字节。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:04",
+      "question": "若A=1011B,B=1101B,则A∧B的值为1001B( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:12",
+      "question": "二进制转换成八进制的方法可以概括成“三位并一位”( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:19",
+      "question": "源程序只有经过编译和链接后才能成为可执行程序。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:26",
+      "question": "计算机内部的所有信息都是用八进制编码表示的( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:32",
+      "question": "按照摩尔定律,每过18个月,微处理器硅芯片上晶体管的数量就会翻一番。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:39",
+      "question": "现代微型计算机中所采用的电子器件是小规模集成电路",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:44",
+      "question": "在计算机内部用来传送、存储、加工处理的数据或指令所采用的形式是十六进制( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:50",
+      "question": "在计算机内部,数据的传输、存储和处理都使用二进制编码。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:52:57",
+      "question": "标准ASCII码是8位二进制编码( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:03",
+      "question": "第二代电子计算机所采用的电子元件是继电器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:10",
+      "question": "字长表示CPU一次能处理二进制数据的位数。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:17",
+      "question": "按计算机的用途分类,加油机属于专用计算机。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:23",
+      "question": "字长为16位表示这台计算机最大能计算一个16位的十进制数。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:31",
+      "question": "BCD码是指每位十进制数用4位二进制数编码表示( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:38",
+      "question": "已知a=00111000B和b=2FH,则两者比较的不等式是a<b",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:45",
+      "question": "八进制的数码是:1、2、3、4、5、6、7、8( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:50",
+      "question": "逻辑或运算的规则是:仅当两个参加运算的逻辑值都为1时,或的结果才为1,否则为0( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:53:56",
+      "question": "RAM的特点是一旦断电,存储在其上的信息将全部消失,且无法恢复。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:03",
+      "question": "如果在一个非零无符号二进制整数之后添加2个0,则此数的值为原数的4倍( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:08",
+      "question": "硬盘在主机箱内,它是主机的组成部分。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:15",
+      "question": "用高级程序语言编写的程序可移植性和可读性都很差。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:23",
+      "question": "把源程序转换为机器语言的目标程序的过程叫编译。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:28",
+      "question": "电动势的单位也是V(伏[特])，其实际方向与电压实际方向相反。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:54:44",
+      "question": "电源等效变换时，只对外电路等效，对内电路是不等效的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:50",
+      "question": "电源是将电能转换成非电能的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:54:57",
+      "question": "电源短路时输出的电流最大，此时电源输出的功率也最大。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:55:15",
+      "question": "电路分析中描述的电路都是实际中的应用电路。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:55:21",
+      "question": "不同频率的正弦信号不能比较相位差。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:55:27",
+      "question": "频率是  交流电在单位时间内完成完整变化的次数  ,用表示。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:55:44",
+      "question": "电路的中间环节主要起传输、控制、分配与保护作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:55:51",
+      "question": "周期是 交流电完整变化一周所需要的时间    ,用表示。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:55:58",
+      "question": "通常汽车中的搭铁点就是电位的参考点。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:56:05",
+      "question": "使用万用表测量电阻时，应严禁带电测量。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:56:21",
+      "question": "电源内部的电流方向总是由电源负极流向电源正极。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:56:37",
+      "question": "电位与电压的单位不相同。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:56:44",
+      "question": "电路中二条或二条以上支路的连接点称为节点。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 08:56:58",
+      "question": "在测试过程中，若万用表选择的量程不合适，可直接换至合适档位。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:57:16",
+      "question": "交流电气设备铭牌上所示的电压值、电流值是最大值。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:57:22",
+      "question": "通常万用表的黑表笔对应内电源的正极。（ ）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:57:29",
+      "question": "一只额定电压为220V的灯可以接在最大值为311V的交流电源上。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:57:36",
+      "question": "在极低温（接近于绝对零度）状态下，有些金属的电阻突然变为零，这种现象叫超导现象。（ ）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:57:41",
+      "question": "在进行电路分析时，电压和电流的参考方向是可以任意选择的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:58:00",
+      "question": "对于电感元件，电流滞后电压90°。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:58:10",
+      "question": "网孔一定是回路，但回路不一定是网孔。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:58:17",
+      "question": "三相四线对称灯组实验时，中性线是电流不为零。（ ）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:58:25",
+      "question": "电阻元件是耗能元件，电感和电容是储能元件。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:58:31",
+      "question": "对于电容元件，电压比电流超前90°。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:58:39",
+      "question": "在先秦思想中,只有儒家认识到了以民为本的重要性。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:58:56",
+      "question": "“化性起伪”的意思是人的本性是善的,对人加以教化就会转变人天生的善性,人就会变得虚伪。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:59:02",
+      "question": "不贪污、不受贿即为廉政。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:59:11",
+      "question": "一个国家、一个民族的强盛，是以文化兴盛为支撑的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:59:25",
+      "question": "我们今天讲的“精忠报国”,其对象与“国邦”这个概念相对应。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:59:31",
+      "question": "汉武帝提出的“罢黜百家，独尊儒术”的政策是另一种形式的“尚同”。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 08:59:50",
+      "question": "敬业是向师长学习相关志业,并对之尊敬且亲近。乐群是乐于同朋友和谐相处。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 08:59:56",
+      "question": "给予教师最基本的生活保障,在古代也是学生的义务之一。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:00:02",
+      "question": "现代国防斗争是以军事力量对抗为主，也是运用多种非武装斗争形势融为一体的综合角逐。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:00:09",
+      "question": "在中国对越南进行自卫反击战时，苏联表示只提抗议，不会出兵。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:00:17",
+      "question": "国防法属于特别法，其施行比普通法更严格。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:00:32",
+      "question": "我国的最南端位于三亚海边的“天涯海角”岩石处。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:00:38",
+      "question": "中国反对美国在联合国提出的攻击南斯拉夫的提案。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:00:45",
+      "question": "1985年，我国提出精干的常备军和强大的后备力量相结合，是建设现代化国防的必由之路。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:00:52",
+      "question": "1984年国庆阅兵35周年时，所使用的全部是国产的新式装备。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:01:02",
+      "question": "战略指导对于国防的强弱、战争的胜败乃至国家的存亡和民族的兴衰都具有非常重要的作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:01:09",
+      "question": "中立型的国防对整个世界和平是有利的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:01:14",
+      "question": "瑞士法律规定，每一位瑞士的男青年都必须到军事基地进行训练，对女青年则无此项要求。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 09:01:34",
+      "question": "人民解放军从1948年9月到1949年1月，取得了辽沈、淮海、平津三大战役的伟大胜利。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:01:41",
+      "question": "朝鲜半岛已逐渐走向和平，不再维持重兵对峙的局面。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:01:47",
+      "question": "就冷战后国际大气候来看，对一个国家安全的威胁往往来自于国家内部各种分裂势力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:01:54",
+      "question": "中方对南沙部分驻守岛礁的有关建设，是中方主权范围内的事情，合情、合理、合法，不影响也不针对任何国家，无可非议。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:02:01",
+      "question": "印度以毫无法律效力的麦克马洪线为依据，侵占了中国领土。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:02:08",
+      "question": "欧洲国家联合起来所形成的欧盟组织，对美国建立单极世界的图谋形成了强有力的制约。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:02:15",
+      "question": "政治上，中国是最大的发展中国家并且是发展中国家里唯一的联合国安理会常任理事国，是维护世界和平促进共同发展的重要力量。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:02:33",
+      "question": "对于建立单极世界的主张，欧盟也是持赞成态度的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:02:43",
+      "question": "胡散斋认为“兵当先严明纪律，设谋制胜还在其次”。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:02:50",
+      "question": "《孙子兵法》第十一篇《九地》篇主要论述了九种不同地区的用兵原则，并阐述了集中兵力攻击敌人要害等问题。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:03:06",
+      "question": "孙武在《孙子兵法》第九篇《行军》篇提出了用军纪来教育士兵，用道义来统一步调的治军思想。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:03:22",
+      "question": "关节就是对战争胜负有重大影响的关键性环节。淮海战役的关节是打下锦州，封闭蒋军在东北。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:03:31",
+      "question": "根据毛泽东同志的观点，战争胜负的决定因素是人不是物。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:03:49",
+      "question": "邓小平新时期军队建设思想是对毛泽东军事思想的创造性继承和发展。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:03:53",
+      "question": "“古代部落对部落的战争，已经开始蜕变为在陆上和海上掠夺家畜、奴隶和财宝而不断进行的抢劫，变为一种正常的营生”出自恩格斯。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:04:09",
+      "question": "江泽民指出，高技术战争成为现代战争的基本样式。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:04:22",
+      "question": "江泽民在一次会议中郑重指出，我们军队的军魂就是党对军队的绝对领导。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:04:27",
+      "question": "近些年来发生的局部战争，如海湾战争、科索沃战争、阿富汗战争、伊拉克战争，这些新的战争实践延缓了新军事革命，阻碍了这场军事变革。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:04:34",
+      "question": "军事革命是军事领域整体性、根本性的变革，既包括军事领域整体性的质变，也包括部分质变。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:04:48",
+      "question": "美国吸取了活捉萨达姆的心理战的教训，美国在利比亚战争中唆使反对派枪毙卡扎菲总统。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:05:01",
+      "question": "信息化战争是指在信息时代核威慑条件下，交战双方大量装备和使用信息化武器装备的信息化军队，以信息化作战理论为指导，在信息化战争上展开的以夺取制信息权为主要对抗手段的一体化战争。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:05:08",
+      "question": "信息化装备可分为信息化装备基础高技术和信息化装备进阶高技术。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:05:15",
+      "question": "信息化装备就是指信息技术含量高、信息起主导作用的，利用电子化、数字化、智能化、网络化、知识化、自动化等信息化技术手段，使所有的装备成为信息化装备。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:05:22",
+      "question": "21世纪后，世界各国便不再采用美国对喷气式战斗机的划代方法对歼击机进行划代。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:05:29",
+      "question": "歼击轰炸机的速度比歼击机更快，且其低空突防性能好，对地攻击火力强。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:05:39",
+      "question": "在伊拉克战争，美英联军仅用20余天时间，就实现了推翻萨达姆政权的目的，这是一次现代信息化战争的缩影。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:05:50",
+      "question": "惯性导航系统短期精度高，长期工作要靠其他手段，包括用无线电导航来校正。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:06:06",
+      "question": "陆基导航系统包括航空、航海和地面装载体的各种陆基导航系统，导航范围只能从几十千米到数百千米，无法达到全球范围。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:14",
+      "question": "电子对抗是以一种软杀伤为主要特点的新战法。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:21",
+      "question": "第一次世界大战期间，德军在比利时使用氯气应对英法联军，纵深推进4000米。这是历史上首次大规模使用化学武器。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:28",
+      "question": "新概念武器的应用并不会改变传统意义上的进攻和防御，仍以摧毁对方的肉体为最高标准，以抗击敌人的兵力、火力入侵为主。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:35",
+      "question": "生物武器可以使大量人、畜发病或死亡，也可大规模毁伤农作物，从而削弱对方的战斗力，破坏其战争潜力。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:41",
+      "question": "原子弹是利用重原子核聚变反应，瞬间释放出巨大能量，对目标造成杀伤破坏作用的核武器。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:47",
+      "question": "奇函数与偶函数的乘积是奇函数(      )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:06:53",
+      "question": "曲线 既有水平渐近线，又有铅垂渐近线     (      )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:07:00",
+      "question": "表达的含义是相同的.(  )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:07:07",
+      "question": "若，则一定是的拐点        (     )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:07:13",
+      "question": "函数复合而成的函数是",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:07:20",
+      "question": "设函数上有最小值-1，最大值15。                (    )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:07:40",
+      "question": "在处既连续又可导.(  )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:07:46",
+      "question": "可去间断点与无穷间断点统称为第一类间断点(    )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:07:54",
+      "question": "若，则在处一定取得极值 。      (     )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:04",
+      "question": "可去间断点和跳跃间断点统称为第一类间断点。 (  )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:10",
+      "question": "若是函数的极值点，则一定是的驻点     (   )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:19",
+      "question": "函数当,无穷小;,无穷大.",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:25",
+      "question": "在处不连续但可导.(  )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:32",
+      "question": "设函数在的某邻域内连续，在点的去心邻域内可导，如果当时，，当时，,则是函数f(x)的极大值。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:39",
+      "question": "函数在处可微,则在处连续. (  )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:46",
+      "question": "曲线有水平渐近线(    )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:08:52",
+      "question": "设曲线,则该曲线在处的法线方程为( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:09:08",
+      "question": "若,则一定是的驻点。                            (     )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:09:24",
+      "question": "上的连续函数在上至少有一个最大值和一个最小值      (     )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:09:43",
+      "question": "若是的极值点,则或不存在。                (     )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:09:49",
+      "question": "函数的最大值是4,最小值是0。          (     )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:09:54",
+      "question": "曲线  只有铅垂渐近线。                            (     )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:10:00",
+      "question": "曲线的凸区间为(0,1)。                          (     )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:10:14",
+      "question": "点(1,-5)是曲线的拐点。                            (     )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:10:30",
+      "question": "设函数 (  )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:11:00",
+      "question": "在处连续又可导.(  )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:11:17",
+      "question": "有界函数与无穷小的乘积仍然是无穷小 (    )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:11:24",
+      "question": "如果   (   )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:11:30",
+      "question": "盛装危险化学品的包装，在经过处理之后，方可撕下标签，否则不能撕下相应的标签。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:11:45",
+      "question": "臭氧、过氧化合物属于爆炸化合物。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 09:12:00",
+      "question": "水银温度计破了以后，正确的处理是：洒落出来的汞必须立即用滴管、毛刷收集起来，并用水覆盖（最好用甘油），然后在污染处撒上硫磺粉，无液体后（一般约一周时间）方可清扫。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:08",
+      "question": "实验室工作人员对所从事实验的性质应比较了解，并严格按照实验程序和操作规程进行实验，对实验中可能出现的情况要有心理准备，一旦出现问题要有应对措施、低年级学生进行危险性较大的实验时应在导师直接指导下进行。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:17",
+      "question": "灭火器的操作程序：取出灭火器，带到火灾现场，拔掉保险销，一手握压把，一手握喷管，对准火苗根部喷射（注意人站在上风方向）。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:23",
+      "question": "《中华人民共和国固体废弃物污染环境防治法》对危险废物产生、收集、运输、贮存、处置、管理、处罚等方面作出了明确规定，产生固体废物的单位和个人，应当采取措施，防止或者减少固体废物对环境的污染。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:31",
+      "question": "生物安全实验室的废物处置应遵循以下原则处理和处置危险废物：1）将操作、收集、运输、处理及处置废物的危险减至最小；2）将其对环境的有害作用减至最小；3）只可使用被承认的技术和方法处理和处置危险废物；4）排放符合国家或地方规定和标准的要求。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:37",
+      "question": "NaCN、KCN、As2O3、HgO、Na3P、BaCl2、BeCl2、V2O5都是剧毒化学试剂。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:44",
+      "question": "灭火器应定期进行检验。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:51",
+      "question": "防护面具有大小之分,应选用与使用者密合度好的防护面具。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:12:56",
+      "question": "实验过程中长时间使用恒温水域锅时，应注意及时加水，避免干烧发生危险。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:04",
+      "question": "当水银仪器破损时，应尽量将洒落的水银收集起来，并在残迹处洒上硫磺粉。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:10",
+      "question": "对沾染过有毒物质的仪器和用具，实验完毕应立即采取适当方法处理以破坏或消除其毒性",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:17",
+      "question": "全国消防宣传日是每年的11月9日。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:24",
+      "question": "不得在冰箱、烘箱等加热、产热设备附近放置纸板、化学试剂、气体钢瓶等物品。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:31",
+      "question": "不得带着实验防护手套开门、翻阅书籍、使用电脑、接听电话。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:37",
+      "question": "可以使用试验机的计算机连接教育网或公共网。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:13:52",
+      "question": "过氧化氢和过氧乙酸可以用于实验室工作台表面以及金属器械的消毒。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:13:59",
+      "question": "教师应学习研究有关实验室安全的知识，同时在理论教学和实验中对学生进行安全知识教育、教会学生如何正确使用实验设备和实验操作，教会学生在突发事故发生时如何自我保护、相互救援、安全撤离。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:06",
+      "question": "化学危险物品是指中华人民共和国国家标准GB-86《危险货物分类与品名编号》规定的分类标准中的爆炸品、压缩气体和液化气体、易燃液体、易燃固体、自燃物品和遇湿易燃物品、氧化剂和有机过氧化物、毒害品和腐蚀品七大类。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:12",
+      "question": "灭火器应放置在固定、明显易取放的地方。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:18",
+      "question": "70％的乙醇水溶液可以用于皮肤、实验室工作台表面以及小型器械的消毒。皮肤消毒至少10秒、其他物体表面消毒不能少于3分钟。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:24",
+      "question": "氯酸/过氯酸化合物是爆炸化合物，搬运和储存时要注意避免受热、受压或撞击。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:31",
+      "question": "当可燃烧液体呈流淌状燃烧时，应将灭火剂的喷流对准火焰根部由近而远并左右扫射，向前快速推进，直至火焰扑灭。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:37",
+      "question": "实验室产生的危险性废液必须回收，交学校统一处理。由专门机构负责无害化处理，使其变为无害物质，尽量减少对环境的污染。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:44",
+      "question": "任何时候见到洒落的液体不要认为是水，应按照对待不明液体的应急预案进行科学处理，并通知相关人员，以免发生危险。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:50",
+      "question": "各课题组长是各自实验室的安全责任人，根据各自实验室的工作特点制订具体的安全操作细则，落实学校和系各项安全措施，经常对学生等有关人员进行安全教育，并设立组内安全员。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:14:56",
+      "question": "所有实验用过的器具都要及时清洗。所有实验用过的器具都要及时清洗。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:02",
+      "question": "任何单位和个人不得自行购买或私下转让危险化学品。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:08",
+      "question": "废弃的利器(包括针头、小刀、金属和玻璃等)应直接弃置于耐扎容器内。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:15",
+      "question": "NaCN、KCN、As2O3、HgO、Na3P、BaCl2、BaSO4、BeO、BeCl2、V2O5都是剧毒化学试剂。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:21",
+      "question": "防护面具的选用应以等级最高者为最优先的考量。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:28",
+      "question": "进行高、低温操作时必须佩戴防护手套。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:34",
+      "question": "对产生少量有毒气体的实验应在通风橱内进行。通过排风设备将少量毒气排到室外（使排出气在外面大量空气中稀释），以免污染室内空气。产生毒气量大的实验必须备有吸收或处理装置。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:40",
+      "question": "开启有毒药品容器时应戴防毒用具，并戴防护手套，禁止用手直接拿取有毒试剂。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:46",
+      "question": "实验室安全工作的中心任务是防止发生人员伤亡和财产损失。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:52",
+      "question": "在进入实验室进行实验操作前，女士必须将长发整理好，以免头发垂下导致危险事故发生。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:15:59",
+      "question": "Na、K、Al粉、电石、金属氢化物不能与水及空气接触，须密闭保存。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:07",
+      "question": "使用手提灭火器时，拨掉保险销，握住胶管前端（后端金属管易冻伤），对准燃烧物根部用力压下压把，灭火剂喷出，就可灭火。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:13",
+      "question": "发生危险化学品事故后，要对负有责任的主管人员和其他直接责任人员依法给予降级或者撤职的行政处分；触犯法律的，要依法追究刑事责任。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:19",
+      "question": "实验废弃的生物活性实验材料特别是细胞和微生物（细菌、真菌和病毒等）必须及时灭活和消毒处理。固体培养基等要采用高压灭菌处理，未经有效处理的固体废弃物不能作为日常垃圾处置。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:26",
+      "question": "灭火器应定期进行更换。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:32",
+      "question": "打开易挥发或浓酸、浓碱试剂的瓶塞时，瓶口不要对着脸部或其他人，必须在通风橱中进行。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:39",
+      "question": "产生危险废物的单位，必须按照国家有关规定申报登记，按照国家有关规定处置。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:45",
+      "question": "实验室内不许存放易燃、易爆物品，但可以堆放个人物品。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:51",
+      "question": "不存在2f能级",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:16:57",
+      "question": "（2, 2，0）是一组有效的nlm轨道编号。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:03",
+      "question": "洪德规则只适用于原子轨道。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:09",
+      "question": "对于1-20号的主族元素，价电子就是最外层的电子(稀有气体除外)。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:17",
+      "question": "3p是一个轨道",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:24",
+      "question": "组织是协调创业活动的系统，其显著特征包括：创业者的强有力领导和完善的正式的结构和制度。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:31",
+      "question": "“无序-有序-超序”是扩展视角的一种方法，其中“超序”指逻辑论证。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:36",
+      "question": "搞发明创造要有创造力，创新思维就是构成创造力的核心。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:43",
+      "question": "自贸区也是政府职能的一种改革。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:50",
+      "question": "在创业计划书中，风险资本的退出部分应包括退出方式和退出时间的内容。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:17:56",
+      "question": "自我中心型思维障碍表现为大多颇为自信，但有的是钻牛角尖，明知这条道路走不通，非要往前闯，不知道及时转弯子。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:18:12",
+      "question": "现有政策允许知识资本折合成相当比例的有形资产，以股权占有形式参与投入，创办实业。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:18:18",
+      "question": "识别型机会指市场中的目的-手段关系十分明显时，创业家可通过目的-手段关系的连接来辨别机会。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:18:35",
+      "question": "精简版创业计划书第四部分的内容一般是“潜在的魔力”，主要叙述你的公司如何做到与众不同。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 09:18:49",
+      "question": "根据著名的管理学家巴纳德的理论，每个人都是信息的节点。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:19:05",
+      "question": "若,且,则必有.",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:19:24",
+      "question": "消毒是指用物理或化学的手段将病原微生物全部清除或杀灭。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:19:30",
+      "question": "任何两个噪声源声叠加后，噪声级最多增加3dB。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:19:36",
+      "question": "在标准坐姿的基础上,两小腿向前伸出两脚并拢,脚尖可以翘起来。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:19:42",
+      "question": "餐桌上端碗手势应当五个手指都托在碗底,手心朝上。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:19:49",
+      "question": "在求职信件中不可以直接称收信人的职务头衔等。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:19:55",
+      "question": "拜堂是古代婚俗“六礼”之中的一个礼仪。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:20:01",
+      "question": "已婚妇女多穿“振袖”和服,未婚小姐多穿“留袖”和服。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:20:17",
+      "question": "非洲妇女,除了穿着艳丽多彩的服饰外,还喜欢新颖、雅致的发型。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:20:33",
+      "question": "龙卷风是云层中雷暴的产物。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:20:38",
+      "question": "戊肝为四季散发,患者大多是接触传染的肝炎。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:20:44",
+      "question": "完美爱情应该以信任为基石,以性的吸引和欣赏为催化剂,以承诺为约束,既具有相√的稳定性,又充满热情和活力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:20:50",
+      "question": "压力管理就是将人的压力程度调到最低,以避免身心受到伤害。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:20:56",
+      "question": "网络运营者为用户办理网络接入、域名注册服务,办理固定电话、移动电话等入网手续,或者为用户提供信息发布、即时通信等服务时,应当要求用户提供真实身份信息。用户不提供真实身份信息的,网络运营者不得为其提供相关服务",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:03",
+      "question": "判断:根据《互联网信息服务管理办法》,互联网直播发布者发布新闻信息,应当真实准确、客观公正。转载新闻信息应当完整准确,不得歪曲新闻信息内容,并在显著位置注明来源,保证新闻信息来源可追溯。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:12",
+      "question": "判断:省通信管理局应当建立信誉管理、社会监督、情况调查等管理机制,√非经营性互联网信息服务活动实施监督管理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:19",
+      "question": "严禁酒后驾车,不但是保护驾车人安全,同时也是保护他人安全。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:25",
+      "question": "驾驶轻便摩托车时可不佩戴安全头盔。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:32",
+      "question": "学生乘坐摩托车、电动自行车或自行车时应佩戴安全头盔。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:38",
+      "question": "地铁事故发生时,为了疏散被困人员,不应封闭两端入口。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:44",
+      "question": "一些社交软件群里出现“快速出核酸检测结果,“加急最快半个小时”、“家里也能做核酸检测”等信息,只要额外付费便能做快速核酸检测。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:51",
+      "question": "如果您收到来自12381的预警短信,一定要看,可能你在遭遇电信网络诈骗,要保持高度警惕,谨防被骗。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:21:58",
+      "question": "接到自称是医院的电话,说你的父母出了车祸,要求你把钱打到医院账户,你应当立马打钱,救人要紧。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:04",
+      "question": "在寝室有空余床位时,可以让亲戚朋友暂住。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:10",
+      "question": "中午休息时,可将手机、笔记本电脑等放在教室里充电。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:16",
+      "question": "国家安全和社会稳定是改革发展的前提。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:23",
+      "question": "国家√在维护国家安全工作中作出突出贡献的个人和组织给予表彰和奖励。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:30",
+      "question": "任何个人和组织不得有危害国家安全的行为,不得向危害国家安全的个人或者组织提供任何资助或者协助",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:37",
+      "question": "公安机关、检察院、法院办案时,不会通过网络和电话做笔录取证、发送证件照片。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:44",
+      "question": "网络、手机app中的涉黄视频网站是非法的,且往往包含大量木马和非法程序,窃取个人信息或实施诈骗。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:51",
+      "question": "人民安全是我国国家的安全的根本。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:22:57",
+      "question": "在寝室里发现陌生人进出,只要不是找自己,就可以不过问。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:03",
+      "question": "网络空间主权是国家主权的重要组成部分,是国家主权在网络空间的体现和延伸。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:09",
+      "question": "寒潮有利于消灭病虫害。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:15",
+      "question": "吃鲜黄花菜时,放入开水中煮后弃水,捞出后再加温,煮熟后即可食用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:22",
+      "question": "骨折固定时,只要不绑扎的过紧,夹板内无需加垫。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:28",
+      "question": "排解愤怒不需要讲究技巧的,只要图一时之快,逞一时之勇,随意发泄出来就好。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:35",
+      "question": "小明特别恐惧狗,每当看到狗或听到狗叫时就会做出回避性动作。因此,恐惧√小明来说是一种保护机制。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:41",
+      "question": "因维护国家安全和社会公共秩序,处置重大突发社会安全事件的需要,经国务院决定或者批准,可以在特定区域√网络通信采取限制等临时措施",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:46",
+      "question": "电子交易是买方与卖方直接交易,不需要第三方介入。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:52",
+      "question": "行走或骑车时,戴耳机听英语和音乐,容易引发交通事故。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:23:59",
+      "question": "每年12月2日为“全国交通安全日”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:05",
+      "question": "电梯故障发生时,为争取时间,救援行动可以不在电梯公司技术人员的指导下进行。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:12",
+      "question": "从消防观点来说,液体闪点就是可能引起火灾的最高温度。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:20",
+      "question": "√骨折断端已穿出伤口外,应立即将其纳回伤口内,以免引起创口感染。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:26",
+      "question": "在突发事件发生期间,散布谣言、哄抬物价、欺骗消费者,扰乱社会秩序、市场秩序的,由公安机关或者工商行政管理部门依法给予行政处罚;构成犯罪的,依法追究刑事责任。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:34",
+      "question": "《突发公共卫生事件应急条例》于2003年5月9日中华人民共和国国务院令第376号公布,根据2011年1月8日《国务院关于废止和修改部分行政法规的决定》修订。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:41",
+      "question": "A同学接受过心理咨询,说明该同学心理不正常。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:48",
+      "question": "进行心理咨询是件不光彩的事,咨询就意味着承认自己不正常。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:24:54",
+      "question": "心理咨询时,要隐瞒自己的隐私,不能透露内心真实想法和目的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:00",
+      "question": "因学习困扰、考试焦虑、人际关系不协调等造成的烦恼以及青春期的躁动等可以通过心理咨询获得一定的帮助与指导。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:07",
+      "question": "去做心理咨询的人都是心理不正常的,自己心理十分健康,不需要进行心理咨询。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:13",
+      "question": "有心理自杀念头的人心理有问题,不能与其正常相处。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:20",
+      "question": "不能与有自杀倾向的人谈论自杀,因为这样做会提醒患者自杀。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:26",
+      "question": "找工作时,应将工资待遇定为唯一指标,哪怕自己不喜欢且自己不适合也要去争取。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:33",
+      "question": "毕业找工作不是一蹴而就的,需要做好充分准备,并且√择业失败要有心理预期。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:40",
+      "question": "如果存在性心理障碍,且自己不能很好调适或调适无效时,要勇敢求助于心理咨询。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:47",
+      "question": "失恋是痛苦的,如果没有√方,自己今后就活不下去了。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:53",
+      "question": "为弥补内心空虚、好奇心理,增长人生体验阅历,可以同时与几个异性保持恋爱关系。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:25:59",
+      "question": "如果一个人无法接纳自己,无法面√生活,也无法面√自己,那么其一定会做出危害社会的行为。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:05",
+      "question": "视频中的女生总觉得自己不漂亮,一部分原因是在家庭中缺少关爱。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:11",
+      "question": "心理健康的大学生,其人格结构包括气质、能力、性格和思想、信念、动机、兴趣、人生观等各方面能平衡发展。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:17",
+      "question": "按照心理健康的主观体验标准,当体验到痛苦时便可看作心理异常。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:23",
+      "question": "为了防止网络监听，我们可以√传输数据进行加密。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:26:38",
+      "question": "黑客一般都是非计算机专业人士，√计算机技术和程序设计也不甚了解。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:44",
+      "question": "生物化学类实验废弃物应用蓝色专用塑料袋进行包装分类收集,做好标识。其中,锐器类废弃物需用牢固、厚实的纸板箱等小的容器妥善包装。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:51",
+      "question": "涉及病原微生物的实验,须在相应等级的生物安全实验室内开展;依据实验室所处理√象的生物危险程度,把生物安全实验室分为四级,其中四级√生物安全隔离的要求最低,一级最高。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:26:58",
+      "question": "激光器按其波长和功率输出大小及√人体伤害分为四级,一级激光器即大功率激光器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:04",
+      "question": "只要有辐射许可证,可以不管其规定的范围从事放射性同位素和射线装置生产、销售、使用活动。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:11",
+      "question": "锻造、金工实习期间要穿好工作服、工作帽鞋。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:17",
+      "question": "激光机床工作时可以用肉眼直接观察加工部分。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:24",
+      "question": "金属切屑机床按照工作原理分为车床、铣床、刨床等11个大类。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:31",
+      "question": "剧毒化学品、麻醉类和精神类药品需存放在不易移动的保险柜或带双锁的冰箱内,实行“双人领取、双人运输、双人使用、双人双锁保管”的五双制度,并切实做好相关记录。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:38",
+      "question": "金属钠、钾等碱金属应贮存于煤油中;黄磷、汞应贮存于水中。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:45",
+      "question": "化学品MSDS是指化学品安全技术说明书。安全技术说明书详细描述了化学品的燃爆、毒性和环境危害,给出了安全防护、急救措施、安全储运、泄漏应急处理、法规等方面的信息,是了解化学品信息的综合性资料。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:52",
+      "question": "国家标准《危险货物分类和品名编号》(GB4-2005)中,危险化学品定义为具有爆炸、易燃、毒害、腐蚀、放射性等性质,在运输、装卸和储存保管过程中,容易造成人身伤亡和财产损毁而需要特别防护的化学品。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:27:59",
+      "question": "吸收与解吸实验中需要关注的安全重点是防止泄露。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:06",
+      "question": "凡可以造成实验室安全事故的一切客观或主观因素都称为实验室安全隐患。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:13",
+      "question": "在火灾现场中,要是贪恋财物重返火场,很可能因此丢了生命。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:19",
+      "question": "当遇到火势失控时,必须迅速离开火灾现场。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:25",
+      "question": "初起小火的灭火原则是“以快治快、就地取材”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:33",
+      "question": "烟气垂直蔓延的速度比水平蔓延要快",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:38",
+      "question": "一般可燃物(如纸张、棉花、柴草、木材等)燃点均在130-350摄氏度之间。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:28:44",
+      "question": "上海11·15火灾属于一场重大火灾。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:28:59",
+      "question": "当你跟歹徒近距离接触时，可以采用指挖双眼。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:29:07",
+      "question": "摔倒时，可以用脚猛蹬√方的腿部、胸部。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:29:13",
+      "question": "在面√歹徒，自己不小心摔倒时，可以顺势躺下，不用急于爬起来。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:29:19",
+      "question": "地面搏击是巴西柔术的强项。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:29:27",
+      "question": "当歹徒在你的一侧，意图强行带走的时候，你只能使用手臂击裆。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:29:35",
+      "question": "猛踩脚趾的动作要点是要用鞋跟踩歹徒的脚趾。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:29:50",
+      "question": "当被歹徒从背后锁喉的时候，第一步是用两只手扒住歹徒的小臂，缓解颈部压力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:29:56",
+      "question": "弹踢击裆是用大腿的力量带动脚面发力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:30:14",
+      "question": "歹徒右脚在前时，用右脚踢裆效果更好。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 09:30:46",
+      "question": "提膝顶裆动作要领是要奋力一击。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:31:02",
+      "question": "提膝顶裆适合跟歹徒近距离接触时使用。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:08",
+      "question": "掌击下颌适用于歹徒企图从正面强行搂抱接吻时。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:15",
+      "question": "在遭遇不法侵害时，应该奋起反击，而不是坐以待毙。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:22",
+      "question": "利用破坏重心，推到一个人更容易。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:28",
+      "question": "办卡时要尽量将自己个人资料都填写完整。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:34",
+      "question": "乘出租车需要索要发票，以便保存。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:40",
+      "question": "如办卡需要复印身份证，最好在复印件上注明用途及时间。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:47",
+      "question": "个人和家长信息包括手机号码、家庭住址、电话都是应该严格保密的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:31:55",
+      "question": "当你弄不清楚是否是诈骗时，可以咨询110。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:01",
+      "question": "参加培训的时候，需要先查看其培训资质证明材料，并上网或电话核实工商部门有没有登记。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:07",
+      "question": "同学间的少量输赢的不算赌博（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:14",
+      "question": "在教室里或者宿舍里发现有陌生人，上前询问能在一定程度上减少偷盗事件发生。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:20",
+      "question": "去盥洗室上厕所时间很短，可以不用锁门。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:26",
+      "question": "诈骗案件造成的损失远远高于盗窃案件。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:34",
+      "question": "在人流量大的公共场所，为保证人身财产安全，应尽量减少贵重物品的佩戴。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:40",
+      "question": "根据交通安全意识的观点，所有的顺风车都有危险。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:46",
+      "question": "救助自杀的人第一的目的就是让其放下死念。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:32:55",
+      "question": "当企图自杀的人较为懦弱的时候，不应采用疏导的方法进行谈判。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:33:03",
+      "question": "遇到恐怖主义的袭击第一件事是救人",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:33:13",
+      "question": "恐怖主义离我们大学生很远，可以不用关注。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:33:19",
+      "question": "上海合作组织成立之日，明确鉴定了恐怖主义的概念。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:33:29",
+      "question": "“藏独”恐怖主义是目前我国面临的头号恐怖威胁。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:33:33",
+      "question": "我国已经出现了带恐怖组织性质的犯罪。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:33:38",
+      "question": "进入21世纪以后，和平统一成为了时代的主题。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:33:45",
+      "question": "大学生在学校的违纪主要分为违反日常行为规范和违反教学管理规定两种。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:33:51",
+      "question": "邓小平同志说中国军队在世界屋脊上进行了一次彰显中国国威、军威的战斗。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:34:02",
+      "question": "针√海洋国土的争议，中国政府的策略是寸土必争。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:34:09",
+      "question": "人们面临的安全问题只有人生安全问题",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:34:17",
+      "question": "安全事故的发生具有偶然性,大学生一生当中很少或者根本不会遇到刻骨铭心的安全事故。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:34:31",
+      "question": "我国在防灾演练教育方面有待提升,缺少知识和技能的防护,面√灾难时,造成的危害较大。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:34:39",
+      "question": "加强大学生安全教育是培养德智体等全面发展的社会主义事业的建设者和接班人的重要依托。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:34:47",
+      "question": "使用除颤器本身并不能让患者恢复心跳,而是通过电击使致命性心律失常终止(如室颤,室扑等),之后再通过心脏高位起搏点兴奋重新控制心脏搏动从而使心脏恢复跳动。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:34:53",
+      "question": "只有在最佳抢救时间的“黄金4分钟”内,利用自动体外除颤器(AED)√患者进行除颤和心肺复苏,才是最有效制止猝死的办法",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:00",
+      "question": "自动体外除颤器(AED)可以诊断特定的心律失常,并且给予电击除颤,是可被非专业人员使用的用于抢救心脏骤停患者的医疗设备。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:11",
+      "question": "人身体长时间在低温水中浸泡,就可能会造成冻伤。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:17",
+      "question": "电击伤不但可以造成心跳停止,也可以造成烧伤。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:24",
+      "question": "溺水者致死的主要原因是水进入呼吸道而发生的窒息。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:30",
+      "question": "被征用的财产在使用完毕或者突发事件应急处置工作结束后,应当及时返还。财产被征用或者征用后毁损、灭失的,不用给予补偿。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:36",
+      "question": "《突发事件应√法》规定,在突发事件的处置过程中,政府处置突发事件的权力具有优先性,公民、法人和其他组织要自觉接受来自政府权力的限制",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:42",
+      "question": "车辆落水后,如果车门、车窗、天窗都无法打开,可以选择从后备箱逃生。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:49",
+      "question": "车辆落水后,要快速打开车门、车窗或天窗撤离,不要在车内打电话等待救援",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:35:56",
+      "question": "风暴潮与海岸地形、轮廓密切相关,喇叭状河口海岸更利于海水上涌。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:02",
+      "question": "风暴潮灾害居海洋灾害之首位,世界上绝大多数因强风暴引起的特大海岸灾害都是由风暴潮造成的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:08",
+      "question": "海啸,是由海底地震、火山爆发、海底滑坡或气象变化产生的破坏性海浪",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:16",
+      "question": "地震主震结束后,学校的学生疏散时,要有顺序,还要以书包等保护头部。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:23",
+      "question": "手机、哨子、旗帜、颜色鲜明的衣服等都可用作水灾后求救的联络工具。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:29",
+      "question": "夏天天气比较炎热,穿凉鞋、拖鞋和镂空的鞋进入实验室试验,比较方便。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:37",
+      "question": "做危险实验时必须戴防护眼镜,加氢反应、高压反应必须在特种实验室进行。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:45",
+      "question": "空化学试剂瓶可以视为普通垃圾,装入结实的纸箱,积存一满箱后,妥善丢弃。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:52",
+      "question": "特种作业人员未经专门的安全作业培训,未取得特种作业操作资格证书,上岗作业导致事故的,应追究生产经营单位有关人员的责任。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:36:59",
+      "question": "使用大功率的用电实验设备前,要检查线路是否接地。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:05",
+      "question": "实验室有人触电时,抢救人员应该赶紧用手将触电者拉开,帮助触电者脱离电源。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:12",
+      "question": "实验室水患多半是由于冷凝装置的胶管老化、滑脱引起。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:19",
+      "question": "自来水是实验室中用的最多的水。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:37:33",
+      "question": "使用激光扫描仪预览和扫描资料时,可以不盖上扫描仪盖。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:38",
+      "question": "为防止食物腐败变质,可将食物储藏在储有化学药品的冰箱或储藏柜内。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:46",
+      "question": "在实验室允许口尝鉴定试剂和未知物。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:51",
+      "question": "高校实验室安全事故的类型主要有火灾性事故、爆炸性事故、毒害性事故、机电伤人性事故、生物性事故及设备损坏性事故等。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:37:57",
+      "question": "应急照明灯可在浓烟密布的情况下为人员疏散指示安全出口及其方向",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:38:12",
+      "question": "火焰是正在燃烧的可燃气体占据的发光、发热的空间,因此,灭火要向火焰射水。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:38:20",
+      "question": "培训贷一般指培训机构和P2P网络贷款机构进行合作，√培训者进行借贷，培训者以分期付款的方式进行还款。现在招聘公司（实则为培训机构）多借助招聘网站以招聘的形式√求职者进行有偿高额培训。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:38:26",
+      "question": "培训贷是学生在求职时遇到一些开出优厚薪酬的公司，但是与公司签订就业协议后，却被要求交付一笔高额的培训费用。若无力缴纳，此时公司人员就会推荐在公司或者第三方贷款。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:38:33",
+      "question": "“回租贷”相关平台已超过100个，注册客户数百万人，小部分目标客户锁定为大学生，利率畸高，一般年化利率在300%以上，个别甚至超过1000%。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 09:38:47",
+      "question": "回租贷的模式是学生把手机“抵押”给贷款平台，借短期小额资金。平台评估手机的价格，并与用户约定借款期限和还款金额。平台实际收取的利息就是回购价格高于回收价格部分及“评估费”、“服务费”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:38:54",
+      "question": "“校园贷”是在校学生向各类借贷平台借钱的行为。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:00",
+      "question": "遇到两抢案件，财务不是很多的时候最好舍财保命。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:07",
+      "question": "保全生命安全比保护财产更重要。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:13",
+      "question": "如果夜晚发现小偷进入寝室，小偷叫你不要出声的时应照做。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:21",
+      "question": "招工或招聘时，招聘人员许诺的条件越优厚，你越要留个心眼。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:26",
+      "question": "能预料到的会造成的伤害都能避免，预料不到的就不可能避免了。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:33",
+      "question": "发现有精神类疾病的同学，可以采取的政策之一是休学。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:40",
+      "question": "大学生酒后违法犯罪会因你饮酒而从轻处罚。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:45",
+      "question": "在运动场上打球的都是√手，就一定要分出输赢结果。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:39:51",
+      "question": "√寝室内“看不惯”室友要忍让。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:40:07",
+      "question": "将安全作为大学生第一课是有必要的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:40:14",
+      "question": "网络成瘾的表现之一是“上网时间天天加”。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:40:20",
+      "question": "交友、拳击等一定程度上都有助于缓解网瘾。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:40:26",
+      "question": "被火山灰淹没的两个非常著名的遗址,一个是赫库兰尼姆遗址,一个是庞贝城遗址。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:40:31",
+      "question": "我国的民族识别工作经历了六个历史阶段。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:40:54",
+      "question": "民族随着阶级的产生而产生，也将随着阶级的消亡而消亡。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:00",
+      "question": "部落具有原始社会组织形式单一属性。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:06",
+      "question": "我国的民族平等是建立在社会主义公有制的基础上的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:12",
+      "question": "两千多年来,尽管有分裂、有纷争,但是多民族国家的统一始终是历史的主流,是各民族人心所向,是发展的大势所趋。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:18",
+      "question": "少数民族干部的培养和选拔，是少数民族实现当家作主，行使自己管理内部事务权利的关键，也是中国共产党的一项重要政策，更是做好民族工作的关键。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:25",
+      "question": "无论哪个民族建鼎称尊，建立的都是多民族国家，而且越是强盛的王朝吸纳的民族就越多。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:32",
+      "question": "我们要以开明的态度√待境外宗教势力，将之和国内宗教有机结合",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:38",
+      "question": "控制是指根据既定的目标不断跟踪和修正所采取的行为，以实现预想的目标或业绩。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:41:52",
+      "question": "先秦时代的主流音乐和乐器是金石打击乐。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:41:58",
+      "question": "《诗经》的特殊意义在于它是中国诗歌的一个源头。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:04",
+      "question": "加润滑油时地面有油污等下课时候统一在清理",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:10",
+      "question": "生态工业的发展理念,是新的人与自然之间的物质变换关系,是一种既满足环境保护和人类健康要求,又最大限度地发展工业生产的最优化模式。(1.4)",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:17",
+      "question": "十八大报告提出经济建设、政治建设、文化建设、社会建设和生态文明的“四位一体”,使生态文明建设提升到前所未有的地位和高度,标志着有中国特色社会主义道路迈入了一个社会主义生态文明的新时代。(1.4)",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:22",
+      "question": "传统经济的生产观念是要充分考虑自然生态系统的承载能力,尽可能地节约自然资源,不断提高自然资源的利用效率,循环使用资源,创造良性的社会财富。(1.4)",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:28",
+      "question": "“绿色发展”被明确写入“十二五”规划并独立成篇,表明我国走绿色发展道路的决心和信心。(1.4)",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:36",
+      "question": "固体废弃物的管理是指控制其污染和实行资源化。(1.4)",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:42",
+      "question": "生态系统演化是生态系统各项因素变化的综合结果。(1.4)",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:48",
+      "question": "保护生态环境不必依靠制度。(1.4)",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:42:54",
+      "question": "环境产品提供是政府的职责,基本的环境质量是一种公共产品,是政府必须确保的公共服务。(1.4)",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:00",
+      "question": "损毁财产案件中，财产价值小且主动恢复原状或赔偿损失的，可以认定为“情节显著轻微”，不予治安管理处罚。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:07",
+      "question": "接报案、受案登记、接受证据、信息采集、调解、送达文书等工作，可以由一名警务辅助人员进行，但应当全程录音录像。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:12",
+      "question": "法律√不够处罚条件的√象是无能为力的，但是√于违反国家安全类的案件除外。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:19",
+      "question": "从处罚的主体看，我国治安管理处罚实行“一元制”的处罚体制；法院可以√被诉行政处罚决定可以做出变更判决，但法院不拥有首次行政处罚权。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:24",
+      "question": "√于当场处罚的案件，公安机关应当在违法嫌疑人到案后48小时内做出处理决定。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:32",
+      "question": "为了达到某一目的，在一定时间内连续多次实施同一性质的行为，可以根据案件的情节和社会危害性给予多次治安管理处罚，但处罚应当合并执行。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:38",
+      "question": "辨认笔录要有辨认时间、地点、辨认√象和目的、辨认经过，但不能记录辨认结果。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:44",
+      "question": "电位移矢量仅与自由电荷有关。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:51",
+      "question": "运载恒定电流的导体中,电场强度等于零。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:43:57",
+      "question": "封闭金属壳（不论接地与否）内部静电场不受壳外电荷影响，接地封闭金属壳外部静电场不受壳内电荷影响，这种现象称为静电屏蔽。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:05",
+      "question": "基尔霍夫第一定律是电荷守恒定律在稳恒电流条件下导体分支节点处得到的结论。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:10",
+      "question": "?√于点电荷产生的场，距离点电荷越近的地方，电势越大。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:16",
+      "question": "现在就业形势严峻，职校生在就业市场上毫无竞争力。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:22",
+      "question": "管理出效率，管理出人才。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:28",
+      "question": "创新技术，推动企业集约型发展，是企业提高经济效益的关键。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:35",
+      "question": "发生意外后先√伤员进行必要的止血、包扎、固定等处理,然后尽可能用担架搬运,搬运时病人始终处脚朝前,头朝后,以便于随时观察伤者情况变化,及时实施急救处理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:43",
+      "question": "废弃的有害固体药品,可经处理解毒后,丢弃在生活垃圾处。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:49",
+      "question": "不要乱拉乱接电线,以防触电或发生火灾。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:44:55",
+      "question": "实验动物质量的达不到标准,会导致动物实验的敏感性、重复性差,致使生物制剂、药品的安全性、有效性评价试验得不到承认,影响出口。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:02",
+      "question": "使用手提灭火器时,拨掉保险销,握住胶管前端,√准燃烧物根部用力压下压把,灭火剂喷出,左右扫射,就可灭火。你的答案:",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:08",
+      "question": "不能将实验室易燃易爆物品带出实验室。你的答案:",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:14",
+      "question": "环境监测经历了被动监测、主动监测和自动监测的发展过程。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:21",
+      "question": "测定溶解氧、生化需氧量和有机污染物等项目的水样必须充满容器。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:29",
+      "question": "离子色谱中抑制柱的作用是削减洗提液造成的本底电导和提高被测组分的电导。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:35",
+      "question": "使用硝酸-氢氟酸进行水样消解时，√消解用的烧杯材质没有要求。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:41",
+      "question": "生活饮用水同样需要检测溶解氧和BOD5指标。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:47",
+      "question": "可以将待测水样带回实验室以后再测水温。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:53",
+      "question": "六价铬属于我国优先污染物。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:45:59",
+      "question": "气提、顶空和蒸馏法适用于测定易挥发组分的水样预处理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:46:06",
+      "question": "某一电镀企业要√生产过程中产生的六价铬和总铬进行监测，应把监测点设置在工厂废水总排放口。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 09:46:21",
+      "question": "六价铬比三价铬毒性大，五价砷比三价砷毒性大。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:46:38",
+      "question": "重铬酸钾氧化性很强，可以氧化所有的有机物。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:46:44",
+      "question": "国家环境保护标准要严于地方环境保护标准。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:46:51",
+      "question": "瞬时水样适用于采集水质比较稳定的水样。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:46:57",
+      "question": "水的色度一般是指表色而言。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:03",
+      "question": "水体的氧化还原电位必须现场测定。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:09",
+      "question": "水温计可以测深层水温。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:16",
+      "question": "矿化度是水化学成分测定的重要指标，一般只用于天然水。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:47:31",
+      "question": "当无机物的浓度较低时，电导率随浓度的增大而增加。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:37",
+      "question": "环境监测的实质是用环境质量指标√环境介质进行表征。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:42",
+      "question": "水深不到0.5m时，在水深1/2处设置采样点。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:50",
+      "question": "污泥容积指数过低，说明泥粒细小、紧密，无机物多，缺乏活性和吸附能力。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:47:56",
+      "question": "在工厂废水总排放口布设采样点，监测一类污染物。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:02",
+      "question": "√于较清洁的水样，可用硝酸消解。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:09",
+      "question": "依据噪声控制功能分区规定，居民住宅区应归属为Ⅱ类声环境功能区。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:16",
+      "question": "振动加速度级和振动级的单位都为分贝。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:22",
+      "question": "采用网格布点法进行区域环境噪声监测时,如果网格中工厂、道路及非建成区的面积之和小于网格面积的50%,则该网格为无效网格。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:29",
+      "question": "照度的单位是勒，光通量的单位是流明。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:35",
+      "question": "噪声监测时，一般使用A计权声级。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 09:48:53",
+      "question": "半衰期是指放射性核素因衰变而减少到原来一半时所需的时间。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:48:59",
+      "question": "绝大部分精神病人√自己的疾病没有自知力，更不会主动求医。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:49:07",
+      "question": "在恋爱过程中应该保持彼此尊重信任等。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 09:49:13",
+      "question": "自我同一性是指青少年√自己的本质、信仰和一生中的重要方面前后一致及较完善的意识，也即个人的内部状态与外部环境的整合和协调一致。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    }
+  ]
+}

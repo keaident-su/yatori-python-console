@@ -1,0 +1,1080 @@
+# -*- coding: utf-8 -*-
+"""
+多答题源答题引擎 - 自动答题核心
+
+功能:
+1. 多答题源顺序调用(降级回退): 支持 言溪题库(emmcy) / AVXE题库(axe) / 多个AI答题源
+   / 本地题库缓存(local, 独立答题源), 第一个源取不到答案自动转向下一个
+2. 配置极简: 每个答题源只需填 token, 其余参数内置默认; 调用顺序由用户自定义名称控制
+3. 各答题源独立启停开关(含本地题库缓存)
+4. 支持多个题库组, 组内子项可自定义命名(二次命名), 自定义名称用于调用顺序排序
+5. 启动时 token 有效性自检并输出结果
+6. 本地题库缓存: 独立答题源(可排序/可开关), 存储格式与 questions_answers.json 一致;
+   外部题库/AI 答案成功后自动回写缓存并输出日志
+
+答题流程: 按 order 顺序依次调用各答题源(含本地缓存), 失败自动回退;
+        本地缓存命中直接返回; 外部源成功后将题目/答案回写本地缓存
+"""
+import json
+import os
+import re
+import threading
+import time
+from difflib import SequenceMatcher
+from typing import Dict, List, Optional, Tuple
+
+from utils.log import (
+    log_print, INFO, Green, Yellow, Red, BoldRed, BoldGreen, Default
+)
+
+from logic.core.tiku_client import (
+    EmmcyTikuClient, AxeTikuClient, N1TikuClient, ZETikuClient,
+    EveryTikuClient, _plain_options, log_debug_source
+)
+
+# ============ 常量 ============
+
+# 答题源类型
+SOURCE_EMMCY = "emmcy"   # 言溪题库
+SOURCE_AXE = "axe"       # AVXE题库
+SOURCE_N1 = "n1"         # N1题库(无言题库/网课搜题助手)
+SOURCE_ZE = "ze"         # ZE题库(ZError)
+SOURCE_EVERY = "every"   # EveryAPI题库(AI问答型)
+SOURCE_AI = "ai"         # AI大模型
+SOURCE_LOCAL = "local"   # 本地题库缓存(独立答题源, 可参与顺序排序)
+
+SOURCE_TYPE_ALIAS = {
+    "emmcy": SOURCE_EMMCY, "yanxi": SOURCE_EMMCY, "言溪": SOURCE_EMMCY,
+    "yanxi_tiku": SOURCE_EMMCY,
+    "axe": SOURCE_AXE, "avxe": SOURCE_AXE, "AXE_tiku": SOURCE_AXE,
+    "n1": SOURCE_N1, "n1_tiku": SOURCE_N1, "n1题库": SOURCE_N1,
+    "n1screch": SOURCE_N1, "n1screch_tiku": SOURCE_N1,
+    "ze": SOURCE_ZE, "ze_tiku": SOURCE_ZE, "zerror": SOURCE_ZE,
+    "ze题库": SOURCE_ZE,
+    "every": SOURCE_EVERY, "everyapi": SOURCE_EVERY,
+    "every_api": SOURCE_EVERY, "every_tiku": SOURCE_EVERY,
+    "ai": SOURCE_AI, "ai_model": SOURCE_AI, "model": SOURCE_AI,
+    "local": SOURCE_LOCAL, "local_json": SOURCE_LOCAL, "cache": SOURCE_LOCAL,
+    "本地题库缓存": SOURCE_LOCAL,
+}
+
+_ANSWER_PLACEHOLDER_KW = ("很抱歉", "未找到", "没有找到", "搜索不到", "无答案")
+
+
+def _answer_cacheable(ans: str, q_type: str) -> bool:
+    """判断答案是否允许写入本地题库缓存(2026-10-03精简)
+
+    用户方案变更: 缓存改在"提交成功后"写入(提交成功=答案有效),
+    故此处仅拦截"恶劣数据": 占位词/空/换行/超长(>2000)。
+    不再拦截"选择题>20字符/句末标点"(那会误杀"选项文字"型答案)。
+    """
+    a = (ans or "").strip()
+    if not a:
+        return False
+    if "\n" in a or "\r" in a:
+        return False
+    if any(kw in a for kw in _ANSWER_PLACEHOLDER_KW):
+        return False
+    return len(a) <= 2000
+
+
+# ============ 答题源 ============
+
+class AnswerSource:
+    """归一化后的答题源(题库组子项)"""
+
+    # 连续多次网络级失败后进入冷却(避免失效源拖慢每题查询)
+    _FAIL_COOLDOWN_SEC = 300
+
+    def __init__(self, name: str, s_type: str, enable: int = 1,
+                 token: str = "", ai_type: str = "", model: str = "",
+                 url: str = ""):
+        self.name = (name or "").strip() or s_type
+        self.type = SOURCE_TYPE_ALIAS.get((s_type or "").strip().lower(),
+                                          (s_type or "").strip().lower())
+        self.enable = 1 if enable else 0
+        self.token = (token or "").strip()
+        self.ai_type = (ai_type or "").strip().upper()
+        self.model = (model or "").strip()
+        self.url = (url or "").strip()
+        # 运行时状态(不参与配置签名)
+        self._fails = 0
+        self._cooldown_until = 0.0
+        self._client = None
+
+    def client_key(self) -> tuple:
+        return (self.name, self.type, self.enable, self.token,
+                self.ai_type, self.model, self.url)
+
+    def check(self) -> Tuple[bool, str]:
+        """token有效性自检 (仅第三方题库与AI)"""
+        if not self.token:
+            return False, "未填写token"
+        if self.type == SOURCE_EMMCY:
+            return EmmcyTikuClient(self.url, self.token).check()
+        if self.type == SOURCE_AXE:
+            return AxeTikuClient(self.url, self.token).check()
+        if self.type == SOURCE_N1:
+            return N1TikuClient(self.url, self.token).check()
+        if self.type == SOURCE_ZE:
+            return ZETikuClient(self.url, self.token).check()
+        if self.type == SOURCE_EVERY:
+            return EveryTikuClient(self.url, self.token, self.model).check()
+        if self.type == SOURCE_AI:
+            from logic.core.ai_client import AIClient
+            err = AIClient(self.url, self.model, self.token,
+                           self.ai_type).check()
+            if err:
+                return False, str(err)
+            return True, "可用"
+        return False, f"未知答题源类型: {self.type}"
+
+    def _get_client(self):
+        """获取/复用题库客户端(携带last_error用于失败检测)"""
+        if self._client is None:
+            if self.type == SOURCE_EMMCY:
+                self._client = EmmcyTikuClient(self.url, self.token)
+            elif self.type == SOURCE_AXE:
+                self._client = AxeTikuClient(self.url, self.token)
+            elif self.type == SOURCE_N1:
+                self._client = N1TikuClient(self.url, self.token)
+            elif self.type == SOURCE_ZE:
+                self._client = ZETikuClient(self.url, self.token)
+            elif self.type == SOURCE_EVERY:
+                self._client = EveryTikuClient(
+                    self.url, self.token, self.model)
+        return self._client
+
+    def query(self, question: str, options: Optional[List[str]] = None,
+              q_type: str = "") -> str:
+        """查询答案, 查不到返回空串"""
+        if not self.enable or not self.token:
+            return ""
+        if time.time() < self._cooldown_until:
+            log_debug_source(
+                self.name, "处于连续失败冷却期, 本次跳过(冷却结束后自动恢复)")
+            return ""
+        try:
+            if self.type in (SOURCE_EMMCY, SOURCE_AXE, SOURCE_N1,
+                             SOURCE_ZE, SOURCE_EVERY):
+                client = self._get_client()
+                ans = client.query(question, options, q_type)
+                if ans:
+                    self._fails = 0
+                    return ans
+                # 连续网络级失败达到上限后进入冷却
+                if getattr(client, "last_error", ""):
+                    self._fails += 1
+                    if self._fails >= 3:
+                        self._cooldown_until = time.time() + self._FAIL_COOLDOWN_SEC
+                        self._fails = 0
+                        log_debug_source(
+                            self.name,
+                            f"连续请求失败, 已暂停调用{self._FAIL_COOLDOWN_SEC // 60}分钟")
+                else:
+                    self._fails = 0
+                return ""
+            if self.type == SOURCE_AI:
+                from logic.core.ai_client import AIClient
+                return AIClient(self.url, self.model, self.token,
+                                self.ai_type).ask(question, options, q_type)
+        except Exception as e:
+            log_debug_source(self.name, f"查询异常: {e}")
+        return ""
+
+
+def _is_valid_answer(ans) -> bool:
+    """答案有效性校验(2026-10-21): 拒绝垃圾答案值
+    背景: 题库污染实测—"不知道"等无效值在题库中335+条, 命中后被判题强行猜true导致考试低分;
+    垃圾答案视为未命中, 引擎继续尝试后续答题源
+    """
+    s = str(ans or "").strip()
+    if not s:
+        return False
+    if s in ("不知道", "不确定", "无法确定", "不会", "不清楚", "不知道。", "无", "没学过", "不详"):
+        return False
+    import re as _re
+    if _re.fullmatch(r"[\?？。\.、，,！!：:；;~～ ]+", s):
+        return False
+    return True
+
+
+def _flatten_sources(cfg) -> List[AnswerSource]:
+    """将配置(题库组/子项)展平为答题源列表"""
+    result: List[AnswerSource] = []
+
+    def _one(node, inherit_type: str = ""):
+        s_type = getattr(node, "type", "") or inherit_type
+        return AnswerSource(
+            name=getattr(node, "name", ""),
+            s_type=s_type,
+            enable=getattr(node, "enable", 1),
+            token=getattr(node, "token", ""),
+            ai_type=getattr(node, "ai_type", ""),
+            model=getattr(node, "model", ""),
+            url=getattr(node, "url", ""),
+        )
+
+    for group in getattr(cfg, "sources", None) or []:
+        items = getattr(group, "items", None) or []
+        if items:
+            # 组内含多个子项: 逐个生成, 子项自定义名称用于排序
+            for item in items:
+                src = _one(item, inherit_type=getattr(group, "type", ""))
+                if not src.token:
+                    src.token = (getattr(group, "token", "") or "").strip()
+                if not src.enable or not getattr(group, "enable", 1):
+                    src.enable = 0
+                result.append(src)
+        else:
+            result.append(_one(group))
+    return result
+
+
+def _apply_order(sources: List[AnswerSource],
+                 order: List[str]) -> List[AnswerSource]:
+    """按用户自定义名称排序(未列出的保持定义顺序排在后面)"""
+    if not order:
+        return sources
+    named = [s.strip() for s in order if str(s or "").strip()]
+    if not named:
+        return sources
+    ordered: List[AnswerSource] = []
+    used_idx = set()
+    for target in named:
+        for i, src in enumerate(sources):
+            if i in used_idx:
+                continue
+            if src.name == target:
+                ordered.append(src)
+                used_idx.add(i)
+    for i, src in enumerate(sources):
+        if i not in used_idx:
+            ordered.append(src)
+    return ordered
+
+
+# ============ 本地题库缓存 ============
+
+_PUNCT_RE = re.compile(
+    r"[\s\u3000\xa0，。、；：？！,.;:?!()（）\[\]【】<>《》\"'“”‘’]+")
+
+
+def _norm_question(text: str) -> str:
+    """题目归一化(去空白/常见标点, 用于缓存匹配)"""
+    return _PUNCT_RE.sub("", (text or "")).lower()
+
+
+class LocalTikuCache:
+    """本地题库缓存 - 格式与 questions_answers.json 一致 {"题目": "答案"}"""
+
+    def __init__(self, path: str, enable: int = 1):
+        self.path = path or "questions_answers.json"
+        self.enable = bool(enable)
+        self._lock = threading.RLock()
+        self._data: Dict[str, str] = {}
+        self._norm_index: Dict[str, str] = {}
+        self._bucket: Dict[int, List[str]] = {}  # 长度分桶(大题库加速)
+        self.loaded = False
+        self._load_failed = False  # 读取失败时禁止写回(防止覆盖损坏文件)
+        self._disk_sig = None      # 磁盘文件签名(mtime_ns,size): 检测外部修改
+
+    def _disk_signature(self):
+        try:
+            st = os.stat(self.path)
+            return (st.st_mtime_ns, st.st_size)
+        except OSError:
+            return None
+
+    def load(self):
+        with self._lock:
+            if self.loaded:
+                return
+            self.loaded = True
+            if not os.path.exists(self.path):
+                return
+            try:
+                with open(self.path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    self._data = {str(k): str(v)
+                                  for k, v in data.items() if str(k).strip()}
+                    self._rebuild_index()
+                self._disk_sig = self._disk_signature()
+            except Exception as e:
+                # 已存在但读取失败: 标记为禁止覆写, 避免清空原有题库
+                self._load_failed = True
+                log_print(INFO, BoldRed,
+                          f"[答题源] 本地题库缓存读取失败({self.path}): {e}")
+                log_print(INFO, BoldRed,
+                          "[答题源] 为避免覆盖损坏文件, 已暂停写入该缓存文件")
+
+    def _rebuild_index(self):
+        self._norm_index = {}
+        self._bucket = {}
+        for k, v in self._data.items():
+            nk = _norm_question(k)
+            if nk and nk not in self._norm_index:
+                self._norm_index[nk] = v
+        # 长度分桶(每8字符一桶, 供包含/模糊匹配快速筛选)
+        for nk in self._norm_index:
+            self._bucket.setdefault(len(nk) // 8, []).append(nk)
+
+    @property
+    def count(self) -> int:
+        with self._lock:
+            return len(self._data)
+
+    def lookup(self, question: str) -> Tuple[str, str]:
+        """查找答案 -> (答案, 命中的原题), 未命中返回空"""
+        if not self.enable or not question:
+            return "", ""
+        self.load()  # 懒加载: 首次访问自动读取题库文件
+        q = question.strip()
+        with self._lock:
+            # 1. 原文精确
+            v = self._data.get(q)
+            if v:
+                return v, q
+            # 2. 归一化精确
+            nq = _norm_question(q)
+            if nq:
+                v = self._norm_index.get(nq)
+                if v:
+                    return v, q
+            if len(nq) < 6:
+                return "", ""
+            nqlen = len(nq)
+            # 3. 包含匹配(双向, 仅扫相近长度桶, 避免大题库全量扫描)
+            for b in range(max(0, nqlen // 16 - 1), nqlen // 4 + 2):
+                for k in self._bucket.get(b, ()):
+                    if len(k) >= 8 and (k in nq or nq in k):
+                        return self._norm_index[k], question
+            # 4. 相似度匹配(仅扫长度接近的桶, 控制开销)
+            best_v, best_score = "", 0.0
+            candidates = []
+            for b in range(max(0, int(nqlen * 0.6) // 8 - 1),
+                           int(nqlen * 1.6) // 8 + 2):
+                for k in self._bucket.get(b, ()):
+                    if not k:
+                        continue
+                    ratio = len(k) / max(nqlen, 1)
+                    if 0.6 <= ratio <= 1.6:
+                        candidates.append(k)
+            candidates.sort(key=lambda k: abs(len(k) - nqlen))
+            for k in candidates[:400]:
+                score = SequenceMatcher(None, nq, k).ratio()
+                if score > best_score:
+                    best_score, best_v = score, self._norm_index[k]
+            if best_score >= 0.85:
+                return best_v, question
+            return "", ""
+
+    def save(self, question: str, answer: str) -> bool:
+        """写入新答案(格式严格对齐 questions_answers.json)"""
+        q = (question or "").strip()
+        a = (answer or "").strip()
+        if not self.enable or not q or not a:
+            return False
+        if any(kw in a for kw in _ANSWER_PLACEHOLDER_KW):
+            return False
+        self.load()  # 懒加载: 确保已有数据不丢失
+        if self._load_failed:
+            return False
+        with self._lock:
+            # 外部修改检测: 题库文件被其它程序/工具替换或更新时,
+            # 重新加载磁盘最新内容后再写入, 避免覆盖外部新数据(如大题库导入)
+            cur_sig = self._disk_signature()
+            if cur_sig is not None and self._disk_sig is not None and cur_sig != self._disk_sig:
+                old_count = len(self._data)
+                log_print(INFO, Yellow,
+                          f"[答题源] 检测到本地题库文件被外部修改({self.path}), "
+                          f"正在重新加载合并(内存{old_count}条 -> 磁盘最新)...")
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                if self._load_failed:
+                    return False
+                log_print(INFO, Green,
+                          f"[答题源] 已重新加载题目 {len(self._data)} 条")
+            if q in self._data:
+                return False
+            self._data[q] = a
+            nq = _norm_question(q)
+            if nq:
+                self._norm_index.setdefault(nq, a)
+                self._bucket.setdefault(len(nq) // 8, []).append(nq)
+            try:
+                dir_name = os.path.dirname(os.path.abspath(self.path))
+                if dir_name:
+                    os.makedirs(dir_name, exist_ok=True)
+                # 2026-10-04修复: tmp名加入线程ID+随机后缀, 避免多线程
+                # (多账号并发)写同一tmp文件的WinError 32/5竞争
+                tmp_path = (f"{self.path}.{threading.get_ident()}_"
+                            f"{os.urandom(4).hex()}.tmp")
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(self._data, f, ensure_ascii=False, indent=4)
+                # 替换也可能被瞬时占用(Windows): 重试3次
+                last_err = None
+                for _rt in range(3):
+                    try:
+                        os.replace(tmp_path, self.path)
+                        last_err = None
+                        break
+                    except OSError as _oe:
+                        last_err = _oe
+                        time.sleep(0.3)
+                if last_err is not None:
+                    raise last_err
+                self._disk_sig = self._disk_signature()
+                return True
+            except Exception as e:
+                log_print(INFO, BoldRed,
+                          f"[答题源] 本地题库缓存写入失败({self.path}): {e}")
+                return False
+
+    # ============ 题库管理(方案A, 2026-10-08): 更正/检索/备份 ============
+
+    def _backup_once_daily(self):
+        """每天首次修改前自动备份题库文件(防误改损坏; 同日不重复备份)"""
+        try:
+            import datetime as _dt
+            today = _dt.date.today().isoformat()
+            if getattr(self, "_backup_day", "") == today:
+                return
+            if os.path.exists(self.path):
+                bk = f"{self.path}.bak_{today}"
+                if not os.path.exists(bk):
+                    import shutil as _sh
+                    _sh.copy2(self.path, bk)
+                    log_print(INFO, Green,
+                              f"[题库管理] 已自动备份 -> {bk}")
+            self._backup_day = today
+        except Exception:
+            pass
+
+    def update(self, question: str, answer: str,
+               new_question: str = "") -> bool:
+        """【题库管理】更正已有题目: 覆盖答案值 / 可选重命名题面
+
+        :param question: 原题面(必须是已存在的键)
+        :param answer: 新答案值(空=不改答案)
+        :param new_question: 新题面(空=不改; 非空=键重命名, 答案保留)
+        :return: True=已写入
+        """
+        q = (question or "").strip()
+        if not self.enable or not q:
+            return False
+        a = (answer or "").strip()
+        nq_new = (new_question or "").strip()
+        if not a and (not nq_new or nq_new == q):
+            return False  # 没有任何变更
+        if a and any(kw in a for kw in _ANSWER_PLACEHOLDER_KW):
+            return False
+        self.load()
+        if self._load_failed:
+            return False
+        with self._lock:
+            # 外部修改检测(与 save 一致)
+            cur_sig = self._disk_signature()
+            if (cur_sig is not None and self._disk_sig is not None
+                    and cur_sig != self._disk_sig):
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                if self._load_failed:
+                    return False
+            if q not in self._data:
+                return False  # 仅支持更正已有键(新增走 save)
+            self._backup_once_daily()
+            old_answer = self._data[q]
+            if a:
+                self._data[q] = a
+            if nq_new and nq_new != q:
+                keep_ans = self._data.pop(q)
+                self._data[nq_new] = keep_ans
+            self._rebuild_index()
+            try:
+                dir_name = os.path.dirname(os.path.abspath(self.path))
+                if dir_name:
+                    os.makedirs(dir_name, exist_ok=True)
+                tmp_path = (f"{self.path}.{threading.get_ident()}_"
+                            f"{os.urandom(4).hex()}.tmp")
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(self._data, f, ensure_ascii=False, indent=4)
+                last_err = None
+                for _rt in range(3):
+                    try:
+                        os.replace(tmp_path, self.path)
+                        last_err = None
+                        break
+                    except OSError as _oe:
+                        last_err = _oe
+                        time.sleep(0.3)
+                if last_err is not None:
+                    raise last_err
+                self._disk_sig = self._disk_signature()
+                _show_new = a if a else f"(题面改名->{nq_new[:30]})"
+                log_print(INFO, Green,
+                          f"[题库管理] 已更正: {q[:40]} | 旧值={old_answer[:30]}"
+                          f" -> 新值={_show_new[:30]}")
+                return True
+            except Exception as e:
+                log_print(INFO, BoldRed,
+                          f"[题库管理] 更正写入失败({self.path}): {e}")
+                return False
+
+    # ============ 批量写入(2026-10-13): 修复采集大批量时每pair全量写盘=IO爆炸 ============
+
+    def _write_disk_locked(self) -> bool:
+        """(须持锁) 原子落盘当前内存数据: tmp写入+替换重试+签名刷新"""
+        try:
+            dir_name = os.path.dirname(os.path.abspath(self.path))
+            if dir_name:
+                os.makedirs(dir_name, exist_ok=True)
+            tmp_path = (f"{self.path}.{threading.get_ident()}_"
+                        f"{os.urandom(4).hex()}.tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(self._data, f, ensure_ascii=False, indent=4)
+            last_err = None
+            for _rt in range(3):
+                try:
+                    os.replace(tmp_path, self.path)
+                    last_err = None
+                    break
+                except OSError as _oe:
+                    last_err = _oe
+                    time.sleep(0.3)
+            if last_err is not None:
+                raise last_err
+            self._disk_sig = self._disk_signature()
+            return True
+        except Exception as e:
+            log_print(INFO, BoldRed,
+                      f"[答题源] 本地题库缓存写入失败({self.path}): {e}")
+            return False
+
+    def _reload_if_external_changed(self) -> bool:
+        """(须持锁) 外部修改检测+重载; 返回False=加载失败应中止"""
+        cur_sig = self._disk_signature()
+        if (cur_sig is not None and self._disk_sig is not None
+                and cur_sig != self._disk_sig):
+            old_count = len(self._data)
+            log_print(INFO, Yellow,
+                      f"[答题源] 检测到本地题库文件被外部修改({self.path}), "
+                      f"正在重新加载合并(内存{old_count}条 -> 磁盘最新)...")
+            self.loaded = False
+            self._load_failed = False
+            self.load()
+            if self._load_failed:
+                return False
+            log_print(INFO, Green,
+                      f"[答题源] 已重新加载题目 {len(self._data)} 条")
+        return True
+
+    def save_many(self, pairs) -> tuple:
+        """批量新增: [(题, 答案), ...] 内存统一改 + 单次落盘。
+
+        返回 (新增数, 跳过数); 已存在/空值/占位答案自动跳过。
+        """
+        if not self.enable or not pairs:
+            return 0, 0
+        self.load()
+        if self._load_failed:
+            return 0, len(pairs)
+        with self._lock:
+            if not self._reload_if_external_changed():
+                return 0, len(pairs)
+            add_n = skip_n = 0
+            added = False
+            for q, a in pairs:
+                q = (q or "").strip()
+                a = (a or "").strip()
+                if (not q or not a
+                        or any(kw in a for kw in _ANSWER_PLACEHOLDER_KW)):
+                    skip_n += 1
+                    continue
+                if q in self._data:
+                    skip_n += 1
+                    continue
+                self._data[q] = a
+                add_n += 1
+                added = True
+            if not added:
+                return 0, skip_n
+            self._rebuild_index()
+            self._backup_once_daily()
+            if not self._write_disk_locked():
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                return 0, len(pairs)
+            log_print(INFO, Green,
+                      f"[题库管理] 批量新增完成: 新增{add_n}条 (跳过{skip_n}条)")
+            return add_n, skip_n
+
+    def update_many(self, fixes) -> tuple:
+        """批量更正: [(原题面, 新答案), ...] 内存统一改 + 单次落盘。
+
+        返回 (更正数, 失败数); 仅更正已存在键; 无变化不计入。
+        """
+        if not self.enable or not fixes:
+            return 0, 0
+        self.load()
+        if self._load_failed:
+            return 0, len(fixes)
+        with self._lock:
+            if not self._reload_if_external_changed():
+                return 0, len(fixes)
+            fix_n = fail_n = 0
+            changed = False
+            detail = []
+            for q, a in fixes:
+                q = (q or "").strip()
+                a = (a or "").strip()
+                if (not q or not a
+                        or any(kw in a for kw in _ANSWER_PLACEHOLDER_KW)):
+                    fail_n += 1
+                    continue
+                if q not in self._data:
+                    fail_n += 1
+                    continue
+                old = self._data[q]
+                if old == a:
+                    continue  # 无变化
+                self._data[q] = a
+                fix_n += 1
+                changed = True
+                detail.append((q, old, a))
+            if not changed:
+                return 0, fail_n
+            self._rebuild_index()
+            self._backup_once_daily()
+            if not self._write_disk_locked():
+                self.loaded = False
+                self._load_failed = False
+                self.load()
+                return 0, len(fixes)
+            for q, old, a in detail[:20]:
+                log_print(INFO, Green,
+                          f"[题库管理] 已更正: {q[:40]} | 旧值={old[:30]} -> 新值={a[:30]}")
+            if len(detail) > 20:
+                log_print(INFO, Green,
+                          f"[题库管理] ... 共更正{fix_n}条(日志省略{len(detail) - 20}条)")
+            return fix_n, fail_n
+
+    def search(self, keyword: str = "", page: int = 1, size: int = 20,
+               search_in: str = "question") -> dict:
+        """【题库管理】检索: keyword + 分页(字符串包含匹配)
+
+        search_in: question=搜题目 / answer=搜答案 / all=全字段
+        """
+        self.load()
+        kw = (keyword or "").strip()
+        try:
+            page = max(1, int(page or 1))
+        except Exception:
+            page = 1
+        try:
+            size = max(1, min(100, int(size or 20)))
+        except Exception:
+            size = 20
+        need = page * size + 1  # 多取1条判定 hasMore
+        hits: List[Tuple[str, str]] = []
+        with self._lock:
+            for q, a in self._data.items():
+                if kw:
+                    if search_in == "answer":
+                        if kw not in a:
+                            continue
+                    elif search_in == "all":
+                        if kw not in q and kw not in a:
+                            continue
+                    else:
+                        if kw not in q:
+                            continue
+                hits.append((q, a))
+                if len(hits) >= need:
+                    break
+        start = (page - 1) * size
+        page_items = hits[start:start + size]
+        return {
+            "items": [{"q": q, "a": a} for q, a in page_items],
+            "page": page,
+            "size": size,
+            "hasMore": len(hits) > page * size,
+            "total": len(self._data),
+        }
+
+
+# ============ 答题引擎 ============
+
+class AnswerEngine:
+    """多答题源顺序调用引擎"""
+
+    def __init__(self, sources: List[AnswerSource], order: List[str],
+                 cache: Optional[LocalTikuCache],
+                 token_check: int = 1,
+                 fill_collected: bool = False):
+        self.sources = _apply_order(list(sources), order or [])
+        self.cache = cache
+        self.token_check = bool(token_check)
+        # 2026-10-13 采集填充: 现役库未命中时查独立采集库(选项, 默认关)
+        self.fill_collected = bool(fill_collected)
+        # 本地缓存是否作为答题源参与(存在已启用的local类型答题源)
+        self._cache_active = bool(cache) and any(
+            s.type == SOURCE_LOCAL and s.enable for s in self.sources)
+
+    @property
+    def enabled_sources(self) -> List[AnswerSource]:
+        return [s for s in self.sources
+                if s.enable and (s.token or s.type == SOURCE_LOCAL)]
+
+    def is_ready(self) -> bool:
+        """引擎是否具备答题能力(有启用的远程答题源 或 本地缓存有数据)"""
+        for s in self.sources:
+            if s.enable and s.type != SOURCE_LOCAL and s.token:
+                return True
+        if self._cache_active and self.cache.count > 0:
+            return True
+        # [外部题库] 逆向适配的13家聚合源(免token的 kvai/zaizhexue 默认可用)
+        try:
+            from logic.xuexitong import tiku_sources as _ts
+            if _ts.available():
+                return True
+        except Exception:
+            pass
+        return False
+
+    def query(self, question: str, options: Optional[List[str]] = None,
+              q_type: str = "", only_ai: bool = False,
+              use_cache: bool = True) -> Tuple[str, str]:
+        """按顺序调用各答题源 -> (答案, 命中源名称); 全部失败返回 ("", "")
+
+        日志要求: 每个答题源每次被处理都留下日志(禁用/跳过/命中/未命中/异常/
+        本地缓存每次调用/写入缓存), 便于查看每题到底由哪个源回答成功
+        """
+        question = (question or "").strip()
+        if not question:
+            return "", ""
+        use_cache = bool(use_cache and self._cache_active)
+        plain_opts = _plain_options(options)
+        total = len(self.sources)
+
+        for pos, src in enumerate(self.sources, 1):
+            tag = f"[{pos}/{total}]"
+            # ---- 禁用/不适用: 也留日志(说明该源本次未被调用) ----
+            if not src.enable:
+                log_debug_source(src.name, f"{tag} 已禁用(enable=0), 跳过")
+                continue
+            if only_ai and src.type != SOURCE_AI:
+                log_debug_source(src.name, f"{tag} 当前场景仅用AI源, 跳过")
+                continue
+            # ---- 本地题库缓存(独立答题源, 参与顺序排序) ----
+            if src.type == SOURCE_LOCAL:
+                if not use_cache:
+                    log_debug_source(src.name, f"{tag} 本地缓存本次未启用, 跳过")
+                    continue
+                self.cache.load()  # 确保首次查询前已加载, 计数准确
+                log_debug_source(
+                    src.name,
+                    f"{tag} 正在查询本地题库缓存(当前{self.cache.count}条记录)"
+                    f" | 题目: {question[:40]}")
+                ans, _hit_q = self.cache.lookup(question)
+                if ans and _is_valid_answer(ans):
+                    log_debug_source(
+                        src.name,
+                        f"{tag} 命中答案: {ans[:80]} | 题目: {question[:40]}")
+                    return ans, src.name
+                # 2026-10-13 采集填充(可选): 现役库未命中时查独立采集库
+                if self.fill_collected:
+                    try:
+                        from logic.xuexitong.part import _get_collected_cache
+                        _cc = _get_collected_cache()
+                        _cc.load()
+                        _cans, _ = _cc.lookup(question)
+                        if _cans and _is_valid_answer(_cans):
+                            log_debug_source(
+                                src.name,
+                                f"{tag} 采集库填充命中: {_cans[:60]} | 题目: {question[:40]}")
+                            return _cans, src.name + "+采集库"
+                    except Exception:
+                        pass
+                log_debug_source(src.name, f"{tag} 未命中, 继续下一个答题源")
+                continue
+            # ---- 第三方题库/AI ----
+            if not src.token:
+                log_debug_source(src.name, f"{tag} 未配置token, 跳过")
+                continue
+            log_debug_source(src.name, f"{tag} 发起查询 | 题目: {question[:40]}")
+            try:
+                ans = src.query(question, plain_opts, q_type)
+            except Exception as e:
+                log_debug_source(
+                    src.name, f"{tag} 查询异常: {e}, 自动回退下一个答题源")
+                ans = ""
+            if ans and _is_valid_answer(ans):
+                ans = ans.strip()
+                # 2026-10-03用户方案: 取消"即问即存"——统一改在"提交成功后"写入
+                # (提交成功=答案有效, 且用"提交链路的题目", 彻底避免误杀/失败题污染)
+                if use_cache:
+                    log_debug_source(
+                        "本地题库缓存",
+                        f"答案待提交成功后写入(新策略): 题目: {question[:40]}...")
+                log_debug_source(
+                    src.name, f"{tag} 命中答案: {ans[:80]} | 题目: {question[:40]}")
+                return ans, src.name
+            log_debug_source(src.name, f"{tag} 无结果, 自动回退下一个答题源")
+
+        # [外部题库源] 逆向适配13家聚合源 - 低风险附加兜底(仅其它源全未命中时)
+        if not only_ai:
+            try:
+                from logic.xuexitong import tiku_sources as _ts
+                _en, _ea = _ts.query_for_engine(question, plain_opts, q_type)
+                if _ea and _is_valid_answer(_ea):
+                    log_debug_source("外部题库", f"命中({_en}): {str(_ea)[:80]}")
+                    return _ea.strip(), "外部题库-" + (_en or "")
+            except Exception as _ee:
+                log_debug_source("外部题库", f"查询异常: {_ee}")
+        log_debug_source("答题引擎",
+                         f"所有答题源均未命中 | 题目: {question[:50]}")
+        return "", ""
+
+    def check_all(self) -> Tuple[int, int]:
+        """启动自检所有已配置答题源 -> (可用数, 已启用总数)"""
+        configured = [s for s in self.sources]
+        enabled = [s for s in configured if s.enable]
+        ok_count = 0
+
+        if not configured:
+            log_print(INFO, Yellow,
+                      "[答题源自检] 未配置任何答题源(可在配置文件的 "
+                      "setting.answerSetting.sources 中配置)")
+            return 0, 0
+
+        log_print(INFO, f"[答题源自检] 共配置 {len(configured)} 个答题源, "
+                  f"已启用 {len(enabled)} 个:")
+        for src in configured:
+            if not src.enable:
+                log_print(INFO, "  [答题源自检] ", Default, src.name,
+                          Yellow, " 已禁用(跳过自检)")
+                continue
+            # 本地题库缓存(独立答题源): 展示缓存文件加载情况
+            if src.type == SOURCE_LOCAL:
+                if not self.cache:
+                    continue
+                self.cache.load()
+                if self.cache._load_failed:
+                    log_print(INFO, "  [答题源自检] ", Default, src.name, " ",
+                              BoldRed,
+                              f"✗ 缓存文件读取失败(已暂停写入): {self.cache.path}")
+                else:
+                    ok_count += 1
+                    log_print(INFO, "  [答题源自检] ", Default, src.name, " ",
+                              Green,
+                              f"✓ 已加载 {self.cache.count} 条题库记录 "
+                              f"({self.cache.path})")
+                continue
+            if not src.token:
+                log_print(INFO, "  [答题源自检] ", Default, src.name,
+                          Red, " 未填写token(跳过自检)")
+                continue
+            try:
+                ok, detail = src.check()
+            except Exception as e:
+                ok, detail = False, f"自检异常: {e}"
+            if ok:
+                ok_count += 1
+                log_print(INFO, "  [答题源自检] ", Default, src.name, " ",
+                          Green, f"✓ 可用 ({detail})")
+            else:
+                log_print(INFO, "  [答题源自检] ", Default, src.name, " ",
+                          BoldRed, f"✗ 不可用 - {detail}")
+
+        return ok_count, len(enabled)
+
+
+# ============ 全局单例 ============
+
+_engine_lock = threading.Lock()
+_engine: Optional[AnswerEngine] = None
+_engine_signature: tuple = ()
+
+
+def _build_engine(setting) -> Optional[AnswerEngine]:
+    """根据 Setting 构建引擎(含旧版AI配置兼容与本地缓存自动补源)"""
+    ans_cfg = getattr(setting, "answer_setting", None)
+    sources = _flatten_sources(ans_cfg) if ans_cfg else []
+    # [逆向适配] 注入外部题库13家运行时 token(配置可覆盖内置默认)
+    try:
+        from logic.xuexitong import tiku_sources as _ts0
+        _ts0.set_runtime_tokens(getattr(ans_cfg, "external_tokens", {}) or {})
+    except Exception:
+        pass
+
+    # 兼容旧配置: 未配置任何答题源时, 若旧 aiSetting 填写了apiKey则作为兜底AI源
+    if not sources:
+        ai = getattr(setting, "ai_setting", None)
+        if ai and (getattr(ai, "api_key", "") or "").strip():
+            sources = [AnswerSource(
+                name="AI(旧配置)", s_type=SOURCE_AI, enable=1,
+                token=ai.api_key, ai_type=ai.ai_type, model=ai.model,
+                url=ai.ai_url)]
+
+    # 2026-10-13 兜底: AI源字段缺失(旧配置/WP保存丢字段) -> 从全局 aiSetting 继承
+    # 典型症状: 启动自检报"请先填写AIType参数"
+    _ai_cfg = getattr(setting, "ai_setting", None)
+    if _ai_cfg is not None:
+        for _s in sources:
+            if _s.type == SOURCE_AI:
+                if not _s.ai_type:
+                    _s.ai_type = (
+                        getattr(_ai_cfg, "ai_type", "") or "").strip()
+                if not _s.token:
+                    _s.token = (getattr(_ai_cfg, "api_key", "") or "").strip()
+                if not _s.url:
+                    _s.url = (getattr(_ai_cfg, "ai_url", "") or "").strip()
+                if not _s.model:
+                    _s.model = (getattr(_ai_cfg, "model", "") or "").strip()
+
+    cache_enable = 1
+    cache_path = "questions_answers.json"
+    order: List[str] = []
+    token_check = 1
+    fill_collected = 0
+    if ans_cfg:
+        cache_enable = getattr(ans_cfg, "local_cache_enable", 1)
+        cache_path = getattr(ans_cfg, "local_cache_path", "") or cache_path
+        order = list(getattr(ans_cfg, "order", None) or [])
+        token_check = getattr(ans_cfg, "token_check", 1)
+        fill_collected = int(getattr(ans_cfg, "fill_from_collected", 0) or 0)
+
+    # 本地题库缓存作为独立答题源: 未显式配置 local 类型源时,
+    # 按旧配置(localCacheEnable)自动补一个并置于最前(保持旧行为: 缓存优先)
+    local_srcs = [s for s in sources if s.type == SOURCE_LOCAL]
+    if not local_srcs and cache_enable:
+        sources.insert(0, AnswerSource(
+            name="本地题库缓存", s_type=SOURCE_LOCAL, enable=1))
+        local_srcs = [sources[0]]
+    # 缓存文件路径: 本地答题源条目的 url 可覆盖 localCachePath
+    for s in local_srcs:
+        if s.url:
+            cache_path = s.url
+            break
+
+    cache = LocalTikuCache(cache_path, enable=1)
+    return AnswerEngine(sources, order, cache, token_check,
+                        fill_collected=bool(fill_collected))
+
+
+def configure_answer_engine(setting, do_check: bool = False) -> AnswerEngine:
+    """构建/更新全局答题引擎(幂等, 配置未变化时不重建)"""
+    global _engine, _engine_signature
+    ans_cfg = getattr(setting, "answer_setting", None)
+    sig = (
+        tuple(str(getattr(s, "client_key", lambda: s)()) for s in
+              (_flatten_sources(ans_cfg) if ans_cfg else [])),
+        str(getattr(ans_cfg, "local_cache_enable", 1)) if ans_cfg else "1",
+        str(getattr(ans_cfg, "local_cache_path", "")) if ans_cfg else "",
+        str(getattr(ans_cfg, "fill_from_collected", 0)) if ans_cfg else "0",
+        tuple(getattr(ans_cfg, "order", None) or []) if ans_cfg else (),
+        str(getattr(getattr(setting, "ai_setting", None), "api_key", "")),
+        # [V3.2.4] 外置AI话术模式签名(变化时重建引擎)
+        str(getattr(getattr(setting, "ai_setting", None), "ext_mode", 0)),
+        str(getattr(getattr(setting, "ai_setting", None), "ext_prompt", ""))[
+            :64],
+        str(getattr(getattr(setting, "ai_setting", None), "ext_extract", "")),
+    )
+    # [V3.2.4] 外置AI话术模式透传给 ai_client(全局)
+    try:
+        from logic.core import ai_client as _aic_mod
+        _ai_cfg = getattr(setting, "ai_setting", None)
+        if _ai_cfg is not None:
+            _aic_mod.set_ext_config(getattr(_ai_cfg, "ext_mode", 0),
+                                    getattr(_ai_cfg, "ext_prompt", ""),
+                                    getattr(_ai_cfg, "ext_extract", ""),
+                                    getattr(_ai_cfg, "ext_header", ""),
+                                    getattr(_ai_cfg, "ext_body", ""))
+    except Exception:
+        pass
+    with _engine_lock:
+        if _engine is None or sig != _engine_signature:
+            _engine = _build_engine(setting)
+            _engine_signature = sig
+        engine = _engine
+    if do_check and engine is not None:
+        engine.check_all()
+    return engine
+
+
+def get_answer_engine() -> Optional[AnswerEngine]:
+    return _engine
+
+
+def engine_is_ready() -> bool:
+    eng = _engine
+    return bool(eng and eng.is_ready())
+
+
+def answer_query_detail(question: str, options: Optional[List[str]] = None,
+                        q_type: str = "", only_ai: bool = False) -> Tuple[str, str]:
+    """统一答题入口(明细版): 顺序调用各答题源 -> (答案, 命中的答题源名称)"""
+    eng = _engine
+    if eng is None:
+        return "", ""
+    return eng.query(question, options, q_type, only_ai=only_ai)
+
+
+def cache_answer_after_submit(question: str, answer: str,
+                              q_type: str = "",
+                              answer_src: str = "") -> bool:
+    """提交成功后写入题库缓存(2026-10-03用户方案)
+
+    仅当: 全局引擎已初始化 + 本地缓存答题源已启用 + 答案非空且通过
+    _answer_cacheable(占位词/换行/超长拦截) + 来源非"本地缓存"(避免重复写入)。
+    返回是否写入成功。
+    """
+    eng = _engine
+    if eng is None or eng.cache is None or not eng._cache_active:
+        return False
+    q = (question or "").strip()
+    a = (answer or "").strip()
+    if not q or not a:
+        return False
+    # 来源为本地缓存本身则无需重复写入
+    src = (answer_src or "").strip()
+    if src and ("本地" in src or src.lower() == SOURCE_LOCAL):
+        return False
+    if not _answer_cacheable(a, q_type):
+        return False
+    try:
+        return eng.cache.save(q, a)
+    except Exception:
+        return False
+
+
+def answer_query(question: str, options: Optional[List[str]] = None,
+                 q_type: str = "", only_ai: bool = False) -> str:
+    """统一答题入口: 顺序调用各答题源, 返回答案(失败为空串)"""
+    ans, _ = answer_query_detail(question, options, q_type, only_ai=only_ai)
+    return ans
+
+
+def run_startup_token_check(setting) -> None:
+    """程序启动时的 token 自检(输出检查结果)"""
+    engine = configure_answer_engine(setting)
+    if engine is None:
+        return
+    if not engine.token_check:
+        log_print(INFO, "[答题源自检] 已关闭启动自检(tokenCheck=0), 跳过")
+        return
+    t0 = time.time()
+    ok_count, enabled_count = engine.check_all()
+    if enabled_count > 0:
+        log_print(INFO, "[答题源自检] 检查完毕: ",
+                  BoldGreen if ok_count > 0 else BoldRed,
+                  f"{ok_count}/{enabled_count} 个已启用答题源可用",
+                  Default, f" (耗时{time.time() - t0:.1f}s)")
+    # 预加载本地题库缓存
+    if engine.cache and engine.cache.enable:
+        engine.cache.load()

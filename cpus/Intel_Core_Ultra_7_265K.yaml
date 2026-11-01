@@ -1,0 +1,17 @@
+# 自动生成(Yatori cpus) —— Intel Core Ultra 7 265K
+# 参数为 默认模式(n-1基准) 下的推荐值; 全速模式由程序按核心比例自动上调
+# 规范详见: README_CPU配置规范.md
+model: "Intel Core Ultra 7 265K"
+aliases:
+  - "Core Ultra 7 265K"
+logicalCores: 20
+physicalCores: 20
+tier: high
+
+loginWorkers: 28
+workConcurrency: 19
+aiConcurrency: 10
+fastVideoWorkers: 14
+nodeStartInterval: 0.105
+httpMaxConnections: 304
+cpuPoolWorkers: 19

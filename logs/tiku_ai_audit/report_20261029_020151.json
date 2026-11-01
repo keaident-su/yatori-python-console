@@ -1,0 +1,7681 @@
+{
+  "meta": {
+    "started_at": "2026-10-29 02:01:51",
+    "finished_at": "2026-10-29 03:02:21",
+    "elapsed_sec": 3629,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "judge"
+    ],
+    "limit": 500,
+    "start": 1500,
+    "end": 130413,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_judge_6ead120c_1500-130413.json"
+  },
+  "summary": {
+    "candidates": 500,
+    "audited": 500,
+    "changed": 60,
+    "same": 429,
+    "report_only": 0,
+    "skipped_invalid": 0,
+    "uncertain": 11,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-29 02:01:51",
+      "question": "大数据时代，我们完全不需要理论，只需要关注数据本身即可。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:01:58",
+      "question": "人工智能的实施成本较低，几乎不会对企业造成经济压力。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:04",
+      "question": "系统思维的概念起源于1956年麻省理工学院斯隆管理学院的J.Forrester教授创建的系统动态小组。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:02:23",
+      "question": "系统思考者在解决问题时会优先关注问题的表面现象，而非深入挖掘背后的根本原因。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:31",
+      "question": "批判性思维在商业领域主要是提高决策质量、分析市场趋势和评估战略选项。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:36",
+      "question": "人工智能只能进行推理，无法进行学习。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:42",
+      "question": "符号主义认为认知是对符号的推导和计算。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:48",
+      "question": "发散思维仅适用于广告、艺术等创意领域，而聚合思维仅适用于数学、科学等逻辑领域。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:52",
+      "question": "六顶思考帽方法可以帮助团队从不同角度审视问题，减少冲突。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:02:58",
+      "question": "发散思维和收敛思维常常结合使用，以促进更全面的创新解决方案。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:05",
+      "question": "设计思维只适用于设计师，普通用户和企业无法从中受益。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:09",
+      "question": "设计思维的测试阶段旨在验证解决方案的功能，并根据反馈进行优化。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:15",
+      "question": "Transformer的自注意力机制实现了并行计算，相比RNN效率提升千倍，因此在所有序列任务中都应优先选择Transformer模型。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:21",
+      "question": "深度学习的发展与数据量的增长没有关联。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:27",
+      "question": "材料指出，数据的隐私化、私域化是人工智能数据层面的发展趋势之一。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:34",
+      "question": "在团队协作中，发散思维的应用要求必须立即对所有想法进行批判性评估，以确保效率。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:39",
+      "question": "沃尔玛在飓风来临前将蛋挞与手电筒摆放在一起的策略，必须先通过数据分析找出飓风导致蛋挞销量增加的具体原因才能实施。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:47",
+      "question": "亚马逊推荐系统之所以能大幅提升销售额，是因为它精准识别了用户购买书籍背后的因果关系（如用户喜欢海明威是因为其现实主义风格，进而推荐同类作家作品）。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:52",
+      "question": "设计思维的定义阶段需直接生成具体的解决方案原型，以快速验证用户需求。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:03:58",
+      "question": "数据分析的目标是从数据中提取有用的信息，以支持科学决策。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:03",
+      "question": "生成式人工智能在创意生成阶段仅提供固定模板。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:08",
+      "question": "敏捷开发的核心思想之一是通过小步快跑的方式持续交付可用的软件增量。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:14",
+      "question": "横向思维与发散思维是完全相同的概念，两者都仅强调产生大量的想法。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:22",
+      "question": "机器学习模型的性能仅取决于算法的先进性，与训练数据的质量无关。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:28",
+      "question": "简历能够全面反映求职者的实际能力和未来潜力。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:34",
+      "question": "大数据的相关关系分析可以帮助证明直觉因果关系的错误。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:40",
+      "question": "因果关系比相关关系更能反映世界本质，因此在任何情况下都应优先研究因果关系。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:46",
+      "question": "CPU因其通用计算能力强，是人工智能模型训练的最优计算单元。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:51",
+      "question": "人工智能在设计思维的测试阶段可以用AB测来数据分析，并预测用户偏好。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:04:56",
+      "question": "物联网设备采集数据的能力是当前大数据技术的主要障碍。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:02",
+      "question": "大数据的规模（Volume）特征描述的是动态的、持续变化的数据。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:07",
+      "question": "数据划分阶段的主要任务是确保训练集、验证集和测试集的数据分布保持一致。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:12",
+      "question": "综合思维强调从整体出发，理解各部分之间的关系，并寻找创新的解决方案。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:17",
+      "question": "设计思维的缺点之一是它过于依赖直觉，忽略了理性分析。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:23",
+      "question": "系统思维的一个主要目标是提出全面的解决方案，同时考虑所有利益相关者的需求。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:28",
+      "question": "HOLDEN主要是在法国生产和销售。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:35",
+      "question": "转向中心是指的前桥的焦点和后桥的轴线。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:40",
+      "question": "第五个阶段生产确认阶段标志产品最终定型。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:05:54",
+      "question": "样车开发阶段在生产前的开发阶段之后。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:05:59",
+      "question": "生产确认阶段的主要任务就是进行投产前的准备工作。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:06:12",
+      "question": "汽车内饰主要包括以下：系统仪表盘，副仪表板，门内护板顶棚，座椅，立柱护板。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:06:18",
+      "question": "概念车设计阶段的任务主要包括总体布置草图设计和功能设计两个部分。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:06:23",
+      "question": "三菱是广汽汽车和日本的三菱集团合资的汽车品牌。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:06:37",
+      "question": "型号是SQR481F的发动81式气缸的直径是81个毫米。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:06:44",
+      "question": "发动机的经济性指标一般用燃油消耗率来表示。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:06:50",
+      "question": "焊接其中一个特点是与铆接相比，可以节省金属材料，节省金属材料可以达到25%到30%。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:06:56",
+      "question": "焊接电弧的极性及应用接近焊条的区域是阳极区，接近工件的区域是阴极区。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:04",
+      "question": "样件试制只需准备分收入项目的平面布置图。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:09",
+      "question": "工程设计阶段包括总布置设计、车身造型数据生成、发动机工程设计、白车身工程设计、底盘工程设计、内、外饰工程设计、电器工程设计等7个部分。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:16",
+      "question": "冲压工序的四个基本工序：冲裁、弯曲、点焊和局部成形。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:22",
+      "question": "滑移率指的是车辆制动的时候，车轮的滑动所占的比例。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:28",
+      "question": "车辆受到的力有两个方向的，一个是车辆行驶方向也就是纵向，另外一个就是车辆的横向。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:34",
+      "question": "每一个节点完成前不用必须确定节点质量冻结条件，不用确保这个节点质量达到要求了，就能进行到下一个节点。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:40",
+      "question": "项目门就是=开发阶段门+成本+进度。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:46",
+      "question": "调速器起到的主要的功用是根据柴油机负荷的变化，自动增减喷油泵的供应链，从而使柴油机能够在各种工况下以稳定的转速运行。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:51",
+      "question": "轴线压缩式里面的主要结构的运动形式是轴线移动的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:07:56",
+      "question": "四行程指的是就是说一个发动机要完成一个完整的工作循环。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:08:02",
+      "question": "下止点指的是活塞往下运动所能达到的最上端的位置。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:08:08",
+      "question": "有色合金优势，第一个明显的减重效益，第二个客观的节能效果，第三减少大气污染改善环境质量，第四有助于提高汽车的行驶性能。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:08:13",
+      "question": "凸轮轴，排气管，曲轴，刹车盘，自动片都是黑色铸件，但各类支架连杆，一些大柴油机的缸盖，发动机的缸体下缸体不属于黑色铸造件。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:08:19",
+      "question": "铝合金的车轮与钢制车轮相比可以减轻10%到15%的重量，震动可以减少30%到40%。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:08:32",
+      "question": "汽车的生产模式它是按照产品的专业化或者说是工艺的专业化来组织协调生产。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:08:38",
+      "question": "汽车的三大构件动力：总成系统，车身系统，底盘系统。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:08:51",
+      "question": "气环是在活塞的下边，油环是在上边。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:08:58",
+      "question": "活塞通过活塞销和连杆的大头所连接，连杆的小头是和曲轴的曲柄连接在一起的，然后在这个曲轴的一端连接有飞轮。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:09:04",
+      "question": "P6是生产试制批量完成，P7是零件和材料订货认可，P8是批量生产的启动。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:09:11",
+      "question": "用P加数字的方式来表明九个节点P0P1P2P3一直到P9，那么P0这个节点就是项目立项。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:09:25",
+      "question": "政策的开发过程分为六个阶段：预研究阶段、概念设计阶段、样车开发阶段、生产前的开发阶段、生产确认阶段和投放市场的阶段。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:09:31",
+      "question": "汽车保险分为车损险和交强险两种。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:09:38",
+      "question": "交强险是从2007年7月份国家强制执行的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:09:44",
+      "question": "一般来讲重力铸件和高压铸造还有带有急冷的插件的砂铸件，能够通过良好的金相组织和，适当的热处理工艺，产品达到比较好的力学性能。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:09:59",
+      "question": "使用防冻液时要求洇灭高度应低于排气口60到70毫米这个范围之内。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:10:04",
+      "question": "通过齿轮运动在转弯的时候实现，左右车轮以不同的速度运动叫差速器。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:10:10",
+      "question": "汽车的构造按照大的方面分为五大块。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:10:16",
+      "question": "挡位P挡是驻车档，N挡就是空挡，D挡是倒挡，R挡就是驱动档。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:10:21",
+      "question": "国外二手车有非常完善成熟的售后服务体系。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:10:27",
+      "question": "接受委托接受委托是指客户或者是企业对车辆进行价格评估，他需要找专业的评估师或者鉴定机构进行车辆鉴定。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:10:32",
+      "question": "移动号牌有效期四天，与合格证发票同时使用。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:10:44",
+      "question": "螺纹联接法是使用螺钉、螺栓联接进行汽车装配的基本方法，它约占汽车装配作业工作量2/3。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:10:59",
+      "question": "自重方法充注法是指装配时发动机机油变速器齿轮油、散热器冷却液、制动液、动力转向液压油、空调制冷剂、挡风玻璃洗涤液、燃油等各种液体的方法。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:04",
+      "question": "车险理赔的特点只有标的流动性大。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:09",
+      "question": "八字理赔原则是主动、迅速、准确、合理。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:15",
+      "question": "世界上第一辆四轮汽车是由卡尔·本茨先生发明的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:21",
+      "question": "汽油可以直接从油箱里面通过油管达到达喷油器中间，不需要提供动力的装置。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:27",
+      "question": "汽油机和柴油机的发动机都有五大系的内容。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:33",
+      "question": "物上代位是所有权的转移。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:39",
+      "question": "“垫付”在交强险情行只有3种。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:11:46",
+      "question": "物上代位指在财产保险中，保险标的发生保险事故造成推定全损时，保险人按照合同履行赔偿责任后依法取得保险标的的所有权。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:12:01",
+      "question": "桑塔纳汽车是典型的，前桥是驱动桥也是转向桥，后桥既起转向的作用，又起驱动的作用。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:07",
+      "question": "目前轿车上用的独立悬架，简单做一个分类，就是有三种形式：横臂式独立悬架，纵臂式独立悬架，烛式。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:11",
+      "question": "活塞在上止点的位置，进气门打开；当活塞运行到下止点的时候，进气门就会关闭。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:17",
+      "question": "齿形带传动链传动是靠金属链条来传递动力的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:12:32",
+      "question": "对车辆进行价格评估，不需要找专业的评估师或者鉴定机构进行车辆鉴定。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:38",
+      "question": "机油“SFl5W／40”中的第一个字母表示油的性能，“S”表示是柴油机油。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:44",
+      "question": "二手车，是指从办理完注册登记手续到达到国家强制报废标准之前进行交易并转移所有权的汽车。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:49",
+      "question": "国内购买二手车已有非常完善成熟的售后服务体系。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:12:55",
+      "question": "新车在磨合时，负载可以超过额定的70%。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:02",
+      "question": "车辆启动时，冬季预热20分钟以上。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:08",
+      "question": "发动机油过多不仅会增加发动机功率损失，而且会产生烧排机油故障。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:14",
+      "question": "车辆在高速、高负荷及交通堵塞情况下频繁停车和起步消耗的机油要比正常行驶离所消耗的机油多。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:21",
+      "question": "电瓶可以随意更换。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:26",
+      "question": "在启动车辆时，时间不宜太长，最好别超过3秒。一般如果第一次打不着火时，可以连续打火。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:32",
+      "question": "电瓶寿命2-4年，如果正确使用可以延长使用寿命。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:37",
+      "question": "汽车长期低速行驶，车辆会出现抖动、加速无力、油门迟钝等情况。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:13:51",
+      "question": "如果发动机内积碳过于严重，“打吊瓶”的方法就能够起到清洗干净的效果。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:13:56",
+      "question": "喷油嘴是执行元件，将高压燃油喷入汽缸汽化燃烧，喷油质量直接影响到燃烧的完全程度、发动机的动力和排放。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:02",
+      "question": "更换燃油滤清器时，有的滤清器上有两个箭头，安装时可不用分方向。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:09",
+      "question": "防冻液没有除垢除锈的功能。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:15",
+      "question": "防冻液缺少，可以用自来水补充。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:21",
+      "question": "汽缸体的裂纹凡涉及漏水时，一般应予更换。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:26",
+      "question": "车辆排气管冒白烟，冷车时严重，热车后就不冒白烟是真故障。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:32",
+      "question": "排气管冒黑烟表明混合气过浓，燃烧不完全。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:38",
+      "question": "涡轮增压的发动机可以使用矿物质机油。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:44",
+      "question": "如果稍微放松方向盘，汽车就会向一侧跑偏，这种故障它的主要原因就是左右轮胎的气压不相等或者是轮胎的这个直径不等。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:14:50",
+      "question": "新买的车辆发动机抖动严重，有时故障指示灯还会偶尔闪亮是假故障。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:15:05",
+      "question": "开散热器盖发现总有一些油渍飘浮在水面上，而且发现换机油时有水分，可以不用处理。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:15:11",
+      "question": "拆装火花塞应用梅花板手。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:15:16",
+      "question": "火花塞的更换必须换用同一型号，严禁新旧混用。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:15:22",
+      "question": "2009年1月1日起执行在不提高现行成品油价格的前提下，汽油消费税的单位税额每升开征0.7元，而柴油每升开征0.8元。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:15:27",
+      "question": "2008年7月11日原油价格最高点达到了147.25美元每桶，成为历史最高价。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:15:42",
+      "question": "轮胎型号：185/60R1489H中89表示速度等级。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:15:49",
+      "question": "一个轮胎的寿命大约是10年或者8万公里。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:15:54",
+      "question": "驾驶同一品牌的车，为何别人的车烧油少，而自己的车却烧油多是假故障。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:16:07",
+      "question": "车辆空调开启时发动机转速不变化，这个故障是真故障。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:14",
+      "question": "转向时沉重费力是真故障。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:20",
+      "question": "一般情况下开车3小时之后算疲劳驾驶。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:26",
+      "question": "盗抢汽车是一种全球性的犯罪行为。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:33",
+      "question": "风险包含三方面的含义，分别是客观性、损失性和不确定性。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:38",
+      "question": "汽车ABS能有效地提高汽车制动时的方向稳定性。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:43",
+      "question": "汽车连续制动时，制动蹄片和轮鼓磨擦系数不变。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:49",
+      "question": "2010年前乘用车辆新车平均油耗，要比2003年降低25%以上。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:16:55",
+      "question": "2013年购置税优惠政策取消。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:17:14",
+      "question": "2015年4月1日上海大众率先打响了2015官降第一枪。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:17:29",
+      "question": "车用燃油也将进行油品升级93号97号汽油，将会被92号95号汽油全面替代。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:17:35",
+      "question": "涡轮增压技术可以在不增加发动机排量的前提下提高发动机的功率。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:17:40",
+      "question": "智能可变配气相位控制技术可以使配气相位在各种运行工况下均处于最佳。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:17:46",
+      "question": "刹车油换油周期2年或4万公里。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:17:53",
+      "question": "我国于2010年8月确定的第一批节能与新能源汽车推广应用工程。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:17:59",
+      "question": "2015年我国新能源汽车及充电装数量达到了当初设定的目标。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:18:08",
+      "question": "具体地说车联网是指通过装载在车辆上的电子设备通过无线技术，实现在信息网络平台上对所有车辆的静、动态信息进行提取和有效利用。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:18:14",
+      "question": "前端设备主要是用来采集数据，信息发布，云提示，报警显示等。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:18:19",
+      "question": "福特将要推出的第四阶段智能车将不装备方向盘、油门踏板和制动踏板。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:18:25",
+      "question": "谷歌的人工智能算法一直是对外不保密。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:18:32",
+      "question": "谷歌智能车的核心是传感器采集处理和人工智能的算法。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:18:39",
+      "question": "变速器速比增加会提高整车动力性的同时提高其燃油经济性。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:18:55",
+      "question": "一般来说发动机温度在80-90度时燃料消耗最低。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:02",
+      "question": "EMS是一个特殊的系统，他的基础为道路使用者提供。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:19:15",
+      "question": "目前，综治中心已成为矛盾纠纷预防化解和社会治安风险防控的重要平台，成为坚持和发展新时代“枫桥经验”的重要载体。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:21",
+      "question": "发展和安全是辩证统一的关系，安全是发展的前提、发展是安全的保障。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:27",
+      "question": "当前和今后一个时期，推进更高水平平安中国建设，要坚定不移贯彻总体国家安全观，在国家更加安全、社会更加有序、治理更加有效、人民更加满意上着力，为以中国式现代化全面推进强国建设、民族复兴伟业提供坚强安全保障。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:33",
+      "question": "经过不懈努力，我国已成为世界上最安全的国家之一，是刑事犯罪率最低的国家之一，是持枪犯罪最少的国家之一，是命案发案率最低、破案率最高的国家之一。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:39",
+      "question": "中国人民抗日战争是近代以来中国第一次取得完全胜利的民族解放战争。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:44",
+      "question": "当前纪念抗战胜利，主要是为了清算历史旧账，对特定国家进行舆论谴责。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:50",
+      "question": "贵州在抗日战争中完全处于后方，未曾遭受日军的直接入侵和战火波及。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:19:54",
+      "question": "“十五五”规划是继“十四五”规划之后，我国迈向第二个百年奋斗目标新征程上的第一个五年规划。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:20:08",
+      "question": "2026年3月5日，新华社受权发布了《中华人民共和国国民经济和社会发展第十五个五年规划纲要(草案)》摘要。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:20:18",
+      "question": "“十五五”时期，我国将不再追求经济增长速度，只注重发展质量。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:20:30",
+      "question": "做好2026年经济工作，对于实现“十五五”良好开局具有决定性意义。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:20:39",
+      "question": "“十五五”规划建议仅为中国经济社会发展擘画蓝图，与世界其他国家无关。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:20:46",
+      "question": "要把《习近平谈治国理政》第一卷至第五卷作为一个整体，深刻领悟习近平总书记关于中国式现代化重要论述蕴含的强大真理力量和实践伟力，从中汲取团结奋斗的智慧和力量。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:20:50",
+      "question": "“十五五”时期我国发展环境面临深刻复杂变化，我国发展处于战略机遇和风险挑战并存、不确定难预料因素增多的时期。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:20:55",
+      "question": "“十五五”时期经济社会发展必须遵循的原则有坚持党的全面领导，坚持人民至上，坚持高质量发展，坚持全面深化改革，坚持有效市场和有为政府相结合，坚持统筹发展和安全。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:02",
+      "question": "新时代是承前启后、继往开来、在新的历史条件下继续夺取中国特色社会主义伟大胜利的时代。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:09",
+      "question": "新时代是决胜全面建成小康社会、进而全面建设社会主义现代化强国的时代。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:14",
+      "question": "新时代是全国各族人民团结奋斗、不断创造美好生活、逐步实现全体人民共同富裕的时代。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:19",
+      "question": "新时代是全体中华儿女勠力同心、奋力实现中华民族伟大复兴中国梦的时代。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:25",
+      "question": "新时代是我国不断为人类作出更大贡献的时代。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:32",
+      "question": "实现中华民族伟大复兴的中国梦是中华民族近代以来最伟大的梦想( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:37",
+      "question": "抗战时期形成的党的一元化领导和党的十八大以来加强党的全面领导是完全一致的( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:42",
+      "question": "坚持党对一切工作的领导，不能只停留在口头表态上，必须落实到行动上( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:21:47",
+      "question": "善于从政治上看问题，善于把握政治大局，这要求具有看齐意识( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:22:01",
+      "question": "我国社会主义政治制度优越性的一个突出特点是党总揽全局、协调各方的领导核心作用，形象地说是‘众星捧月’，这个‘月’就是中国共产党( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:09",
+      "question": "治国有常，利民为本。为民造福是立党为公、执政为民的本质要求。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:14",
+      "question": "实现人的全面发展是共产主义的基本原则。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:20",
+      "question": "一个国家民主不民主，关键在于是不是真正做到了人民当家作主()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:27",
+      "question": "坚持党的领导、人民当家作主、依法治国有机统一，核心是坚持党的领导()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:32",
+      "question": "判断是否民主关键在于不搞“一人一票”竞选就是“不民主”()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:38",
+      "question": "资产阶级的阶级本质决定其民主是虚假的民主，是资产阶级维护其统治的工具()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:44",
+      "question": "加快形成完备的法律规范体系，既要适时制定新的法律也要及时修改和完善现行法律。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:50",
+      "question": "司法机关既要及时回应社会关切，又要规范媒体对案件的报道，防止舆论影响司法公正。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:22:56",
+      "question": "党的十八届四中全会通过的《中共中央关于全面推进依法治国若干重大问题的决定》，提出全面依法治国的总目标是建设中国特色社会主义法治体系、建设社会主义法治国家( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:01",
+      "question": "意识形态领域现状:形势依然复杂、挑战依然严峻。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:08",
+      "question": "必须坚持马克思主义在意识形态领域指导地位的根本制度，确保我国文化建设始终沿着正确方向前进。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:15",
+      "question": "互联网是意识形态斗争的主阵地、主战场、最前沿。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:21",
+      "question": "提高国家文化软实力，关系“两个一百年”奋斗目标和中华民族伟大复兴中国梦的实现。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:27",
+      "question": "民生连着民心，民心凝聚人心，民生稳，人心就稳，社会就稳",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:32",
+      "question": "人民美好生活需要日益广泛，不仅对物质文化生活提出了更高要求，而且在民主、法治、公平、正义、安全、环境等方面的要求日益增长。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:39",
+      "question": "从中国共产党的百年奋斗历史来看，让老百姓过上好日子3.是党一切工作的出发点和落脚点。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:44",
+      "question": "必须多谋民生之利、多解民生之忧，在发展中补齐民生短板、促进社会公平正义，在幼有所育、学有所教、劳有所得、病有所医、老有所养、住有所居、弱有所扶上不断取得新进展。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:51",
+      "question": "民生改善有一个从低层次到高层次、从不均衡到均衡的过程，目前我国仍处于并将长期处于社会主义初级阶段。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:23:57",
+      "question": "保护和改善生态环境就就是保护和发展生产力。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:03",
+      "question": "人因自然而生，人与自然是一种共生关系。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:09",
+      "question": "实现人与自然和谐共生的现代化，要坚持节约优先、保护优先、自然恢复为主的方针。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:15",
+      "question": "山水林田湖草是生命共同体。人的命脉在田，田的命脉在水，水的命脉在山，山的命脉在土，土的命脉在林和草，这个生命共同体是人类生存发展的物质基础。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:21",
+      "question": "实现碳达峰、碳中和是我国向世界作出的庄严承诺，也是一场广泛而深刻的经济社会变革。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:28",
+      "question": "加强生态文明建设，要用用最严格制度最严密法治保护生态环境。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:33",
+      "question": "绿水青山就是金山银山。在绿水青山与金山银山之间不能实现双赢。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:39",
+      "question": "在新时代的强军目标中，能打胜仗是保证。( )",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:44",
+      "question": "在本世纪中叶，我国要把人民军队全面建成世界一流军队。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:50",
+      "question": "党旗所指，军旗所向。这是一切敌人最惧怕我们的一点，也是保证我们党长期执政、国家长治久安的根本法宝。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:55",
+      "question": "习近平强军思想作为习近平新时代中国特色社会主义思想的重要组成部分，是我们党不懈探索中国特色强军之路形成的宝贵思想结晶( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:24:59",
+      "question": "在新时代的强军目标中，听党指挥是保证。( )",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:25:13",
+      "question": "全面从严治党是一场伟大的自我革命，在进行社会革命同时不断进行自我革命，是我们党区别于其他政党最显著的标志。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:25:20",
+      "question": "全面从严治党，核心是加强党的领导，基础在全面，关键在严，要害在治。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:25:25",
+      "question": "政治建设建设是党的基础性建设，坚定理想信念是党的思想建设的首要任务。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:25:32",
+      "question": "除了国家、民族、人民的利益，我们党没有任何自己的特殊利益。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:25:38",
+      "question": "1992年，海峡两岸官方形成了“一个中国原则”的九二共识。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:25:54",
+      "question": "台湾问题是中国内政问题，解决台湾问题的主动权始终掌握在中国人民手中，因民族弱乱而生的民族问题必将随着民族复兴而终结()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:00",
+      "question": "“一国两制”行得通.办得到.得人心()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:06",
+      "question": "统一是历史大势，是正道。“台独”是历史逆流，是绝路()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:11",
+      "question": "以习近平同志为核心的党中央旗帜鲜明地回答了新时代中国应当推动建设什么样的世界、构建什么样的国际关系，中国需要什么样的外交、怎样办好新时代外交等一系列重大的理论实践问题，开成了习近平外交思想。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:14",
+      "question": "习近平外交思想是21世纪马克思主义在外交领域的最新成果。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:19",
+      "question": "推动建设新型国际关系，要在和平共处五项原则基础上发展同世界各国的友好合作。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:24",
+      "question": "构建人类命运共同体，不需要建设持久和平、普遍安全、共同繁荣、开放包容、清洁美丽的世界。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:29",
+      "question": "共建“一带一路”倡议源于中国，机遇和成果也属于中国。()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:34",
+      "question": "“明者防祸于未萌，智者图患于将来。”预判风险所在是防范风险的前提，把握风险走向是谋求战略主动的关键。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:40",
+      "question": "增强忧患意识，做到居安思危，是中国共产党治国理政的重大原则。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:45",
+      "question": "着力防范化解重大风险，重大风险既包括国内的经济、政治、意识形态、社会风险以及来自自然界的风险，也包括国际经济，政治，军事风险等。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:50",
+      "question": "网络安全已经成为我国面临的最复杂、最现实、最严峻的非传统安全问题之一。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:26:56",
+      "question": "一个人可以有很多志向，但人生最重要的志向应该同祖国和人民联系在一起，这是人们各种具体志向的底盘，也是人生的脊梁。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:03",
+      "question": "对新时代中国青年来说，热爱祖国是立身之本、成才之基。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:08",
+      "question": "立足新时代新征程，中国青年的奋斗目标和前行方向归结到一点，就是坚定不移听党话、跟党走，努力成长为堪当民族复兴重任的时代新人。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:13",
+      "question": "青年一代有理想、有本领、有担当，国家就有前途，民族就有希望。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:19",
+      "question": "新时代青年成才的新要求:有理想、敢担当、能吃苦、肯奋斗。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:26",
+      "question": "你对什么充满热情可以帮助你确定你的创业愿景和追求。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:31",
+      "question": "商业模式的创新就是对于九大要素的变革与创新。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:27:45",
+      "question": "企业家需要对经济环境做出创造性反应。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:51",
+      "question": "早期创业企业的最基本和重要的目标就是活下来。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:27:55",
+      "question": "根据美国对创业者的调查显示,超过50%的创业在创始阶段的资金都来自于政府机构。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:01",
+      "question": "商业计划书是指经营一个项目和成立一个公司时针对未来发展提出的一些想法和思路的文件。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:07",
+      "question": "特锐德创业阶段的“找对人、走对路、做对事”对创业企业具有普遍的借鉴意义。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:13",
+      "question": "无人机是21世纪出现的一种新型航空飞行器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:20",
+      "question": "无人机就是无人驾驶飞机。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:28:34",
+      "question": "无人机不需要驾驶员。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:40",
+      "question": "无人机的机体蒙皮并不参与承力。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:45",
+      "question": "机翼通常只有一根梁。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:50",
+      "question": "大展弦比无人机的结构设计采用梁式结构。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:28:56",
+      "question": "机翼的梁通常承担弯矩、扭矩和剪力作用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:29:09",
+      "question": "机翼的翼肋知识为了维形，并不参与传力。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:29:16",
+      "question": "高速无人机的机翼结构多半采用多梁式，其中主要原因是机翼为小展弦比和大后掠角。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:29:22",
+      "question": "无人战斗机不易易受到干扰以及人员因素的影响。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:29:28",
+      "question": "无人机结构的设计要求与有人驾驶飞行器的基本原则是一致的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:29:42",
+      "question": "无人机结构重量的减少是因为减少了人员重量。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:29:48",
+      "question": "无人机结构只用非金属材料。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:29:54",
+      "question": "无人机结构使用木材仅仅是用于手工制作航模。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:29:59",
+      "question": "低速无人机的结构设计在满足载荷作用下尽可能减少结构重量。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:05",
+      "question": "3D打印不能用碳纤维材料。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:11",
+      "question": "无人机零构件的无图纸制造通常需要设计三维图样。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:17",
+      "question": "无人机能适应各类环境,可以毫无顾忌地进出核生化武器的沾染区。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:30:30",
+      "question": "无人机作为靶机是无人机的最初用途,可用于地面防空和空中格斗武器的实验与练习。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:37",
+      "question": "在无人机上装有起落架，发动机启动后，由地面操纵员通过遥控设备或由机上的程序控制设备自动操纵无人机在跑道上滑跑，达到一定速度后，无人机便能离地升空。美国的全球鹰、捕食者等大型无人机采用的就是这种起飞方式。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:43",
+      "question": "目视遥控着陆对无人机操纵人员的操纵技术、心理素质都有比较严格的要求，失误率也比较高。对于大型无人机，目视遥控着陆方法一般只是作为一种备份方案，只有在无人机的自动着陆系统出现故障或偏差时，才由地面遥控操纵员接手。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:48",
+      "question": "无人机在未来战争中将更多的替代有人驾驶飞行器。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:53",
+      "question": "民用工业无人机将有更广阔应用领域。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:30:58",
+      "question": "飞行仿真是指通过计算机软件及外部硬件设备，对真实世界飞行中所遇到的各种元素，如空气动力，气象，地理环境，飞行操控系统，飞行电子系统等，综合的在计算机中进行仿真模拟，并通过外部硬件设备进行飞行仿真操控和飞行感官回馈的一种技术。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:04",
+      "question": "动力系统仿真中，主要需要考虑动力系统输出拉力随飞行速度的变化，并给定最大系统拉力输出最大限制。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:10",
+      "question": "纤维复合材料结构与金属材料结构的重要区别是具有各向异性。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:17",
+      "question": "碳纤维复合材料比玻璃纤维复合材料的强度好。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:23",
+      "question": "半硬壳式结构已经不需要桁条。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:30",
+      "question": "无人机相对于有人机来讲，抗过载能力更强。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:35",
+      "question": "受无人机尺寸、重量限制，无人机只能亚音速飞行。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:42",
+      "question": "无人机结构主要应该重量轻，强度并不重要。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:47",
+      "question": "无人机结构内部空间比有人机小。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:53",
+      "question": "固定翼无人机和多旋翼无人机在操控方式上存在很大差异,但在飞行控制中所涉及到的控制思想与控制原理具有一致性。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:31:59",
+      "question": "无人机测控与信息传输系统的作用是保持无人机与地面站之间的信息交互,对无人机飞行没有影响。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:05",
+      "question": "无人机结构的选型主要根据无人机的受力形式和受力大小来选型。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:11",
+      "question": "飞行控制律设计必须依赖于精确的飞行器运动模型。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:18",
+      "question": "无人机结构设计中,应在满足结构强度和刚度要求的条件下尽量减轻结构重量。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:23",
+      "question": "考虑到微小型无人机使用条件以及各类动力装置技术可行性的因素,目前,有刷电动机驱动螺旋桨是最常用的设计。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:29",
+      "question": "无人机传感器主要分为对自身状态感知和对外部环境感知两类。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:35",
+      "question": "航拍与航测的技术是一样的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:41",
+      "question": "捷联惯性导航具有抗干扰信号、测量精度高、无误差积累等优点,是目前微小型无人机最常采用的导航方式。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:48",
+      "question": "无人机迎角可由气流坐标系与本体坐标系之间的关系来确定。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:53",
+      "question": "无人机质心运动学方程主要描述无人机位置变化率和速度的关系,因此只能在地面坐标系下构建。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:32:58",
+      "question": "飞行试验大纲的设计是开展无人机飞行试验的必要前提，是保证无人机飞行试验安全进行、达到预期试验目标的重要措施。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:05",
+      "question": "飞行试验报告应侧重于客观地记录飞行试验的过程和结果，可以夹带试验者的主观看法。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:10",
+      "question": "飞行试验是研究无人机运动特性、调整无人机飞行控制律的重要手段。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:17",
+      "question": "飞行试验环境的选择包括对试飞区域和试飞气象条件的选择。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:23",
+      "question": "复合材料结构缠绕成型可以获得更大的强度。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:29",
+      "question": "复合材料采用真空与模具成型，主要减少材料化学变化。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:35",
+      "question": "固定翼无人机设计时,一定要保证纵向静稳定,即无人机重心位于焦点之前。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:33:49",
+      "question": "无人机外形确定以后,其静稳定性就确定了。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:33:55",
+      "question": "机翼结构与机身结构连接可以用粘接的方法。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:34:08",
+      "question": "用激光切割机加工小型无人机零件，必须要输入三维图形文件。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:14",
+      "question": "固定翼无人机的偏航操纵主要靠方向舵来实现。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:21",
+      "question": "新旧技术的交替通常表现为疾风突进式的“革命”。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:26",
+      "question": "文字是在旧石器时代诞生的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:32",
+      "question": "在新媒体时代，用户成了新闻内容的生产者。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:37",
+      "question": "在WEB1.0时代，门户网站的盈利模式与传统媒体区别巨大。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:43",
+      "question": "法兰克福学派学者马尔库塞曾经指出，技术本身就是预先按照统治者的意志和需要设计出来的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:48",
+      "question": "学界已经达成共识：人类已经进入WEB3.0时代。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:34:54",
+      "question": "时间偏向媒介的重要特点是经历历史的长河而不受太大影响。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:35:10",
+      "question": "WEB2.0概念由O'REILLY公司在2003年率先提出。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:35:23",
+      "question": "当人类某方面基本需求通过某种技术得到满足之后，技术将反过来成为刺激新需求和欲望的动力之一。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:35:29",
+      "question": "技术接受模型由FredDavis在1989年创立。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:35:35",
+      "question": "感知有用性的含义是我们认为某一项新技术可能会带来什么用处。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:35:41",
+      "question": "“媒介即讯息”这句名言是加拿大学者MarshallMcLuhan提出的。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:35:47",
+      "question": "我国《刑法》将制作、贩卖传播淫秽物品的行为规定为犯罪。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:35:53",
+      "question": "可见度高的创新会导致人们更多的去讨论这种创新，产生更多的正面或负面反馈，这会提升新技术的显示度。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:35:59",
+      "question": "©是著作权的标志，代表Copyright。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:36:05",
+      "question": "卡斯特尔认为数字排斥各种排斥形式中后果最严重的一种。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:36:21",
+      "question": "多模态使用在传统媒体时代就已经存在。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:36:36",
+      "question": "手机显著影响经济、文化和总体阶层认同。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:36:42",
+      "question": "成立于1992年的互联网协会（InternetSociety）可以视为全球互联网社区的“联合国”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:36:48",
+      "question": "卡斯特尔认为网络构成了我们社会新的社会形态。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:36:54",
+      "question": "对于人们获知新技术来说，人际传播比大众传播更加有效。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:37:02",
+      "question": "人际传播对于人们的态度改变比大众传播更加有效。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:37:08",
+      "question": "人口总数对新技术接入的影响是负相关，即人口总数越多，新技术接入采纳越难。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:37:22",
+      "question": "“人肉搜索”有利于社会监督，实际上并未侵犯公民的隐私权。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:37:29",
+      "question": "我国《宪法》第40条规定了公民的通信自由和通信秘密受法律保护。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:37:34",
+      "question": "一个国家如果各阶层形成了橄榄式的社会结构，就代表着这个国家真正进入了现代化。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:37:48",
+      "question": "霍赫切尔德发现资本主义的剥削与管理方式已经从对人的感情和内心的剥削深入到对劳动力的剥削。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:37:54",
+      "question": "格兰诺维特认为能够充当社会信息桥的一定是弱关系。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:38:08",
+      "question": "信息转评越多会降低人们对社会的信任度以及对中国民主的满意度。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:38:59",
+      "question": "全球网络的第一阶段是以大众社会为特征。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:39:14",
+      "question": "从技术角度说，电子政务就是政府业务的计算机化或网络化。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:39:28",
+      "question": "对我国电子政务的发展，老师的建议是从应用主导向能力建设方向转变。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:39:43",
+      "question": "信息经济的出现会否定农业经济、工业经济以及服务经济。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:39:48",
+      "question": "网络是多个组织相互依赖的结构，组织之间没有上下级隶属的关系，也没有交易和契约的关系，它的运作基础是信任机制。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:40:01",
+      "question": "微信在电子政务应用上可以作为信息发布平台、公共服务平台、危机管理工具和监督政府利器。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:40:07",
+      "question": "政务微博最好只发文字。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:40:13",
+      "question": "传统的对立冲突中，一般通过协调机制解决争端。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:40:21",
+      "question": "全球信息产业的发展方向是创意产业。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:40:34",
+      "question": "伦敦时装周是在1984年创立的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:40:51",
+      "question": "伦敦设计节始于2003年。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:00",
+      "question": "“恶搞”一词来源于韩国的“KUSO”",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:05",
+      "question": "开放、平等、协作、分享既是互联网文化的鲜明特征，也是互联网精神的突出体现。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:11",
+      "question": "“搜索引擎营销”的关键词是“核心”与“长尾”。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:41:23",
+      "question": "涵化理论关注的是整个媒介信息系统的长期文化影响。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:30",
+      "question": "20世纪70年代到80年代早期，亚文化研究的重心从伯明翰大学转移到芝加哥大学。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:39",
+      "question": "“一二·一”运动的基本口号是“停止内战，一致抗日”。（5.0分）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:44",
+      "question": "AT89S51单片机采用的是哈佛结构。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:50",
+      "question": "P0口作为总线端口使用时，它是一个双向口。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:41:57",
+      "question": "定时器T0、T1对外部引脚上的脉冲进行计数时，要求输入的计数脉冲的高电平和低电平的持续时间均不小于2个机器周期。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:42:06",
+      "question": "单片机最小系统电路是指单片机能够工作的最小电路，一般包括时钟电路和复位电路。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:42:20",
+      "question": "P1~P3口作为输入端口用时，必须先向端口寄存器写入1。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:42:27",
+      "question": "在AT89S51单片机中，为使准双向的I/O口工作在输入方式，必须事先预置为1。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:42:33",
+      "question": "若需要计数5000次,则工作方式1下,初始值就为0,计满后该值为5000。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:42:39",
+      "question": "控制单片机内部定时器启动的定时器是TMOD。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:42:45",
+      "question": "MCS-51单片机的CPU能同时处理8位二进制数据。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:42:52",
+      "question": "按键按下和释放的检测过程是相同的，不同的是检测条件刚好相反。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:43:05",
+      "question": "一个函数利用return不可能同时返回多个值。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:43:17",
+      "question": "当显示的LED数码管位数较多时，动态显示所占用的I/O口多，为节省I/O口与驱动电路的数目，常采用静态扫描显示方式。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:43:24",
+      "question": "89S51单片机复位后，特殊功能寄存器SP的内容都是00H。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:43:31",
+      "question": "AT89S52单片机不论是进入空闲模式还是掉电运行模式后，片内RAM和SFR中的内容均保持原来的状态。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:43:48",
+      "question": "工作方式1的计数范围最大,为8位计数器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:43:54",
+      "question": "特殊功能寄存器的名字，在C51程序中，全部大写。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:00",
+      "question": "定时器T0、T1对外部脉冲进行计数时，要求输入的计数脉冲的高电平或低电平的持续时间不小于1个机器周期。特殊功能寄存器SCON与定时器/计数器的控制无关。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:06",
+      "question": "单片机中断系统中，只要有中断源申请中断就可中断了。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:12",
+      "question": "LED数码管的字型码是固定不变的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:18",
+      "question": "定时器T0中断可以被外部中断0中断。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:24",
+      "question": "一般来讲，单片机应用系统中，程序存储空间比数据存储空间要大很多。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:31",
+      "question": "计数初始值的设置与定时器的工作方式无关。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:35",
+      "question": "MCS-51单片机的程序存储器只能用来存放程序。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:44:41",
+      "question": "在每一屏显示之间，其间隔时间也不能太大，也要满足人眼的视觉暂留。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:44:55",
+      "question": "P0~P3口的驱动能力是相同的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:02",
+      "question": "单片机复位后不影响片内RAM单元的数据，仅影响特殊功能寄存器中的内容。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:08",
+      "question": "动态显示连接适用于多位数码管的应用系统。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:13",
+      "question": "sbit不可以用于定义内部RAM的可位寻址区，只能用在可位寻址的SFR上。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:18",
+      "question": "Continue 和break都可用来实现循环体的中止。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:24",
+      "question": "片内RAM的位寻址区，只能供位寻址使用，而不能进行字节寻址。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:30",
+      "question": "若一个函数的返回类型为void，则表示其没有返回值。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:36",
+      "question": "定时器/计数器工作方式3只适用于定时器、计数器T0。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:45:43",
+      "question": "单片机可以直接与L298连接，从而实现对L298芯片的控制。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:45:59",
+      "question": "C51语言处理单片机的中断是由专门的中断函数来处理的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:04",
+      "question": "在动态显示中，位选口是送出每一个字型的字型码的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:10",
+      "question": "在C51语言中，函数是一个完成一定相关功能的执行代码段，它与另外两个名词“子程序”和“过程”用来描述同样的事情。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:18",
+      "question": "检测按键按下和等待按键按下的过程也是完全相同的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:23",
+      "question": "TCON是一个即可以位寻址又可以字节寻址的特殊功能寄存器。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:29",
+      "question": "L298引脚中的IN1-IN4是输入引脚，可以直接和单片机连接；OUT1-OUT4是输出引脚，可以直接连接电机。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:35",
+      "question": "静态显示电路连接复杂，因此编写程序也就很复杂。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:42",
+      "question": "P0口作为通用I/O端口使用时，外部引脚必须接上拉电阻，因此它是一个准双向口。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:47",
+      "question": "PC可以看成是程序存储器的地址指针。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:53",
+      "question": "定时器/计数器这个部件是帮助CPU处理突发事件的部件。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:46:59",
+      "question": "单片机就是指集成在一个芯片上的微型计算机。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:47:05",
+      "question": "在同一个优先级别中，多个中断源按照自然优先权顺序被响应。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:47:13",
+      "question": "I2C串行总线有两条信号线，一条是接收数据线，另一条是发送数据线。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:47:19",
+      "question": "中断服务程序的定义必须严格的按照语法规定来完成，任何部分都不能省略。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:47:24",
+      "question": "在动态显示过程中，位选口每一次只有一位与其他不同，表示该位对应的数码管被选中。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:47:30",
+      "question": "#include  <reg51.h>与#include  “reg51.h”是等价的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:47:44",
+      "question": "8051共有21个特殊功能寄存器，它们的位都是可以用软件设置的，因此，是可以进行位寻址的。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:47:51",
+      "question": "动态显示电路连接中，所有数码管的公共端都需要连接在一起。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:48:05",
+      "question": "定时器T0的计满溢出中断是外部中断。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:12",
+      "question": "定时器计时与软件延时的主要区别在于计时准确，通常定时器计时用在精确定时的情况下。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:18",
+      "question": "AT89S52单片机中特殊功能寄存器(SFR)使用片内RAM的部份字节地址。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:23",
+      "question": "必须有中断源发出中断请求，并且CPU开中断，CPU才可能响应中断。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:30",
+      "question": "DS18B20是数字温度传感器，温度测量范围为−55～+128℃",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:36",
+      "question": "STC系列单片机是8051内核的单片机。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:42",
+      "question": "定时器T0和T1是51单片机芯片内部的资源。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:49",
+      "question": "一对花括号内的语句组就是复合语句。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:48:54",
+      "question": "动态显示程序设计中，延时时间过长将产生闪烁现象。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:49:08",
+      "question": "一通电就会响的是无源蜂鸣器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:14",
+      "question": "定时器工作在方式1下，当计满溢出后，必须要用软件将初始值重新加载。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:22",
+      "question": "在开中断的前提下，只要中断源发出中断请求，CPU就会立刻响应中断。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:30",
+      "question": "AT89S52单片机中的同级中断不能嵌套。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:35",
+      "question": "为AT89C51单片机设计的应用系统板，可将芯片AT89C51直接用芯片AT89S51替换。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:41",
+      "question": "为AT89S51单片机设计的应用系统板，可将芯片AT89S51直接用芯片AT89S52替换。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:47",
+      "question": "AT89S52单片机的掉电运行模式可采用响应中断方式来退出。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:49:54",
+      "question": "单片机控制程序通常都是一个无限循环程序，只要单片机上电，就一直在执行程序。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:01",
+      "question": "一个完整的计数过程包括设置TMOD、赋初始值、启动定时器以及判断计数是否溢出等四个步骤。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:06",
+      "question": "循环程序结构是用来处理无限次或有限次的重复事件的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:11",
+      "question": "中断系统是单片机的一个外部设备。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:17",
+      "question": "静态显示就是数码管的每一段恒定点亮，因此亮度较高。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=1, old=2, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 02:50:30",
+      "question": "STC89系列单片机是8051内核的单片机。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:37",
+      "question": "TMOD=0X01表示定时器T0为工作方式1。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:42",
+      "question": "单片机复位后，从程序存储器的0000H地址开始执行。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:48",
+      "question": "上电复位电路的工作原理是依靠电容的充放电来实现复位的。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:50:55",
+      "question": "头文件regx51.h中定义了51单片机中所有的SFR。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:51:10",
+      "question": "工作方式1是16位计数器，其计数最大值为65536。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:51:26",
+      "question": "只要给直流电机一端接地，一端接标称电压，直流电机就会转动。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:51:41",
+      "question": "TMOD是定时器的方式寄存器。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:51:46",
+      "question": "在C语言中，函数的调用是可以根据需要随便调用，前面的函数可以调用后面的函数，后面的函数也可以调用前面的函数，无需声明。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:51:51",
+      "question": "要想点亮共阳极数码管，其公共端要接电源正极。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:51:57",
+      "question": "定时器T0和T1都是只能工作在16位计数的工作方式下。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:03",
+      "question": "中断服务子程序可以直接调用。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:08",
+      "question": "绝对地址包含头文件absacc.h定义了几个宏，用来确定各类存储空间的绝对地址。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:14",
+      "question": "要想点亮共阴极数码管，其公共端要接电源正极。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:20",
+      "question": "程序存储器不仅可以存放程序指令字节代码和表格常数，还可以作为数据暂存和缓冲待调试的程序代码等。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:27",
+      "question": "AT89S51单片机共有4个8位的并行I/O口，其中P2口既可用作地址/数据口，又可用作一般的I/O口。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:52:42",
+      "question": "在工作方式1下，既可以进行计数、也可以进行定时。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:48",
+      "question": "静态显示适用于多位数码管的连接，因此它的编程方法简单。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:53",
+      "question": "单片机的XTAL1和XTAL2引脚是时钟信号引脚。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:52:59",
+      "question": "在C51语言编程中，编写中断服务函数时需要考虑如何进行现场保护、阻断其他中断、返回时自动恢复现场等处理的程序段的编写。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:06",
+      "question": "数码管是单片机应用系统设计中一种常用的显示器件。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:12",
+      "question": "定时器的工作方式1是16位计数器，THx和TLx都参与计数过程。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:18",
+      "question": "单片机中集成了存储器。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:24",
+      "question": "堆栈区是单片机内部的一个特殊区域，与RAM无关。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:30",
+      "question": "8051单片机必须使用内部ROM。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:39",
+      "question": "定时器工作在方式2下，当计满溢出后，THx可以实现初始值的自动重装载。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:45",
+      "question": "全局变量可使用static关键词进行定义，由于全局变量一直存在，占用了大量的内存单元，且加大了程序的耦合性，不利于程序的移植或复用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:51",
+      "question": "MCS-51的中断源全部编程为同级时，优先级最高的是INT1。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:53:56",
+      "question": "将P1口的低4位清0，其余位不变，应该用下面表达式: P1&=0x0f;",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:02",
+      "question": "MCS-51系统可以没有复位电路。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:09",
+      "question": "全局变量是在某一函数中存在的变量，它只在该函数内部有效。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:14",
+      "question": "一个循环体内可以再包含一个完整的循环，就叫做循环嵌套。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:19",
+      "question": "“sfr”后面的地址可以用带有运算的表达式来表示。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:24",
+      "question": "单片机的中断系统提高了CPU的工作效率。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:30",
+      "question": "共阳极数码管指的是a、b、c、d、e、f等各段连接着内部二极管的正极。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:37",
+      "question": "TCON是定时器的方式寄存器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:41",
+      "question": "定时器的计数功能是对外部引脚的脉冲进行计数，定时功能是对内部的机器周期进行计数。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:48",
+      "question": "中断服务程序和子函数的调用过程完全一样。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:54:54",
+      "question": "单片机所连接的所有外部设备都可以是中断源。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:55:08",
+      "question": "单片机是一种CPU。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:55:13",
+      "question": "共阳极和共阴极数码管外部引脚排列有所不同，大家可以通过引脚来判断其极性。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:55:20",
+      "question": "假如定时器T0为工作方式2，则初始值TH0和TL0必须相同。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:55:35",
+      "question": "定时器/计数器工作方式3只适用于定时器/计数器T1。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:55:41",
+      "question": "单片机也称为微处理器。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:55:47",
+      "question": "MCS-51的5个中断源优先级相同。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:55:54",
+      "question": "在MCS-51系统中，一个机器周期等于1μs。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:00",
+      "question": "程序计数器PC不能为用户编程时直接使用，因为它没有地址。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:06",
+      "question": "使用并行接口方式连接键盘，对独立式键盘而言，8根I/O口线可以接8个按键。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:13",
+      "question": "对矩阵式键盘而言，8根I/O口线最多可以接8个按键。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:19",
+      "question": "使用专用的键盘/显示器芯片,可由芯片内部硬件扫描电路自动完成显示数据的扫描刷新和键盘扫描。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:25",
+      "question": "AT89S51单片机没有I2C接口，可用并行I/O口线结合软件来模拟I2C总线的时序。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:32",
+      "question": "标准的I2C普通模式下，数据的传输速率为40kbit/s，高速模式下可达400kbit/s。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:38",
+      "question": "新媒体时代数字影视的传输与播放可以跨平台。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:56:45",
+      "question": "电视剧的创意直接来源于现实生活。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:56:59",
+      "question": "影视策划中的作品简介需要介绍作品的全部情节。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:57:06",
+      "question": "在自主创作中,多数情况下不提倡主题先行。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:57:10",
+      "question": "剧情片和专题片、纪录片创作的起点完全相同。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:57:17",
+      "question": "相对而言,情节性很强的影视创作不太讲究时效性。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:57:22",
+      "question": "高清晰度摄像机的焦点不易对准。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:57:35",
+      "question": "软调画面不利于展现景物的质感。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:57:40",
+      "question": "雨天拍摄必须要拍摄雨。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:57:45",
+      "question": "在调整摄像机时,可根据光圈选择滤色片,如果光圈很靠近最小光圈,则应该将滤色片转换到通光量更少的档",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:58:00",
+      "question": "反光板在外景拍摄中起到辅助照明的作用,有时也用作主光造型。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:08",
+      "question": "软光具有鲜明的造型功能,可以显示仪态和形状,揭示被摄体的线条和表面特征。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:13",
+      "question": "摄像机话筒多选用电容话筒。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:18",
+      "question": "光圈环上的数字越大,通光量越大。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:24",
+      "question": "灵敏度越高,所需的最低照度越高,摄像机质量也越高",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:29",
+      "question": "结构模式本身并无高下之分,只有更适合于内容的结构而不存在最佳结构。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:35",
+      "question": "叙述时间本身无具体的时间性,叙述情景发生的时间即是叙述时间。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:41",
+      "question": "展现场景局部或人物膝盖以上部分的景别是中景。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:58:53",
+      "question": "景别的安排是形成蒙太奇句型的唯一因素。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:58:59",
+      "question": "转场镜头要使观众产生段落的隔断感,可以不考虑视觉的连续性。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:05",
+      "question": "明确地指出两个蒙太奇镜头的对列不是二数之和,而更像二数之积的导演是普多夫金。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:12",
+      "question": "后期包装属于精剪阶段的内容。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 02:59:26",
+      "question": "数字视觉特效可以制作出传统拍摄手法无法和难以实现的视觉效果。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:32",
+      "question": "语言不能够表达时代感。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:38",
+      "question": "话筒的指向性主要是对中频、高频信号而言的,在低频段无明显的指向性。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:44",
+      "question": "动圈式话筒对风声等噪音不敏感,比较适合室外拾音。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:49",
+      "question": "话筒指向或者靠近扬声器会产生刺耳的反馈啸叫,严重时会损坏功放与发声设备。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 02:59:55",
+      "question": "秘塔AI搜索不仅可以展示引用了哪一篇文献，还可以定位到文献引用的具体位置，方便研究者查询。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:00:02",
+      "question": "AI机器人ChatGPT目前无法准确识别中文配料表。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 03:00:16",
+      "question": "可以通过“GPTs查找”应用来检索GPTs应用。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:00:22",
+      "question": "隐私保护方面，要注意除非用户选择退出，否则这些自定义信息将被用于改进模型性能，并且可能与用户启用的插件共享。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:00:27",
+      "question": "自定义指令被添加到新的对话中后，用户可以随时编辑或删除它们。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-29 03:00:40",
+      "question": "Scispace可以处理表格和公式等特殊信息。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:00:46",
+      "question": "在Scispace上没有文献检索功能。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:00:51",
+      "question": "科研人员更需要AI的辅助是因为他们面临的信息过载问题非常严重。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:00:59",
+      "question": "动画视觉冲击力更强，因此更受孩子们喜爱。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:01:06",
+      "question": "GPT-4可以实现直接由图生图。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:01:11",
+      "question": "Imagica不能实现无代码开发WEB应用。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:01:17",
+      "question": "秘塔AI搜索可以帮助用户以自然语言搜索关键词并自动选择合适的关键词，搜索结果经过过滤和排序后以自然语言与用户沟通。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:01:23",
+      "question": "ChatGPT是能真正理解人类语言的内容。",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:01:30",
+      "question": "老师举“赌徒环境”的例子说明ChatGPT根据上下文对提问作出更正。",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "uncertain",
+      "note": "投票不足(hit=2, old=1, need=3), 保持原值"
+    },
+    {
+      "time": "2026-10-29 03:01:45",
+      "question": "GPT-4可以实现用语句转换图形输出。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:01:51",
+      "question": "GraphRAG搭载了GPT-4omini后更便宜了。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:02:00",
+      "question": "历史上技术的变革与更替，往往在我们看不见的地方。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-29 03:02:07",
+      "question": "如果视频中的一份信息没有在字幕和语音中出现，那么BiBiGPT无法识别出来。",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    }
+  ]
+}

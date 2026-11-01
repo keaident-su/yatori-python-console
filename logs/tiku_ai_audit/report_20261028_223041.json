@@ -1,0 +1,420 @@
+{
+  "meta": {
+    "started_at": "2026-10-28 22:30:41",
+    "finished_at": "2026-10-28 22:33:51",
+    "elapsed_sec": 190,
+    "tiku_path": "D:\\yatori-go-console-main\\yatori-python-console\\questions_answers.json",
+    "dry_run": true,
+    "types": [
+      "judge"
+    ],
+    "limit": 25,
+    "start": 500,
+    "end": 174109,
+    "votes": 2,
+    "workers": 1,
+    "max_change_ratio": 0.3,
+    "state_file": "D:\\yatori-go-console-main\\yatori-python-console\\logs\\tiku_ai_audit\\state_judge_6ead120c.json"
+  },
+  "summary": {
+    "candidates": 25,
+    "audited": 25,
+    "changed": 3,
+    "same": 22,
+    "report_only": 0,
+    "skipped_invalid": 0,
+    "uncertain": 0,
+    "failed": 0,
+    "skipped_resumed": 0,
+    "applied": 0,
+    "aborted": "",
+    "flush_fail": 0,
+    "tiku_count": 610855,
+    "tiku_sig_before": "(1792920073970091100, 70635025)",
+    "tiku_sig_after": "(1792920073970091100, 70635025)",
+    "tiku_changed_on_disk": false
+  },
+  "items": [
+    {
+      "time": "2026-10-28 22:30:41",
+      "question": "进行唇颤音练习时，嘴唇要放松，声音要自然松弛。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:30:46",
+      "question": "写“左点”的时候，笔锋好笔杆的角度变化可以适当偏大。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 22:31:02",
+      "question": "画梅花主干时要从上到下，从枝干到主干，这样是比较自然的。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:31:08",
+      "question": "演唱《青春舞曲》的重复乐段时，应采取强弱对比的方式，避免呆板。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:31:15",
+      "question": "草书笔画简约，笔势连绵，结体规范具有法度。草书就是潦草。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:31:21",
+      "question": "剪纸是中国独有的一种民间艺术。（）",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确",
+        "正确",
+        "正确"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 22:31:35",
+      "question": "画荷花蜻蜓图时，一般从蜻蜓即画面比较精美的部分开始画起。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误",
+        "错误",
+        "错误"
+      ],
+      "votes": 3,
+      "similarity": null,
+      "status": "changed",
+      "note": "AI 3/3 票一致, 旧值 0 票"
+    },
+    {
+      "time": "2026-10-28 22:31:50",
+      "question": "与其它地区不同，广东剪纸的主要材料并非纸，而是金、银、铜箔或锡箔。()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:31:56",
+      "question": "舞蹈《只此青绿》的创意来源是《清明上河图》。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:03",
+      "question": "《茉莉花》被誉为“山西第一歌”。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:10",
+      "question": "《浏阳河》三段情绪完全一致。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:16",
+      "question": "传说中人们用鞭炮驱赶年兽。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:22",
+      "question": "章法，是书法术语，指字与字、行与行之间互相联系照应的布局安排。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:28",
+      "question": "《只此青绿》舞蹈演员的服装和造型都是一样的。（）",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:36",
+      "question": "王希孟的《千里江山图》和张大千的《桃源图》都属于设色画。（）",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:43",
+      "question": "第一，汉语国际教育事业的根本目的在于传播中华文化，中华才艺是中华文化的组成部分，是文化中最鲜活生动的技能、才能。（）",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:50",
+      "question": "唐代佛光寺大殿转角斗拱采用的是“计心造”形式的斗拱()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:32:56",
+      "question": "中国古代掌握铜的防锈技术晚于德国和美国",
+      "type": "judge",
+      "old_answer": "错误",
+      "new_answer": "错误",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:05",
+      "question": "戚继光队伍使用一种短剑才铲平倭寇",
+      "type": "judge",
+      "old_answer": "F",
+      "new_answer": "F",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:13",
+      "question": "白酒就是指白色的酒()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:19",
+      "question": "龙窑是中国古代陶瓷制造使用的窑炉种类之一()",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:26",
+      "question": "中国古代“升丹”是利用升华的物理现象制作丹药",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:34",
+      "question": "瓷器的烧成温度要高于陶器()",
+      "type": "judge",
+      "old_answer": "正确",
+      "new_answer": "正确",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:40",
+      "question": "中国古代掌握生铁冶铸技术",
+      "type": "judge",
+      "old_answer": "对",
+      "new_answer": "对",
+      "ai_raw": "[\"正确\"]",
+      "ai_all": [
+        "正确"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    },
+    {
+      "time": "2026-10-28 22:33:46",
+      "question": "宋代哥窑瓷器出产于河南北部地区()",
+      "type": "judge",
+      "old_answer": "错",
+      "new_answer": "错",
+      "ai_raw": "[\"错误\"]",
+      "ai_all": [
+        "错误"
+      ],
+      "votes": 1,
+      "similarity": null,
+      "status": "same",
+      "note": "AI与旧值一致"
+    }
+  ]
+}

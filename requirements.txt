@@ -1,0 +1,42 @@
+fastapi>=0.104.0
+uvicorn>=0.24.0
+sqlalchemy>=2.0.0
+aiosqlite>=0.19.0
+pyyaml>=6.0
+httpx>=0.25.0
+jmespath>=1.0.0
+python-multipart>=0.0.6
+pycryptodome>=3.19.0
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+Pillow>=10.0.0
+tls-client>=1.0.0
+# 本地图片OCR(识别图片形式的题目/选项): 优先使用 rapidocr-onnxruntime
+# (PaddleOCR的ONNX移植, wheel内置模型, 离线可用无需下载; 会自动安装 onnxruntime/numpy)
+rapidocr-onnxruntime>=1.2.0
+# onnxruntime 平台适配(关键): 1.24+ 已停止发布 macOS x86_64(Intel Mac) 轮子,
+# Intel Mac 必须钉在最后支持版本 1.23.2(含 cp313 轮子), 其余平台跟随最新版
+onnxruntime<=1.23.2; sys_platform == "darwin" and platform_machine == "x86_64"
+onnxruntime; sys_platform != "darwin" or platform_machine != "x86_64"
+# 注: 无完整轮子支持的异形架构(如 32位 armv7 等)请改用 requirements-lite.txt
+# (去掉 OCR 依赖, 程序内 OCR 会自动降级禁用, 其余功能不受影响)
+#
+# GPU 加速(Windows 可选; 发布 exe 已内置): 装 onnxruntime-directml 可启用全厂商
+# GPU 加速(NVIDIA/AMD/Intel), 无 GPU 时自动回落 CPU。注意 rapidocr-onnxruntime
+# 会以依赖形式带入 CPU 版 onnxruntime 并覆盖它, 需补一次:
+#   pip install --force-reinstall onnxruntime-directml
+# 验证是否生效: python main.py --gpu-check
+
+# 安全微伴(WeBan)刷课依赖: nodriver 驱动 Chrome/Chromium 完成验证码自动识别,
+# 其依赖 mss/websockets 会自动安装; pyaes 为登录请求 AES 加密所需;
+# 验证码图像处理复用上方 rapidocr-onnxruntime 带入的 opencv-python(cv2)
+nodriver>=0.50.3
+pyaes>=1.6.1
+
+# 2026-10-16: V8引擎——易盾JS(智慧树登录滑块)/腾讯TCaptcha(微伴)纯协议求解
+# 注意: PyPI 正式包名为 mini-racer(新版, 全平台wheel含arm64);
+#       旧名 py-mini-racer 仅停到 0.6.0 且无 arm64 轮子(勿改用旧名)
+# 缺此依赖时将降级到浏览器方案(慢且依赖Chrome)
+mini-racer>=0.12.4
+# socks 代理支持(socks5/隧道代理): httpx 使用 socks5:// 代理所需
+socksio>=1.0.0
